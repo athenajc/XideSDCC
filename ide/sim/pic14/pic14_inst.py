@@ -35,7 +35,7 @@ def inst_msb_0(sim, msb, lsb):
     elif lsb == 0x66: inst_tris2(sim, msb, lsb)
     elif lsb == 0x67: inst_tris3(sim, msb, lsb)
     else:
-        inst_movwf(sim, msg, lsb)
+        inst_movwf(sim, msb, lsb)
 
 #----------------------------------------------------------------------------
 def inst_nop(sim, msb, lsb):
@@ -326,6 +326,184 @@ def gen_pic14_inst_table():
     #return inst_table 
     
 
+#----------------------------------------------------------------------------
+def get_pic16_inst_str(v, msb, lsb):
+    v0 = (msb >> 4) & 0xf #bit 13, 12
+    v1 = msb & 0xf        #bit 11, 10, 9, 8
+    v2 = (lsb >> 4) & 0xf
+    v3 = lsb & 0xf    
+    
+    inst = ' - '
+    if msb == 0x00:
+        lst = ['nop', '', '', 'sleep', 'clrwdt', 'push', 'pop', 'daw c', 
+               'tblrd*', 'tblrd*+', 'tblrd*-', 'tblrd+*',
+               'tblwr*', 'tblwr*+', 'tblwr*-', 'tblwr+*',
+               'retfie', 'retfie_fast', 'return', 'return_fast',]
+        if lsb < len(lst):
+            inst = lst[lsb]
+        elif lst == 0xff:
+            inst = 'reset'
+    elif v0 == 0x0:
+        if v1 == 1:
+            inst = 'movlb'
+            k = get_bits(v, 0, 3)
+            inst += ' ' + hex(k)
+        elif v1 == 2 or v1 == 3:
+            a = get_bit(v, 8)
+            f = lsb            
+            inst = 'mulwf ' + hex(f) + ', ' + str(a)
+        elif v1 >= 4 and v1 <= 7:
+            d = get_bit(v, 9)
+            a = get_bit(v, 8)
+            f = lsb            
+            inst = 'decf ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
+        elif v1 == 0xE:
+            inst = 'movlw ' + hex(lsb)
+            
+    elif v0 == 0x1:
+        lst = ['iorwf', 'andwf', 'xorwf', 'comf']
+        inst = lst[v1 >> 2]
+        d = get_bit(v, 9)
+        a = get_bit(v, 8)
+        f = lsb
+        inst += ' ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
+    elif v0 == 2:
+        lst = ['ADDWFC', 'ADDWF', 'INCF', 'DECFSZ']
+        inst = lst[v1 >> 2]
+        d = get_bit(v, 9)
+        a = get_bit(v, 8)
+        f = lsb
+        inst += ' ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
+    elif v0 == 0x3:
+        lst = ['ADDWFC', 'ADDWF', 'INCF', 'DECFSZ']
+        inst = lst[v1 >> 2]
+        d = get_bit(v, 9)
+        a = get_bit(v, 8)
+        f = lsb
+        inst += ' ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
+    elif v0 == 0x4:
+        lst = ['RRNCF', 'RLNCF', 'INFSNZ', 'DCFSNZ']
+        inst = lst[v1 >> 2]
+        d = get_bit(v, 9)
+        a = get_bit(v, 8)
+        f = lsb
+        inst += ' ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
+    elif v0 == 0x5:      
+        lst = ['MOVF', 'SUBFWB', 'SUBWFB', 'SUBWF']
+        inst = lst[v1 >> 2]
+        d = get_bit(v, 9)
+        a = get_bit(v, 8)
+        f = lsb
+        inst += ' ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
+    elif v0 == 0x6:
+        lst = ['CPFSLT', 'CPFSEQ', 'CPFSGT', 'TSTFSZ', 'SETF', 'CLRF', 'NEGF', 'MOVWF']
+        inst = lst[v1 >> 1]
+        f = lsb
+        a = get_bit(v, 8)
+        inst += ' ' + hex(f) + ', ' + str(a)
+    elif v0 >= 0x7 and v0 <= 0xB:
+        lst = ['BTG', 'BSF', 'BCF', 'BTFSS', 'BTFSC']
+        inst = lst[v0 - 0x7]
+        b = get_bits(v, 9, 11)
+        a = get_bit(v, 8)
+        f = lsb
+        inst += ' ' + hex(f) + ', ' + hex(b) + ', ' + str(a)
+    elif v0 == 0xC:
+        inst = 'MOVFF'
+    elif v0 == 0xD:
+        lst = ['BRA', 'RCALL']
+        inst = lst[v1 >> 3]
+        n = get_bits(v, 0, 10)
+        inst += ' ' + hex(n)
+    elif v0 == 0xE:
+        lst = ['BZ', 'BNZ', 'BC', 'BNC', 'BOV', 'BNOV', 'BN', 'BNN', 
+               'reserved','reserved','reserved','reserved',
+               'CALL', 'CALL', 'LFSR'
+               ]
+        inst = lst[v1 >> 1]
+        
+    elif v0 == 0xF:
+        inst = 'depend on previous '
+        
+    return inst.lower()
+
+
+#----------------------------------------------------------------------------
+def get_pic14_inst_str(v, msb, lsb):
+    msb = msb & 0x3f
+
+    v0 = (msb >> 4) & 0xf #bit 13, 12
+    v1 = msb & 0xf        #bit 11, 10, 9, 8
+    v2 = (lsb >> 4) & 0xf
+    v3 = lsb & 0xf
+    f = get_bits(v, 0, 6)
+    inst = ' - '
+    if v0 == 0 and v1 == 0:
+        if lsb == 0x00: inst = 'nop'
+        elif lsb == 0x08: inst = 'return'
+        elif lsb == 0x09: inst = 'retfie'
+        elif lsb == 0x62: inst = 'option'
+        elif lsb == 0x63: inst = 'sleep'
+        elif lsb == 0x64: inst = 'clrwdt'
+        elif lsb == 0x65: inst = 'tris1'
+        elif lsb == 0x66: inst = 'tris2'
+        elif lsb == 0x67: inst = 'tris3'
+        else:
+            inst = 'movwf ' + hex(f)
+    elif v0 == 0:  
+        lst = ['movwf', 'clrf', 'subwf', 'decf', 'iorwf', 'andwf', 'xorwf', 'addwf', 'movf', 'comf', 'incf', 'decfsz', 'rrf', 'rlf', 'swapf', 'incfsz']
+        inst = lst[v1]
+        d = get_bit(v, 7)
+        #f = get_bits(v, 0, 6)
+        inst += ' ' + hex(f) 
+        if d == 0:
+            inst += ', w'
+        elif v1 != 0x01:
+            inst += ', f'
+  
+    elif v0 == 1:
+        lst = ['bcf', 'bsf', 'btfsc', 'btfss']
+        v1 &= 0xc
+        #f = v3 & 0x7f
+        b = get_bits(v, 7, 9)
+        
+        if v1 == 0:
+            inst = 'bcf'
+        elif v1 == 4:
+            inst = 'bsf'
+        elif v1 == 0x8:
+            inst = 'btfsc'
+        elif v1 == 0xc:
+            inst = 'btfss'
+        inst += ' ' + hex(f) + ',' + hex(b)
+    elif v0 == 2:
+        if v1 == 0:
+            inst = 'call'
+        elif v1 == 8:
+            inst = 'goto'
+        k = get_bits(v, 0, 10)
+        inst += ' ' + hex(k)
+    elif v0 == 3:
+        if v1 == 0:
+            inst = 'movlw'
+        elif v1 == 4:
+            inst = 'retlw'
+        elif v1 == 8:
+            inst = 'iorlw'
+        elif v1 == 9:
+            inst = 'andlw'
+        elif v1 == 0xa:
+            inst = 'xorlw'
+        elif v1 == 0xb:
+            inst = 'reserved'
+        elif v1 == 0xc:
+            inst = 'sublw'
+        elif v1 == 0xe:
+            inst = 'addlw'
+        k = v3
+        inst += ' ' + hex(k)
+            
+    return inst
 
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    

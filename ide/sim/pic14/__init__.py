@@ -1,4 +1,4 @@
-import pic_sim
+import pic14_sim
 import pic_lst_scan
 import watch_panel
 

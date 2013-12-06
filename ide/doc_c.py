@@ -51,7 +51,8 @@ class DocC(DocBase):
         self.pop_menu.Append(102, '&Save', 'Save the document')
         self.config_file = self.file_path.replace('.c', '.sdcfg')
         self.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
-        
+        self.mcu_name  = ""
+        self.mcu_device = ""
         
     #-------------------------------------------------------------------
     def OnRightDown(self, event):
@@ -316,6 +317,8 @@ class DocC(DocBase):
         if config.Exists("mcu_name"):
             self.app.cflags  = config.Read("cflags", "")
             self.app.ldflags = config.Read("ldflags", "")
+            self.mcu_name  = config.Read("mcu_name", "")
+            self.mcu_device = config.Read("mcu_device", "")            
         else:
             del config
             self.app.set_build_option()
@@ -325,6 +328,7 @@ class DocC(DocBase):
     
     #-------------------------------------------------------------------
     def compile(self):
+        result = 0
         dprint("Compile", self.file_path)
         self.load_config()
         #-- do the compilation
@@ -333,22 +337,50 @@ class DocC(DocBase):
         flag = " " + self.app.cflags + " " + self.app.ldflags + " " 
         
         SDCC_bin_path = get_sdcc_bin_path()    
-        cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path 
+        
+        if self.mcu_name == 'pic16' :
+            flag += ' -c '
+            cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path 
+    
+            dprint("Cmd", cmd)
+            os.chdir(os.path.dirname(self.file_path))
+            result = self.run_cmd(cmd)            
 
-        dprint("Cmd", cmd)
-        os.chdir(os.path.dirname(self.file_path))
-        result = self.run_cmd(cmd)
-        if flag.find('-mpic') >= 0:
             c_file = self.file_path
             asm_file = c_file.replace('.c', '.asm')
             hex_file = c_file.replace('.c', '.hex')
             obj_file = c_file.replace('.c', '.o')
             
             cmd = "gpasm -c " + asm_file + " && "
-            cmd += "gplink -m -s /usr/local/share/gputils/lkr/18f4520_g.lkr -o " + hex_file
-            cmd += " /usr/local/share/sdcc/non-free/lib/pic16/libdev18f4520.lib /usr/local/share/sdcc/lib/pic16/libsdcc.lib " + obj_file
-            self.exec_cmd(cmd)
+            cmd += "gplink -m -s /usr/local/share/gputils/lkr/" + self.mcu_device + "_g.lkr -o " + hex_file
+            cmd += " /usr/local/share/sdcc/non-free/lib/pic16/libdev" + self.mcu_device + ".lib /usr/local/share/sdcc/lib/pic16/libsdcc.lib " + obj_file
+            self.run_cmd(cmd)
+        elif self.mcu_name == 'pic14' :
+            flag += ' -c '
+            cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path 
+    
+            dprint("Cmd", cmd)
+            os.chdir(os.path.dirname(self.file_path))
+            result = self.run_cmd(cmd)            
 
+            c_file = self.file_path
+            asm_file = c_file.replace('.c', '.asm')
+            hex_file = c_file.replace('.c', '.hex')
+            obj_file = c_file.replace('.c', '.o')
+            
+            cmd = "gpasm -c " + asm_file + " && "
+            cmd += "gplink -m -s /usr/local/share/gputils/lkr/" + self.mcu_device + "_g.lkr -o " + hex_file
+            cmd += "  /usr/local/share/sdcc/non-free/lib/pic14/pic" + self.mcu_device + ".lib /usr/local/share/sdcc/lib/pic14/libsdcc.lib " + obj_file
+            #cmd = "gpasm -c " + asm_file
+            self.run_cmd(cmd)
+            #cmd = "gplink --debug -m -s  /usr/share/gputils/lkr/16f628a.lkr -o " + hex_file + " /usr/local/share/sdcc/non-free/lib/pic14/pic16f628a.lib /usr/local/share/sdcc/lib/pic14/libsdcc.lib " + obj_file
+            #self.run_cmd(cmd)
+        else:
+            cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path 
+    
+            dprint("Cmd", cmd)
+            os.chdir(os.path.dirname(self.file_path))
+            result = self.run_cmd(cmd)            
         return result # return True if it compiled ok
 
     #-------------------------------------------------------------------

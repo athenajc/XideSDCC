@@ -1,23 +1,57 @@
 import os
 import utils
+import re
 
 #----------------------------------------------------------------
 #.line	14; test.c	PORTA = 0;
 #.line	15; test.c	PORTB = 0;
 #.line	18; test.c	TRISA |= 0x10;
 #.line	19; test.c	TRISB &= 0xF0;
+header = 'gplink'
 
 class CodeLineMap():
     def __init__(self, line_i, s):
         self.line_index = line_i + 1
         n = len(s)
         lst = s.split('\t')
+        print 'CodeLineMap', len(lst)
+        for t in lst:
+            print t
+        
+        if len(lst) > 2:
+            lst1 = lst[2].split(';')
+            self.c_line = int(lst1[0].strip())
+            self.c_file = lst1[1].strip()
+            self.c_code = lst[3].strip()
+        else:
+            pass
+        self.addr_lst = []
+        
+    def add_addr(self, addr):
+        self.addr_lst.append(addr)
+        
+class CodeLineMapGpasm():
+#                          00153 ;       .line   25; "/home/athena/src/pic/0001/t0001.c" CMCON = 0x07;   /** Disable comparators.  NEEDED
+    def __init__(self, line_i, s):
+        self.line_index = line_i + 1
+        
+        s = re.sub("\s+", " ", s)        # replace space
+        s = s.replace(';', '')
+        s = s.replace('  ', ' ')
+        p1 = s.find('.line')
+        n = len(s)
+        s = s[p1:n]
+        lst = s.split(' ')
 
-        lst1 = lst[2].split(';')
-        self.c_line = int(lst1[0].strip())
-        self.c_file = lst1[1].strip()
-        self.c_code = lst[3].strip()
+        lst.pop(0)
+        v = lst.pop(0)
 
+        self.c_line = int(v)
+        self.c_file = lst.pop(0).strip()
+        
+        s = ' '.join(lst)
+        self.c_code = s
+        #print s
         self.addr_lst = []
         
     def add_addr(self, addr):
@@ -48,7 +82,9 @@ def lst_get_lines(text, fn_index):
     addr_max = 0
     for line in text.split('\n') : 
         s = line[0:7].strip()
+        
         if s != '' and s.isdigit() :
+            print s
             s = s.replace(' ', '')
             addr = int("0x" + s, 16)
             if addr < addr_min:
@@ -59,12 +95,17 @@ def lst_get_lines(text, fn_index):
             if obj is not None:
                 #print hex(addr), obj.c_line
                 as_text = line[40:len(line)]
+                #print as_text
                 addr_map_lst.append([addr, obj.c_file, obj.c_line, as_text, obj.count])
                 obj.count += 1
                 obj.add_addr(addr)
                 
         if line.find('.line') >= 0:
-            obj = CodeLineMap(i, line)
+            global header
+            if header == 'gpasm':
+                obj = CodeLineMapGpasm(i, line)
+            else:
+                obj = CodeLineMap(i, line)
             obj.count = 0
             code_map_lst.append(obj)
             #print(line)
@@ -82,7 +123,14 @@ def lst_scan_file(fn, fn_index):
         return []
     #print lst_file
     text = utils.read_file(lst_file)
-                
+    global header
+    header = text[0:12]
+    print header
+    if header.find('gpasm') >= 0:
+        header = 'gpasm'
+    elif header.find('gplink') >= 0:
+        header = 'gplink'
+        
     c_name = path + ".c"
     ##print c_name
     lst = lst_get_lines(text, fn_index)
@@ -126,13 +174,14 @@ def pic_lst_scan(source_list):
 def test_pic_lst_scan(fn):
     print fn
     #temp_scan_lst(fn)
-    pic_lst_scan([fn])
+    lst = pic_lst_scan([fn])
+    print lst
         
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    
     fn = "/home/athena/src/pic/test1/test.hex"
     #fn = "/home/athena/src/pic/0004/uart_tx.hex"
-    #fn = "/home/athena/src/pic/0001/test.hex"
+    #fn = "/home/athena/src/pic/0001/t0001.hex"
     test_pic_lst_scan(fn)
     
     

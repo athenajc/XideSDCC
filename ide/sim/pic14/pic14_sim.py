@@ -392,7 +392,7 @@ class SimPic():
         msb = self.code_space[self.pc + 1]
         opcode = (msb << 8) + lsb
         #self.log(hex(msb), hex(lsb))        
-        s = get_pic16_inst_str(opcode, msb, lsb)
+        s = get_pic14_inst_str(opcode, msb, lsb)
         self.log('pc', tohex(self.pc, 4), tohex(opcode, 4), "   " + s)
         self.load_inst()
         self.update_sfr()
@@ -529,7 +529,8 @@ def test_sim():
     #fn = "/home/athena/src/pic/0001/test.hex"
     fn = "/home/athena/src/pic/0001/t0001.c"
     hex_fn = fn.replace('.c', '.hex')
-    sim = SimPic(None, hex_fn, [fn])
+    #frame, hex_file, source_list, mcu_name, mcu_device
+    sim = SimPic(None, hex_fn, [fn], 'pic14', '16f628a')
     sim.start()
     
     for i in range(10):
@@ -537,9 +538,9 @@ def test_sim():
 
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    
-    #test_sim()
+    test_sim()
     #convert_header_files()
-    set_pic14_inst_table()
+    #set_pic14_inst_table()
     
     
     

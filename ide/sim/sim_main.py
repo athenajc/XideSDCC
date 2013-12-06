@@ -14,6 +14,7 @@ from sim_doc_book import DocBook
 from sim_toolbar import Toolbar
 import mcs51
 import pic16
+import pic14
 
 import sim_doc_lexer as doc_lexer
 import sim_doc_base as doc_base
@@ -261,7 +262,10 @@ class SimFrame (wx.Frame):
         elif self.mcu_name == 'pic16':
             self.sim = pic16.Sim(self, self.ihx_path, self.file_list, self.mcu_name, self.mcu_device)
             s = self.sim.disassembly()
-        
+        elif self.mcu_name == 'pic14':
+            self.sim = pic14.Sim(self, self.ihx_path, self.file_list, self.mcu_name, self.mcu_device)
+            s = self.sim.disassembly()
+            
         self.asm_view.SetText(s)
         self.sim.start()
         self.running = True
