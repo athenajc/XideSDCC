@@ -320,7 +320,7 @@ class PrjTreeMenu(wx.Menu):
             if m == []:
                 menu.AppendSeparator()
             else:
-                print m
+                #print m
                 id_name = m[0]
                 id = get_id(id_name)
                 setattr(parent, id_name, id)

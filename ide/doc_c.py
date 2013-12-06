@@ -367,14 +367,16 @@ class DocC(DocBase):
             asm_file = c_file.replace('.c', '.asm')
             hex_file = c_file.replace('.c', '.hex')
             obj_file = c_file.replace('.c', '.o')
+            lkr = " /usr/local/share/gputils/lkr/" + self.mcu_device + "_g.lkr "
+            sdcc_lib = " /usr/local/share/sdcc/lib/pic14/libsdcc.lib "
+            pic14_lib = " /usr/local/share/sdcc/non-free/lib/pic14/pic" + self.mcu_device + ".lib "
             
             cmd = "gpasm -c " + asm_file + " && "
-            cmd += "gplink -m -s /usr/local/share/gputils/lkr/" + self.mcu_device + "_g.lkr -o " + hex_file
-            cmd += "  /usr/local/share/sdcc/non-free/lib/pic14/pic" + self.mcu_device + ".lib /usr/local/share/sdcc/lib/pic14/libsdcc.lib " + obj_file
-            #cmd = "gpasm -c " + asm_file
+            cmd += "gplink -m -s " + lkr + " -o " + hex_file
+            cmd += pic14_lib + sdcc_lib + obj_file
+            
             self.run_cmd(cmd)
-            #cmd = "gplink --debug -m -s  /usr/share/gputils/lkr/16f628a.lkr -o " + hex_file + " /usr/local/share/sdcc/non-free/lib/pic14/pic16f628a.lib /usr/local/share/sdcc/lib/pic14/libsdcc.lib " + obj_file
-            #self.run_cmd(cmd)
+
         else:
             cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path 
     

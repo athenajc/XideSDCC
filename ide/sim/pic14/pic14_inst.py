@@ -43,11 +43,11 @@ def inst_nop(sim, msb, lsb):
 
 #----------------------------------------------------------------------------
 def inst_return(sim, msb, lsb):
-    pass
+    sim.ret()
 
 #----------------------------------------------------------------------------
 def inst_retfie(sim, msb, lsb):
-    pass
+    sim.retfie()
 
 #----------------------------------------------------------------------------
 def inst_option(sim, msb, lsb):
@@ -63,132 +63,554 @@ def inst_clrwdt(sim, msb, lsb):
 
 #----------------------------------------------------------------------------
 def inst_tris1(sim, msb, lsb):
-    pass
+    w = sim.get_wreg()
+    sim.set_reg('trisa', w)
 
 #----------------------------------------------------------------------------
 def inst_tris2(sim, msb, lsb):
-    pass
+    w = sim.get_wreg()
+    sim.set_reg('trisb', w)    
 
 #----------------------------------------------------------------------------
 def inst_tris3(sim, msb, lsb):
-    pass
+    w = sim.get_wreg()
+    sim.set_reg('trisc', w)    
 
 #----------------------------------------------------------------------------
 def inst_movwf(sim, msb, lsb):
-    pass
+    #00 : 0000 0000 1fff ffff  MOVWF f   f <- W
+    #
+    # f : Register file addesss ( 00(00h) to 127(7Fh) )
+    # d always = 1, store result in f    
+    f = lsb & 0x7f
+    w = sim.get_wreg()
+    sim.set_freg(f, w)
 
 #----------------------------------------------------------------------------
 def inst_clrf(sim, msb, lsb):
-    pass
-
+    #01 : 0000 0001 dfff ffff  CLR f,d(bit 7)  Z dest <- 0, usually written CLRW or CLRF f
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    sim.set_z(1)
+    if d == 0:
+        sim.set_wreg(0)
+    else:
+        sim.set_freg(f, 0)
+        
 #----------------------------------------------------------------------------
 def inst_subwf(sim, msb, lsb):
-    pass
+    #02 : 0000 0010 dfff ffff  SUBWF f,d C Z dest <- f-W (dest <- f+~W+1)
+    #
+    # f : Register file addesss ( 00(00h) to 127(7Fh) )
+    # d : Destination select ( 0 or 1 )    
+    #
+    # d = 0 : store result in W
+    # d = 1 : store result in f    
+    #
+    # C=1, Z=0 ( Result is positive )
+    # C=1, Z=1 ( Result is zero )
+    # C=0, Z=0 ( Result is negative )
+    
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    w = sim.get_wreg()
+    if v > w:
+        c = 1
+        z = 0
+        v = v - w
+    elif v == w:
+        c = z = 1
+        v = 0
+    else:
+        c = z = 0
+        v = v + ~w + 1
+        
+    sim.set_c(c)
+    sim.set_z(z)
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
 
 #----------------------------------------------------------------------------
 def inst_decf(sim, msb, lsb):
-    pass
-
+    #03 : 0000 0011 dfff ffff  DECF f,d  Z dest <- f-1
+    #f : Register file addesss ( 00(00h) to 127(7Fh) )
+    #d : Destination select ( 0 or 1 )    
+    #d = 0 : store result in W
+    #d = 1 : store result in f
+    #When the result is 0, it sets 1 to the Z flag.
+    #When the result is not 0, it sets 0 to the Z flag.    
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    if v == 1:
+        v = 0
+        z = 1
+    else:
+        v = (v - 1) & 0xff
+        z = 0
+    sim.set_z(z)
+    
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
+        
 #----------------------------------------------------------------------------
 def inst_iorwf(sim, msb, lsb):
-    pass
+    #04 : 0000 0100 dfff ffff  IORWF f,d  Z dest <- f | W, logical inclusive or
+    #f : Register file addesss ( 00(00h) to 127(7Fh) )
+    #d : Destination select ( 0 or 1 )    
+    #When the result is 0, it sets 1 to the Z flag.
+    #When the result is not 0, it sets 0 to the Z flag.    
+    #d = 0 : store result in W
+    #d = 1 : store result in f    
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    w = sim.get_wreg()
+    v = v | w
+    if v == 0:
+        z = 1
+    else:
+        z = 0
+    sim.set_z(z)
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
 
 #----------------------------------------------------------------------------
 def inst_andwf(sim, msb, lsb):
-    pass
+    #05 : 0000 0101 dfff ffff  ANDWF f,d  Z dest <- f & W, logical and
+    #f : Register file addesss ( 00(00h) to 127(7Fh) )
+    #d : Destination select ( 0 or 1 )    
+    #When the result is 0, it sets 1 to the Z flag.
+    #When the result is not 0, it sets 0 to the Z flag.    
+    #d = 0 : store result in W
+    #d = 1 : store result in f    
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    w = sim.get_wreg()
+    v = v & w
+    if v == 0:
+        z = 1
+    else:
+        z = 0
+    sim.set_z(z)
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
+
 
 #----------------------------------------------------------------------------
 def inst_xorwf(sim, msb, lsb):
-    pass
+    #06 : 0000 0110 dfff ffff  XORWF f,d  Z dest <- f ^ W, logical exclusive or
+    # f : Register file addesss ( 00(00h) to 127(7Fh) )
+    # d : Destination select ( 0 or 1 )    
+    # When the result is 0, it sets 1 to the Z flag.
+    # When the result is not 0, it sets 0 to the Z flag.    
+    # d = 0 : store result in W
+    # d = 1 : store result in f    
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    w = sim.get_wreg()
+    v = v ^ w
+    if v == 0:
+        z = 1
+    else:
+        z = 0
+    sim.set_z(z)
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
+
 
 #----------------------------------------------------------------------------
 def inst_addwf(sim, msb, lsb):
-    pass
+    #07 : 0000 0111 dfff ffff  ADDWF f,d C Z dest <- f+W
+    #
+    # f : Register file addesss ( 00(00h) to 127(7Fh) )
+    # d : Destination select ( 0 or 1 )        
+    #
+    # When the byte overflows, it sets 1 to the C flag.
+    # When 4 bits of lower part overflow, it sets 1 to the DC flag.
+    # When the result is 0, it sets 1 to the Z flag.
+    # In the case except the above, it sets 0 to C, DC and Z.    
+    #
+    # d = 0 : store result in W
+    # d = 1 : store result in f        
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    w = sim.get_wreg()
+    v = v + w
+    c = dc = z = 0
+    if v > 0xff:
+        c = 1
+        v = v & 0xff
+    elif v > 0xf:
+        dc = 1
+    elif v == 0:
+        z = 1
 
+    sim.set_c(c)
+    sim.set_z(z)
+    sim.set_dc(dc)    
+    
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
+        
 #----------------------------------------------------------------------------
 def inst_movf(sim, msb, lsb):
-    pass
+    #08 : 0000 1000 dfff ffff  MOVF f,d  Z dest <- f
+    #
+    # f : Register file addesss ( 00(00h) to 127(7Fh) )
+    # d : Destination select ( 0 or 1 )    
+    #
+    # When the result is 0, it sets 1 to the Z flag.
+    # When the result is not 0, it sets 0 to the Z flag.    
+    #
+    # d = 0 : store result in W
+    # d = 1 : store result in f    
+    #
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    w = sim.get_wreg()
+
+    if v == 0:
+        z = 1
+    else:
+        z = 0
+    sim.set_z(z)
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
 
 #----------------------------------------------------------------------------
 def inst_comf(sim, msb, lsb):
-    pass
+    #09 : 0000 1001 dfff ffff  COMF f,d  Z dest <- ~f, bitwise complement
+    #
+    # f : Register file addesss ( 00(00h) to 127(7Fh) )
+    # d : Destination select ( 0 or 1 )    
+    #
+    # When the result is 0, it sets 1 to the Z flag.
+    # When the result is not 0, it sets 0 to the Z flag.    
+    #
+    # d = 0 : store result in W
+    # d = 1 : store result in f    
+    #
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = ~sim.get_freg(f)
+    w = sim.get_wreg()
 
+    if v == 0:
+        z = 1
+    else:
+        z = 0
+        
+    sim.set_z(z)
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
+    
 #----------------------------------------------------------------------------
 def inst_incf(sim, msb, lsb):
-    pass
+    #0a : 0000 1010 dfff ffff  INCF f,d  Z dest <- f+1
+    #
+    # f : Register file addesss ( 00(00h) to 127(7Fh) )
+    # d : Destination select ( 0 or 1 )    
+    #
+    # When the result is 0, it sets 1 to the Z flag.
+    # When the result is not 0, it sets 0 to the Z flag.    
+    #
+    # d = 0 : store result in W
+    # d = 1 : store result in f    
+    #    
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    v = (v + 1) & 0xff
+    
+    if v == 0:
+        v = 0
+        z = 1
+    else:
+        z = 0
+        
+    sim.set_z(z)
+    
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
 
 #----------------------------------------------------------------------------
 def inst_decfsz(sim, msb, lsb):
-    pass
+    #0b : 0000 1011 dfff ffff  DECFSZ f,d   dest <- f-1, then skip if zero
+    #
+    # f : Register file addesss ( 00(00h) to 127(7Fh) )
+    # d : Destination select ( 0 or 1 )    
+    #
+    # d = 0 : store result in W
+    # d = 1 : store result in f
+    #
+    # When the result is 0, it sets 1 to the Z flag.
+    # When the result is not 0, it sets 0 to the Z flag.    
+    #
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    if v == 1:
+        v = 0
+        z = 1
+    else:
+        v = (v - 1) & 0xff
+        z = 0
+    sim.set_z(z)
+    
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
+        
+    if v == 0:
+        sim.skip_next_inst()
 
 #----------------------------------------------------------------------------
 def inst_rrf(sim, msb, lsb):
-    pass
+    #0c : 0000 1100 dfff ffff  RRF f,d C  dest <- CARRY<<7 | f>>1, rotate right through carry
+    #   c -> f7 f0 -> c
+    # d = 0 : store result in W
+    # d = 1 : store result in f
+    
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    bit0 = v & 1
+    c = sim.get_c()
+    v = (v >> 1) | (c << 7)
+    sim.set_c(bit0)
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
 
 #----------------------------------------------------------------------------
 def inst_rlf(sim, msb, lsb):
-    pass
+    #0d : 0000 1101 dfff ffff  RLF f,d C  dest <- f<<1 | CARRY, rotate left through carry
+    #  c <- f7 f0 <- c
+    # d = 0 : store result in W
+    # d = 1 : store result in f    
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    bit7 = (v >> 7) & 1
+    c = sim.get_c()
+    v = (v << 1) | c
+    sim.set_c(bit7)
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
 
 #----------------------------------------------------------------------------
 def inst_swapf(sim, msb, lsb):
-    pass
-
+    #0e : 0000 1110 dfff ffff  SWAPF f,d   dest <- f<<4 | f>>4, swap nibbles
+    #  f3-0 swap with f7-4
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    bit_3_0 = v & 0xf
+    bit_7_4 = (v >> 4) & 0xf
+    v = (bit_3_0 << 4) | bit_7_4
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
+        
 #----------------------------------------------------------------------------
 def inst_incfsz(sim, msb, lsb):
-    pass
-
+    #0f : 0000 1111 dfff ffff  INCFSZ f,d   dest <- f+1, then skip if zero   
+    d = (lsb >> 7) & 1
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    v = (v + 1) & 0xff
+    
+    if v == 0:
+        v = 0
+        z = 1
+    else:
+        z = 0
+        
+    sim.set_z(z)
+    
+    if d == 0:
+        sim.set_wreg(v)
+    else:
+        sim.set_freg(f, v)
+        
+    if v == 0:
+        sim.skip_next_inst()
+        
 #----------------------------------------------------------------------------
 def inst_bcf(sim, msb, lsb):
-    pass
+    #10 : 0001 00bb bfff ffff  bit(3, b7-b9) f(7, b0-b6) BCF f,b   Clear bit b of f
+    bit = get_bits((msb << 8) | lsb, 7, 9)
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    v = utils.clear_bit(v, bit)
+    sim.set_freg(f, v)
 
 #----------------------------------------------------------------------------
 def inst_bsf(sim, msb, lsb):
-    pass
+    #14 : 0001 01bb bfff ffff  BSF f,b   Set bit b of f
+    bit = get_bits((msb << 8) | lsb, 7, 9)
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    v = utils.set_bit(v, bit)
+    sim.set_freg(f, v)
 
 #----------------------------------------------------------------------------
 def inst_btfsc(sim, msb, lsb):
-    pass
+    #18 : 0001 10bb bfff ffff  BTFSC f,b   Skip if bit b of f is clear
+    bit = get_bits((msb << 8) | lsb, 7, 9)
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    b = get_bit(v, bit)
+    if b == 0:
+        sim.skip_next_inst()
 
 #----------------------------------------------------------------------------
 def inst_btfss(sim, msb, lsb):
-    pass
+    #1c : 0001 11bb bfff ffff  BTFSS f,b   Skip if bit b of f is set
+    bit = get_bits((msb << 8) | lsb, 7, 9)
+    f = lsb & 0x7f
+    v = sim.get_freg(f)
+    b = get_bit(v, bit)
+    if b != 0:
+        sim.skip_next_inst()
 
 #----------------------------------------------------------------------------
 def inst_call(sim, msb, lsb):
-    pass
+    #20 : 0010 0kkk kkkk kkkk CALL k   Call subroutine
+    k = ((msb & 0x7) << 8) | lsb
+    sim.call(k*2)
 
 #----------------------------------------------------------------------------
 def inst_goto(sim, msb, lsb):
-    pass
+    #28 : 0010 1kkk kkkk kkkk  GOTO k   Jump to address k 
+    k = ((msb & 0x7) << 8) | lsb
+    sim.jump(k*2)
 
 #----------------------------------------------------------------------------
 def inst_movlw(sim, msb, lsb):
-    pass
+    #30 : 0011 00xx kkkk kkkk MOVLW k   W <- k
+    sim.set_wreg(lsb)
 
 #----------------------------------------------------------------------------
 def inst_retlw(sim, msb, lsb):
-    pass
+    #34 : 0011 01xx kkkk kkkk RETLW k   W <- k, then return from subroutine
+    sim.set_wreg(lsb)
+    sim.ret()
 
 #----------------------------------------------------------------------------
 def inst_iorlw(sim, msb, lsb):
-    pass
+    #38 : 0011 1000 kkkk kkkk IORLW k  Z W <- k | W, bitwise logical or
+    w = sim.get_wreg()
+    k = lsb
+    w = k | w
+    if w == 0:
+        z = 1
+    else:
+        z = 0
+    sim.set_wreg(w)
+    sim.set_z(z)
 
 #----------------------------------------------------------------------------
 def inst_andlw(sim, msb, lsb):
-    pass
+    #39 : 0011 1001 kkkk kkkk ANDLW k  Z W <- k & W, bitwise and
+    w = sim.get_wreg()
+    k = lsb
+    w = k & w
+    if w == 0:
+        z = 1
+    else:
+        z = 0
+    sim.set_wreg(w)
+    sim.set_z(z)
 
 #----------------------------------------------------------------------------
 def inst_xorlw(sim, msb, lsb):
-    pass
+    #3a : 0011 1010 kkkk kkkk XORLW k  Z W <- k ^ W, bitwise exclusive or
+    w = sim.get_wreg()
+    k = lsb
+    w = k ^ w
+    
+    if w == 0:
+        z = 1
+    else:
+        z = 0
+    sim.set_wreg(w)
+    sim.set_z(z)
 
 #----------------------------------------------------------------------------
 def inst_sublw(sim, msb, lsb):
-    pass
+    #3c : 0011 110x kkkk kkkk SUBLW k C Z W <- k-W (dest <- k+~W+1)
+    w = sim.get_wreg()
+    k = lsb
+    if k > w:
+        w = k - w
+        c = 1
+        z = 0
+    elif k < w:
+        w = k + ~w + 1
+        c = 0
+        z = 0
+    else:
+        w = 0
+        c = 1
+        z = 1
+        
+    sim.set_wreg(w)
+    sim.set_c(c)
+    sim.set_z(z)
 
 #----------------------------------------------------------------------------
 def inst_addlw(sim, msb, lsb):
-    pass
+    #3e : 0011 111x kkkk kkkk ADDLW k C Z W <- k+W
+    c = z = dc = 0
+    w = sim.get_wreg() 
+    k = lsb
+    w = k + w
+    
+    if w > 0xf:
+        dc = 1
+        
+    if w > 0xff:
+        c = 1
+        w = w & 0xff
+            
+    if w == 0:
+        z = 1
 
+    sim.set_wreg(w)
+    sim.set_c(c)
+    sim.set_z(z)
+    sim.set_dc(dc)
+    
 
 #----------------------------------------------------------------------------
 inst_handler = [
@@ -325,109 +747,6 @@ def gen_pic14_inst_table():
     
     #return inst_table 
     
-
-#----------------------------------------------------------------------------
-def get_pic16_inst_str(v, msb, lsb):
-    v0 = (msb >> 4) & 0xf #bit 13, 12
-    v1 = msb & 0xf        #bit 11, 10, 9, 8
-    v2 = (lsb >> 4) & 0xf
-    v3 = lsb & 0xf    
-    
-    inst = ' - '
-    if msb == 0x00:
-        lst = ['nop', '', '', 'sleep', 'clrwdt', 'push', 'pop', 'daw c', 
-               'tblrd*', 'tblrd*+', 'tblrd*-', 'tblrd+*',
-               'tblwr*', 'tblwr*+', 'tblwr*-', 'tblwr+*',
-               'retfie', 'retfie_fast', 'return', 'return_fast',]
-        if lsb < len(lst):
-            inst = lst[lsb]
-        elif lst == 0xff:
-            inst = 'reset'
-    elif v0 == 0x0:
-        if v1 == 1:
-            inst = 'movlb'
-            k = get_bits(v, 0, 3)
-            inst += ' ' + hex(k)
-        elif v1 == 2 or v1 == 3:
-            a = get_bit(v, 8)
-            f = lsb            
-            inst = 'mulwf ' + hex(f) + ', ' + str(a)
-        elif v1 >= 4 and v1 <= 7:
-            d = get_bit(v, 9)
-            a = get_bit(v, 8)
-            f = lsb            
-            inst = 'decf ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
-        elif v1 == 0xE:
-            inst = 'movlw ' + hex(lsb)
-            
-    elif v0 == 0x1:
-        lst = ['iorwf', 'andwf', 'xorwf', 'comf']
-        inst = lst[v1 >> 2]
-        d = get_bit(v, 9)
-        a = get_bit(v, 8)
-        f = lsb
-        inst += ' ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
-    elif v0 == 2:
-        lst = ['ADDWFC', 'ADDWF', 'INCF', 'DECFSZ']
-        inst = lst[v1 >> 2]
-        d = get_bit(v, 9)
-        a = get_bit(v, 8)
-        f = lsb
-        inst += ' ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
-    elif v0 == 0x3:
-        lst = ['ADDWFC', 'ADDWF', 'INCF', 'DECFSZ']
-        inst = lst[v1 >> 2]
-        d = get_bit(v, 9)
-        a = get_bit(v, 8)
-        f = lsb
-        inst += ' ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
-    elif v0 == 0x4:
-        lst = ['RRNCF', 'RLNCF', 'INFSNZ', 'DCFSNZ']
-        inst = lst[v1 >> 2]
-        d = get_bit(v, 9)
-        a = get_bit(v, 8)
-        f = lsb
-        inst += ' ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
-    elif v0 == 0x5:      
-        lst = ['MOVF', 'SUBFWB', 'SUBWFB', 'SUBWF']
-        inst = lst[v1 >> 2]
-        d = get_bit(v, 9)
-        a = get_bit(v, 8)
-        f = lsb
-        inst += ' ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
-    elif v0 == 0x6:
-        lst = ['CPFSLT', 'CPFSEQ', 'CPFSGT', 'TSTFSZ', 'SETF', 'CLRF', 'NEGF', 'MOVWF']
-        inst = lst[v1 >> 1]
-        f = lsb
-        a = get_bit(v, 8)
-        inst += ' ' + hex(f) + ', ' + str(a)
-    elif v0 >= 0x7 and v0 <= 0xB:
-        lst = ['BTG', 'BSF', 'BCF', 'BTFSS', 'BTFSC']
-        inst = lst[v0 - 0x7]
-        b = get_bits(v, 9, 11)
-        a = get_bit(v, 8)
-        f = lsb
-        inst += ' ' + hex(f) + ', ' + hex(b) + ', ' + str(a)
-    elif v0 == 0xC:
-        inst = 'MOVFF'
-    elif v0 == 0xD:
-        lst = ['BRA', 'RCALL']
-        inst = lst[v1 >> 3]
-        n = get_bits(v, 0, 10)
-        inst += ' ' + hex(n)
-    elif v0 == 0xE:
-        lst = ['BZ', 'BNZ', 'BC', 'BNC', 'BOV', 'BNOV', 'BN', 'BNN', 
-               'reserved','reserved','reserved','reserved',
-               'CALL', 'CALL', 'LFSR'
-               ]
-        inst = lst[v1 >> 1]
-        
-    elif v0 == 0xF:
-        inst = 'depend on previous '
-        
-    return inst.lower()
-
-
 #----------------------------------------------------------------------------
 def get_pic14_inst_str(v, msb, lsb):
     msb = msb & 0x3f

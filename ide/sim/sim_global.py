@@ -208,8 +208,10 @@ def dprint(s1, s2):
     print("dprint", s1, s2)  
 
 def log(*args):
+    import inspect
+
     msg = " "
     for t in args:
         msg = msg + str(t) + " "
     s = get_hh_mm_ss() + " " + msg
-    print("log", s)    
+    print(inspect.stack()[1][3], "log", s)    

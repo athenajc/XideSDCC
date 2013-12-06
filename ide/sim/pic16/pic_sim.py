@@ -276,6 +276,7 @@ class SimPic():
     def push(self, v):
         self.log("     push "+hex(v))
         self.stack.insert(0, v)
+        self.set_reg('SP', len(self.stack))
         # print("     #stack = "+tostring(#self.stack))
         
     #-------------------------------------------------------------------
@@ -285,6 +286,7 @@ class SimPic():
             self.stopped = True
             return 0
         v = self.stack.pop(0)
+        self.set_reg('SP', len(self.stack))
         self.log("     pop "+hex(v))
         return v
 
@@ -377,7 +379,7 @@ class SimPic():
         
         # self.set_pc(self.pc + blen)
         self.pc = self.pc + 2
-        
+        self.set_reg('PC', self.pc)
         f = inst_handler[msb]
         f(self, msb, lsb)
         

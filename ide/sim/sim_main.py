@@ -156,6 +156,8 @@ class SimFrame (wx.Frame):
             panel = self.reg_panel = mcs51.WatchPanel(nb2)
         elif self.mcu_name == "pic16":
             panel = self.reg_panel = pic16.WatchPanel(nb2, self.mcu_name, self.mcu_device)
+        elif self.mcu_name == "pic14":
+            panel = self.reg_panel = pic14.WatchPanel(nb2, self.mcu_name, self.mcu_device)            
         else:
             panel = self.reg_panel = mcs51.WatchPanel(nb2)
         nb2.AddPage(panel, u"Watches")

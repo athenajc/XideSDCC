@@ -275,7 +275,12 @@ def inst_bsf(sim, msb, lsb):
 #----------------------------------------------------------------------------
 def inst_bcf(sim, msb, lsb):
     #0x9? 1001 bit a f BCF f,b,a    Clear bit b of f
-    pass
+    bit = get_bits(msb, 1, 3)
+    a = get_bit(msb, 0)
+    f = lsb
+    v = sim.mem_get_bit(f, bit)
+    if v == 0:
+        sim.skip_next_inst()
 
 #----------------------------------------------------------------------------
 def inst_btfss(sim, msb, lsb):
@@ -284,7 +289,7 @@ def inst_btfss(sim, msb, lsb):
     a = get_bit(msb, 0)
     f = lsb
     v = sim.mem_get_bit(f, bit)
-    if v:
+    if v != 0:
         sim.skip_next_inst()
     
 #----------------------------------------------------------------------------

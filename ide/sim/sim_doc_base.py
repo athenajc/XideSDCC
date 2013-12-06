@@ -195,7 +195,7 @@ class DocBase(StyledText):
         
     #-------------------------------------------------------------------
     def goto_line(self, line):
-        log("goto ", line)
+        #log("goto ", line)
         if line > 0:
             line = line - 1
         self.EnsureVisibleEnforcePolicy(line)
