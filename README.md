@@ -4,8 +4,8 @@ XideSDCC
 XIDE of SDCC - eXtra Integrated Development Environment of Small Device C Compiler
     
 
-Integrate Editor, Compiler and Simulators
-Target for all device supported by SDCC - MCS51, PIC14/PIC16, Z80, DS390, DS400....
+* Integrate Editor, Compiler and Simulators
+* Target for all device supported by SDCC - MCS51, PIC14/PIC16, Z80, DS390, DS400....
 
 System requirements:
 * Python 2.7.5 - [http://www.python.org/getit/releases/2.7.5/](http://www.python.org/getit/releases/2.7.5/)
