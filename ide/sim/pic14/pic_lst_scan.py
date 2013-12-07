@@ -12,19 +12,23 @@ header = 'gplink'
 class CodeLineMap():
     def __init__(self, line_i, s):
         self.line_index = line_i + 1
-        n = len(s)
-        lst = s.split('\t')
-        print 'CodeLineMap', len(lst)
-        for t in lst:
-            print t
+        s = re.sub("\s+", " ", s)        # replace space
         
-        if len(lst) > 2:
-            lst1 = lst[2].split(';')
-            self.c_line = int(lst1[0].strip())
-            self.c_file = lst1[1].strip()
-            self.c_code = lst[3].strip()
-        else:
-            pass
+        p0 = s.find('.line')
+        p1 = s.find(';', p0)
+        s0 = s[p0:p1].replace('.line', '').strip()
+        if s0 == '':
+            return
+        self.c_line = int(s0)
+        #print p0, p1, self.c_line
+  
+        n = len(s)
+        
+        p2 = s.find('\"', p1)
+        p3 = s.find('\"', p2 + 1)
+        self.c_file = s[p2+1:p3]
+        self.c_code = s[p3 + 2:n].strip()
+        #print self.c_line, self.c_file, self.c_code
         self.addr_lst = []
         
     def add_addr(self, addr):
@@ -71,6 +75,14 @@ def print_out(addr_map_lst, code_map_lst):
         for a in obj.addr_lst:
             sys.stdout.write(hex(a) + ", ")
             
+def ishex(s):
+    s = s.lower()
+    for c in s:
+        if not c in '0123456789abcdef':
+            return False
+    return True
+
+
 
 #----------------------------------------------------------------
 def lst_get_lines(text, fn_index):
@@ -82,19 +94,23 @@ def lst_get_lines(text, fn_index):
     addr_max = 0
     for line in text.split('\n') : 
         s = line[0:7].strip()
+        #print line
         
-        if s != '' and s.isdigit() :
-            print s
-            s = s.replace(' ', '')
-            addr = int("0x" + s, 16)
+        if s != '' and ishex(s) :
+            #print line
+            s1 = re.sub("\s+", " ", line)        # replace space
+            lst = s1.split(' ')
+            #print lst
+            addr = int("0x" + lst[0], 16)
             if addr < addr_min:
                 addr_min = addr
             if addr > addr_max:
                 addr_max = addr
-            
+                            
             if obj is not None:
                 #print hex(addr), obj.c_line
-                as_text = line[40:len(line)]
+                p0 = line.find(lst[2])
+                as_text = line[p0:len(line)]
                 #print as_text
                 addr_map_lst.append([addr, obj.c_file, obj.c_line, as_text, obj.count])
                 obj.count += 1
@@ -175,13 +191,16 @@ def test_pic_lst_scan(fn):
     print fn
     #temp_scan_lst(fn)
     lst = pic_lst_scan([fn])
-    print lst
-        
+    for t in lst:
+        if t != 0:
+            print t
+    pass
+
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    
-    fn = "/home/athena/src/pic/test1/test.hex"
-    #fn = "/home/athena/src/pic/0004/uart_tx.hex"
-    #fn = "/home/athena/src/pic/0001/t0001.hex"
+    #fn = "/home/athena/src/pic14/0002/interrupt.hex"
+    #fn = "/home/athena/src/pic14/0004/uart_tx.hex"
+    fn = "/home/athena/src/pic14/0001/t0001.hex"
     test_pic_lst_scan(fn)
     
     

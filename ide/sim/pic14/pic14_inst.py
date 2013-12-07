@@ -43,6 +43,7 @@ def inst_nop(sim, msb, lsb):
 
 #----------------------------------------------------------------------------
 def inst_return(sim, msb, lsb):
+    sim.log("\n######################## inst_return\n")
     sim.ret()
 
 #----------------------------------------------------------------------------
@@ -470,18 +471,24 @@ def inst_bcf(sim, msb, lsb):
     #10 : 0001 00bb bfff ffff  bit(3, b7-b9) f(7, b0-b6) BCF f,b   Clear bit b of f
     bit = get_bits((msb << 8) | lsb, 7, 9)
     f = lsb & 0x7f
-    v = sim.get_freg(f)
-    v = utils.clear_bit(v, bit)
-    sim.set_freg(f, v)
+    if f == 3:
+        sim.set_status_reg(bit, 0)
+    else:
+        v = sim.get_freg(f)
+        v = utils.clear_bit(v, bit)
+        sim.set_freg(f, v)
 
 #----------------------------------------------------------------------------
 def inst_bsf(sim, msb, lsb):
     #14 : 0001 01bb bfff ffff  BSF f,b   Set bit b of f
     bit = get_bits((msb << 8) | lsb, 7, 9)
     f = lsb & 0x7f
-    v = sim.get_freg(f)
-    v = utils.set_bit(v, bit)
-    sim.set_freg(f, v)
+    if f == 3:
+        sim.set_status_reg(bit, 1)
+    else:    
+        v = sim.get_freg(f)
+        v = utils.set_bit(v, bit)
+        sim.set_freg(f, v)
 
 #----------------------------------------------------------------------------
 def inst_btfsc(sim, msb, lsb):
@@ -507,13 +514,13 @@ def inst_btfss(sim, msb, lsb):
 def inst_call(sim, msb, lsb):
     #20 : 0010 0kkk kkkk kkkk CALL k   Call subroutine
     k = ((msb & 0x7) << 8) | lsb
-    sim.call(k*2)
+    sim.call(k)
 
 #----------------------------------------------------------------------------
 def inst_goto(sim, msb, lsb):
     #28 : 0010 1kkk kkkk kkkk  GOTO k   Jump to address k 
     k = ((msb & 0x7) << 8) | lsb
-    sim.jump(k*2)
+    sim.jump(k)
 
 #----------------------------------------------------------------------------
 def inst_movlw(sim, msb, lsb):
@@ -755,6 +762,7 @@ def get_pic14_inst_str(v, msb, lsb):
     v1 = msb & 0xf        #bit 11, 10, 9, 8
     v2 = (lsb >> 4) & 0xf
     v3 = lsb & 0xf
+    
     f = get_bits(v, 0, 6)
     inst = ' - '
     if v0 == 0 and v1 == 0:

@@ -18,6 +18,16 @@ import ide_build_opt
 #test_cmd = {"break 30\n", "break 40\n", "run\n", "continue\n", 
 #        "step\n", "step\n",  "step\n", "step\n", "step\n", "step\n", "step\n", "quit\n",}
 
+def temp_remove_sdcc_gsinit_startup(fn):
+    f = open(fn, 'r')
+    text = f.read()
+    f.close()
+    text = text.replace('pagesel', ';pagesel')
+    text = text.replace('goto\t__sdcc_gsinit_startup', 'goto _main')
+    f = open(fn, 'w')
+    f.write(text)
+    f.close()
+
 def search_file(root_dir, search_name):
     #print root_dir
     for root, dirnames, filenames in os.walk(root_dir):
@@ -337,6 +347,8 @@ class DocC(DocBase):
         flag = " " + self.app.cflags + " " + self.app.ldflags + " " 
         
         SDCC_bin_path = get_sdcc_bin_path()    
+        self.dirname = os.path.dirname(self.file_path)
+        os.chdir(self.dirname)
         
         if self.mcu_name == 'pic16' :
             flag += ' -c '
@@ -356,17 +368,18 @@ class DocC(DocBase):
             cmd += " /usr/local/share/sdcc/non-free/lib/pic16/libdev" + self.mcu_device + ".lib /usr/local/share/sdcc/lib/pic16/libsdcc.lib " + obj_file
             self.run_cmd(cmd)
         elif self.mcu_name == 'pic14' :
-            flag += ' -c '
-            cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path 
-    
-            dprint("Cmd", cmd)
-            os.chdir(os.path.dirname(self.file_path))
-            result = self.run_cmd(cmd)            
 
+            cmd = "sdcc -S -V -mpic14 -p16f628a --use-non-free " + self.file_path
+            #cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path
+            result = self.run_cmd(cmd)
+            
             c_file = self.file_path
             asm_file = c_file.replace('.c', '.asm')
             hex_file = c_file.replace('.c', '.hex')
             obj_file = c_file.replace('.c', '.o')
+            
+            temp_remove_sdcc_gsinit_startup(asm_file)
+            
             lkr = " /usr/local/share/gputils/lkr/" + self.mcu_device + "_g.lkr "
             sdcc_lib = " /usr/local/share/sdcc/lib/pic14/libsdcc.lib "
             pic14_lib = " /usr/local/share/sdcc/non-free/lib/pic14/pic" + self.mcu_device + ".lib "

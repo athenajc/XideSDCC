@@ -270,11 +270,11 @@ def pic_hex_scan(frame, fn, mcu):
     fn = fn.replace('.hex', '.hex2asm')
     f = open(fn, 'w+')
     for r in lst:
-        print >>f, tohex(r.addr,4), tohex(r.bytes,2), tohex(r.type,2) + ':'
+        print >>f, tohex(r.addr/2,4), tohex(r.bytes,2), tohex(r.type,2) + ':'
         addr = r.addr
         for d in r.dd:
             s = get_inst(d)
-            print >>f,tohex(addr,4), d, ' ' +  s.lower()
+            print >>f,tohex(addr/2,4), d, ' ' +  s.lower()
             addr += 2
             
         print >>f,""
@@ -305,8 +305,8 @@ def test_pic_hex_scan(fn):
     
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    
-    fn = "/home/athena/src/pic/test1/test.hex"
+    #fn = "/home/athena/src/pic/test1/test.hex"
     #fn = "/home/athena/src/pic/0004/uart_tx.hex"
-    #fn = "/home/athena/src/pic/0001/test.hex"
+    fn = "/home/athena/src/pic14/0001/t0001.hex"
     test_pic_hex_scan(fn)
     

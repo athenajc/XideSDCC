@@ -194,7 +194,7 @@ class SimFrame (wx.Frame):
         for file_path in file_list:
             self.open_file(file_path)
             
-        self.command = command
+        self.command = 'debug' #command
         if command == 'debug':
             self.debug_mode = True
             self.toolbar.btn_reset()
@@ -287,9 +287,10 @@ class SimFrame (wx.Frame):
     def sim_stop(self):
         if self.running:
             self.running = False
-            self.Unbind(event=wx.EVT_TIMER, source=self.timer2, handler=self.OnTimer2Timer)
-            self.timer2.Stop()
-            del self.timer2
+            if hasattr(self, 'timer2'):
+                self.Unbind(event=wx.EVT_TIMER, source=self.timer2, handler=self.OnTimer2Timer)
+                self.timer2.Stop()
+                del self.timer2
             self.toolbar.btn_stop()
 
     #-------------------------------------------------------------------
