@@ -11,6 +11,7 @@ class IdeApp(wx.App):
     
     def OnInit(self):
         set_app(self)
+        self.name = 'Xide SDCC'
         self.config_file = 'xide.cfg'
         self.cflags = ""
         self.ldflags = ""
@@ -63,7 +64,7 @@ class IdeApp(wx.App):
     #-------------------------------------------------------------------
     def set_title(self, file_path):
         if self.frame:
-            self.frame.Title = '' + file_path + ' : Xide@SDCC'
+            self.frame.Title = '' + file_path + ' : ' + self.name
     
     #-------------------------------------------------------------------
     def get_target(self):

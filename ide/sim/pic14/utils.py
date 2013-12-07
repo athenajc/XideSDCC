@@ -192,7 +192,7 @@ class Inst():
 
 def get_hh_mm_ss():
     now = datetime.datetime.now()
-    return str(datetime.time(now.hour, now.minute, now.second))
+    return str(datetime.time(now.hour, now.minute, now.second)) + "  "
 
 def print_records(records):
     count = len(records)

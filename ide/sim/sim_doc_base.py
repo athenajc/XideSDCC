@@ -149,6 +149,8 @@ class StyledText(stc.StyledTextCtrl):
     #-------------------------------------------------------------------
     def search_addr(self, token):
         p1 = self.FindText(1, self.GetLength(), token, 0)
+        if p1 == -1:
+            return -1
         line = self.LineFromPosition(p1)
         self.goto_line(line)
         return line

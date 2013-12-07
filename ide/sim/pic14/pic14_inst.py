@@ -654,21 +654,21 @@ inst_handler = [
     inst_btfss,    #1E
     inst_btfss,    #1F
     inst_call,    #20
-    inst_reserved,    #21
-    inst_reserved,    #22
-    inst_reserved,    #23
-    inst_reserved,    #24
-    inst_reserved,    #25
-    inst_reserved,    #26
-    inst_reserved,    #27
+    inst_call,    #21
+    inst_call,    #22
+    inst_call,    #23
+    inst_call,    #24
+    inst_call,    #25
+    inst_call,    #26
+    inst_call,    #27
     inst_goto,    #28
-    inst_reserved,    #29
-    inst_reserved,    #2A
-    inst_reserved,    #2B
-    inst_reserved,    #2C
-    inst_reserved,    #2D
-    inst_reserved,    #2E
-    inst_reserved,    #2F
+    inst_goto,    #29
+    inst_goto,    #2A
+    inst_goto,    #2B
+    inst_goto,    #2C
+    inst_goto,    #2D
+    inst_goto,    #2E
+    inst_goto,    #2F
     inst_movlw,    #30
     inst_movlw,    #31
     inst_movlw,    #32
@@ -804,9 +804,10 @@ def get_pic14_inst_str(v, msb, lsb):
             inst = 'btfss'
         inst += ' ' + hex(f) + ',' + hex(b)
     elif v0 == 2:
-        if v1 == 0:
+        b = v1 & 0x8
+        if b == 0:
             inst = 'call'
-        elif v1 == 8:
+        elif b == 8:
             inst = 'goto'
         k = get_bits(v, 0, 10)
         inst += ' ' + hex(k)

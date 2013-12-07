@@ -63,6 +63,7 @@ class SimPic():
         #self.get_mcu_name()
         #print self.mcu_name, self.dev_name
         self.sfr_addr = get_sfr_addr(self.dev_name)
+        
         #print self.sfr_addr
         self.mem_sfr_map = {}
         self.reg_table = {}
@@ -90,6 +91,7 @@ class SimPic():
         self.c_file = source_list[0]
         self.c_line = 0
         self.load_code()
+        self.mem_access_list = []
 
     #-------------------------------------------------------------------
     def log(self, *args):
@@ -161,18 +163,22 @@ class SimPic():
     #-------------------------------------------------------------------
     def get_mem(self, addr):
         v = self.mem[addr]
-        self.log("     get mem "+tohex(addr,4)+" = "+tohex(v, 0))
+        self.log("     get mem "+hex(addr)+" = "+hex(v))
         return v    
     
     #-------------------------------------------------------------------
     def set_mem(self, addr, v):
-        self.log("     set mem "+tohex(addr, 4)+" = "+tohex(v, 0))
+        key = self.mem_sfr_map.get(addr, "")
+        self.log("     set mem " + hex(addr) + " " + key + " = " + hex(v))
         if (v > 0xff) :
             self.log(v, "> 0xff")
             v = bits_and(v, 0xff)
-    
+        
+        if not addr in self.mem_access_list:
+            self.mem_access_list.append(addr)
+            
         self.mem[addr] = v
-        key = self.mem_sfr_map.get(addr, None)
+        
         if key:
             self.log('set_reg ', key, v)
             self.set_reg(key, v)
@@ -227,13 +233,13 @@ class SimPic():
     #-------------------------------------------------------------------
     def get_reg(self, k):
         v = self.reg_table.get(k, 0)
-        self.log('get_reg', k, hex(self.sfr_addr.get(k, 0)), v)
+        #self.log('get_reg', k, hex(self.sfr_addr.get(k, 0)), v)
         return v
     
     #-------------------------------------------------------------------
     def set_freg(self, addr, v):
         addr += self.bank_addr
-        self.log("     set freg "+ str(addr) + " = "+hex(v))
+        #self.log("     set freg "+ hex(addr) + " = "+hex(v))
         #self.freg[addr] = v
         self.set_mem(addr, v)
         if addr == 3:
@@ -248,7 +254,7 @@ class SimPic():
     def get_freg(self, addr):
         addr += self.bank_addr
         v = self.mem[addr]
-        self.log("     get freg " + str(addr) + " = "+hex(v))
+        #self.log("     get freg " + hex(addr) + " = "+hex(v))
         return v
     
     #-------------------------------------------------------------------
@@ -325,7 +331,7 @@ class SimPic():
         #0 = No carry-out from the most significant bit of the result occurred
         #Note: For borrow the second operand the polarity is reversed. A subtraction is executed by adding the two's complement of. For rotate (RRF, RLF) instructions, this bit is loaded with either the high or low order bit of the source register.        
 
-        self.log("     set status " + str(bit) + " = "+hex(v))
+        self.log("     set status bit " + str(bit) + " = "+hex(v))
 
         if v:
             self.status_reg = set_bit(self.status_reg, bit)
@@ -343,7 +349,7 @@ class SimPic():
         v = self.status_reg
         b = get_bit(v, bit)
             
-        self.log("     get status " + str(bit) + " = "+hex(b))
+        self.log("     get status bit" + str(bit) + " = "+hex(b))
         
         return b
                 
@@ -492,8 +498,8 @@ class SimPic():
         f = inst_handler[msb]
         s = get_pic14_inst_str(opcode, msb, lsb)
         self.log("\n\n---------", tohex(addr, 2), hex(msb), hex(lsb), '<' + str(f)[10:20]+'>')
-        self.log("------- asm_code    ", self.c_line, self.asm_code)
-        self.log("------- get inst str", s)
+        #self.log("------- asm_code    ", self.c_line, self.asm_code)
+        #self.log("------- get inst str", s)
         f(self, msb, lsb)
         
         #ch = self.get_uart_put_ch()
@@ -544,10 +550,13 @@ class SimPic():
         
         n = self.c_line
         f = self.c_file
-        
+        i = 1
         while self.c_line == n and self.c_file == f:
+            i += 1
             self.log(tohex(self.pc, 4), self.asm_code)
             self.load_inst()
+            if i > 100:
+                return 'not finished'
             
             if self.err:
                 self.log('#simulation Error')
@@ -575,7 +584,11 @@ class SimPic():
         if s1 <= s0:
             return True
         else:
+            i = 0
             while self.stack_depth > s0:
+                i += 1
+                if i > 100:
+                    return False
                 if not self.step_c_line():
                     return False
         return True

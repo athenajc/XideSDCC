@@ -310,16 +310,20 @@ class UartTextViewer(wx.Panel):
         s1 = ''.join(chr(i) for i in sbuf)
         s += s1 
         s += 'bank = ' + str(sim.bank_addr) + '\n'
-        s += 'mem 3 = ' + hex(sim.mem[3]) + '\n'
-        s += 'mem 4 = ' + hex(sim.mem[4]) + '\n'
-        s += 'mem 5 = ' + hex(sim.mem[5]) + '\n'
-        s += 'mem 6 = ' + hex(sim.mem[6]) + '\n'
-        s += 'mem 7 = ' + hex(sim.mem[7]) + '\n'
-        s += 'mem 0x83 = ' + hex(sim.mem[0x83]) + '\n'
-        s += 'mem 0x84 = ' + hex(sim.mem[0x84]) + '\n'
-        s += 'mem 0x85 = ' + hex(sim.mem[0x85]) + '\n'
-        s += 'mem 0x86 = ' + hex(sim.mem[0x86]) + '\n'
-        s += 'mem 0x87 = ' + hex(sim.mem[0x87]) + '\n'        
+        #s += 'mem 3 = ' + hex(sim.mem[3]) + '\n'
+        #s += 'mem 4 = ' + hex(sim.mem[4]) + '\n'
+        #s += 'mem 5 = ' + hex(sim.mem[5]) + '\n'
+        #s += 'mem 6 = ' + hex(sim.mem[6]) + '\n'
+        #s += 'mem 7 = ' + hex(sim.mem[7]) + '\n'
+        #s += 'mem 0x83 = ' + hex(sim.mem[0x83]) + '\n'
+        #s += 'mem 0x84 = ' + hex(sim.mem[0x84]) + '\n'
+        #s += 'mem 0x85 = ' + hex(sim.mem[0x85]) + '\n'
+        #s += 'mem 0x86 = ' + hex(sim.mem[0x86]) + '\n'
+        #s += 'mem 0x87 = ' + hex(sim.mem[0x87]) + '\n'        
+        
+        for a in sim.mem_access_list:
+            s += 'mem ' + hex(a) + ' = ' + hex(sim.mem[a]) + '\n'
+            
         #s += 'sbuf list = ' + str(sim.sbuf_list) + '\n'
             
         self.inst_text.WriteText(s)

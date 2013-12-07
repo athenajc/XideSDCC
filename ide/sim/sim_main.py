@@ -255,6 +255,7 @@ class DebugFrame (wx.Frame):
                     self.pause = True
                     self.toolbar.btn_pause()
         
+            
     #-------------------------------------------------------------------
     def sim_run(self, command):
         
@@ -274,14 +275,14 @@ class DebugFrame (wx.Frame):
         if self.debug_mode:
             self.pause = True
             self.toolbar.btn_pause()
-            return
+            #return
             
         #if not self.debug_mode:
         self.timer2 = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.OnTimer2Timer, self.timer2)
         self.timer2.Start(10)
         self.sim_update()
-        self.toolbar.btn_run()
+        #self.toolbar.btn_run()
         
     #-------------------------------------------------------------------
     def sim_stop(self):
@@ -307,6 +308,11 @@ class DebugFrame (wx.Frame):
         s = '%04X' % sim.pc
         self.asm_view.search_addr(s)
         
+        s = '%06x' % sim.pc
+        for t in self.doc_book.docs:
+            if t[1].file_path.endswith('st'):
+                t[1].search_addr(s)
+            
         #uart sbuf
         for ch in sim.sbuf_list:
             self.sbuf.append(ch)
@@ -317,7 +323,7 @@ class DebugFrame (wx.Frame):
         if doc:
             doc.goto_line(sim.c_line)
             doc.Update()
-            self.doc_book.SetSelection(doc.page_index)
+            #self.doc_book.SetSelection(doc.page_index)
             
         self.reg_panel.update_inst(sim, self.sbuf)
         self.reg_panel.update(sim)
@@ -334,13 +340,16 @@ class DebugFrame (wx.Frame):
         self.log("Press Continue or Step functions to start simulation.\n")
         self.sim = None
         self.sim_run('debug')
+        for t in self.doc_book.docs:
+            t[1].goto_line(0)
         self.toolbar.btn_reset()
         
     #-------------------------------------------------------------------
     def OnRun(self, event):
         self.pause = False
         self.command = None
-        self.sim_run('run')
+        self.debug_mode = False
+        #self.sim_run('run')
         
     #-------------------------------------------------------------------
     def OnPause(self, event):
@@ -360,7 +369,9 @@ class DebugFrame (wx.Frame):
     #-------------------------------------------------------------------
     def OnStepOver(self, event):
         if self.sim and not self.sim.stopped :
-            self.sim.step_over()
+            result = self.sim.step_over()
+            if result == 'not finished':
+                pass
             self.sim_update()
             
     #-------------------------------------------------------------------

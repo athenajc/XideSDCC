@@ -423,7 +423,6 @@ class SimPic():
             return False
         
         return True
-    
     #-------------------------------------------------------------------
     def step_c_line(self):
         if self.stopped:
@@ -431,10 +430,13 @@ class SimPic():
         
         n = self.c_line
         f = self.c_file
-        
+        i = 1
         while self.c_line == n and self.c_file == f:
+            i += 1
             self.log(tohex(self.pc, 4), self.asm_code)
             self.load_inst()
+            if i > 100:
+                return 'not finished'
             
             if self.err:
                 self.log('#simulation Error')
@@ -449,6 +451,7 @@ class SimPic():
     #-------------------------------------------------------------------
     def step_over(self):
         #self.log("step_over")
+
         if self.stopped:
             return False
         
@@ -461,11 +464,15 @@ class SimPic():
         if s1 <= s0:
             return True
         else:
+            i = 0
             while self.stack_depth > s0:
+                i += 1
+                if i > 100:
+                    return False
                 if not self.step_c_line():
                     return False
         return True
-    
+        
     #-------------------------------------------------------------------
     def step_out(self):
         #self.log("step_out")

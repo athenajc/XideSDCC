@@ -15,7 +15,7 @@ class IdeFrame (wx.Frame):
     def __init__(self, app):
         wx.Frame.__init__ (self, None,
                             id = wx.ID_ANY,
-                            title = 'Xide@SDCC',
+                            title = app.name,
                             pos = wx.DefaultPosition,
                             size = wx.Size(1600,1024),
                             style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL)
