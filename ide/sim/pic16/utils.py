@@ -210,6 +210,13 @@ def array_list(table, n):
         lst[t[0]] = t[1]
     return lst
 
+def ends_with_digital(s):
+    c = s[-1:]
+    if c >= '0' and c <= '9':
+        return True
+    return False
+    
+
 def get_sfr_addr(dev_name):
     path = os.path.dirname(os.path.realpath(__file__)) 
     path += os.sep + 'defines' + os.sep + 'p' + dev_name + '.sfr'
@@ -221,7 +228,8 @@ def get_sfr_addr(dev_name):
             if line == '':
                 continue
             k, v = line.split(':')
-            sfr_addr[k] = int(v, 16) & 0xff
+            if not ends_with_digital(k):
+                sfr_addr[k] = int(v, 16) & 0xff
                     
     return sfr_addr
 

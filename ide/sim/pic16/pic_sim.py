@@ -73,6 +73,9 @@ class SimPic():
         self.dev_name = mcu_device
         self.source_list = source_list
         self.hex_file = hex_file
+        
+        self.bank_addr = 0
+        
         #self.get_mcu_name()
         #print self.mcu_name, self.dev_name
         self.sfr_addr = get_sfr_addr(self.dev_name)
@@ -95,6 +98,7 @@ class SimPic():
         self.c_file = source_list[0]
         self.c_line = 0
         self.load_code()
+        self.mem_access_list = []
 
     #-------------------------------------------------------------------
     def log(self, *args):
@@ -104,12 +108,14 @@ class SimPic():
         for t in args:
             msg = msg + str(t) + " "
         s = get_hh_mm_ss() + msg + "\n"
-        #print get_hh_mm_ss() + msg
-        self.frame.log(s)
+        if self.frame == None:
+            print get_hh_mm_ss() + msg
+        else:
+            self.frame.log(s)
 
     #-------------------------------------------------------------------
     def log1(self, *args):
-        print(args)
+        pass #print('log1', args)
         
     #-------------------------------------------------------------------
     def get_mcu_name(self):
@@ -163,19 +169,24 @@ class SimPic():
     #-------------------------------------------------------------------
     def get_mem(self, addr):
         v = self.mem[addr]
-        self.log("     get mem "+tohex(addr,4)+" = "+tohex(v, 0))
+        self.log("     get mem "+hex(addr)+" = "+hex(v))
         return v    
     
     #-------------------------------------------------------------------
     def set_mem(self, addr, v):
-        self.log("     set mem "+tohex(addr, 4)+" = "+tohex(v, 0))
+        key = self.mem_sfr_map.get(addr, "")
+        self.log("     set mem " + hex(addr) + " " + key + " = " + hex(v))
         if (v > 0xff) :
             self.log(v, "> 0xff")
             v = bits_and(v, 0xff)
-    
+            
+        if not addr in self.mem_access_list:
+            self.mem_access_list.append(addr)
+            
         self.mem[addr] = v
-        key = self.mem_sfr_map.get(addr, None)
-        if key:
+        
+        if key != "":
+            self.log('set_reg ', key, v)
             self.set_reg(key, v)
         return v
 
@@ -260,18 +271,65 @@ class SimPic():
         self.set_sfr('PRODL', v & 0xff)
     
     #-------------------------------------------------------------------
-    def set_status_reg(self, flag, v):
-        self.log("     set " + flag + " = "+hex(v))
-        if flag == 'z':
-            if v:
-                set_bit(self.status_reg, 2)
-            else:
-                clear_bit(self.status_reg, 2)
-                
+    def get_status_reg(self, bit):
+        # N OV Z DC C
+        v = self.status_reg
+        b = get_bit(v, bit)
+            
+        self.log("     get status bit" + str(bit) + " = "+hex(b))
+        
+        return b    
+       
+    #-------------------------------------------------------------------
+    def set_status_reg(self, bit, v):
+        # N OV Z DC C
+        self.log("     set status bit " + str(bit) + " = "+hex(v))
+        if v:
+            self.status_reg = set_bit(self.status_reg, bit)
+        else:
+            self.status_reg = clear_bit(self.status_reg, bit)
+        self.set_reg('STATUS', self.status_reg)
+        
+    #-------------------------------------------------------------------
+    def set_n(self, v):
+        self.set_status_reg(4, v)
+        
+    #-------------------------------------------------------------------
+    def set_ov(self, v):
+        self.set_status_reg(3, v)
+        
     #-------------------------------------------------------------------
     def set_z(self, v):
-        self.set_status_reg('z', v)
+        self.set_status_reg(2, v)
+
+    #-------------------------------------------------------------------
+    def set_dc(self, v):
+        self.set_status_reg(1, v)
         
+    #-------------------------------------------------------------------
+    def set_c(self, v):
+        self.set_status_reg(0, v)
+        
+    #-------------------------------------------------------------------
+    def get_n(self):
+        return self.get_status_reg(4)
+    
+    #-------------------------------------------------------------------
+    def get_ov(self):
+        return self.get_status_reg(3)
+    
+    #-------------------------------------------------------------------
+    def get_z(self):
+        return self.get_status_reg(2)
+    
+    #-------------------------------------------------------------------
+    def get_dc(self):
+        return self.get_status_reg(1)
+    
+    #-------------------------------------------------------------------
+    def get_c(self):
+        return self.get_status_reg(0)
+    
     #-------------------------------------------------------------------
     def push(self, v):
         self.log("     push "+hex(v))
@@ -295,17 +353,22 @@ class SimPic():
         #PCL      0FF9
         #PCLATH   0FFA
         #PCLATU   0FFB
-        self.log("     set pc = "+tohex(v, 4))
+        self.log("     set pc = "+tohex(v, 4), hex(self.get_reg('PC')))
         self.pc = v
-        
-        
+        self.set_reg('PC', v)
+                
     #-------------------------------------------------------------------
     def jump(self, addr):
         self.set_pc(addr)
         
     #-------------------------------------------------------------------
     def jump_rel(self, v):
-        offset = byte_to_int(v)
+        # bit 0-10, 0x7ff
+        if v & 0x400:
+            offset = (v & 0x3ff) - 0x400
+        else:
+            offset = v
+            
         self.log("     jump_rel  "+str(offset) )
         self.set_pc(self.pc + offset)
         
@@ -320,11 +383,33 @@ class SimPic():
         addr = self.pop()
         self.set_pc(addr)
         self.stack_depth -= 1
+        self.log("****** ret set pc = "+tohex(addr, 4), hex(self.get_reg('PC')))
+        
+    #-------------------------------------------------------------------
+    def retfie(self, s):
+        # Return from interrupt.
+        # Stack is popped and Top-of-Stack(TOS) is loaded into the PC.
+        # Interrupts are enabled by setting either the high or low priority gloable interrupt enbale bit.
+        # if s == 1, the contents of the shadow register WS, STATUSS and BSRS are 
+        #            loaded into their corresponding registers - W, STATUS and BSR.
+        # if s == 0, no update of these registers occurs(default)
+        
+        addr = self.pop()
+        self.set_pc(addr)
+        self.stack_depth -= 1
+        # set GIE/GIEH or PEIE/GIEL = 1
+        # GIE Global Interrupt Enable bit
+        #     1 = Enables all un-masked interrupts
+        #     0 = Disables all interrupts
+        #a = self.sfr_addr['GIEH']
+        #v = self.mem[a]
+        #set_bit(v, 7)
+        #self.mem[a] = v
         
     #-------------------------------------------------------------------
     def skip_next_inst(self):
         self.log("     skip next inst")
-        self.set_pc(self.pc + 2)
+        self.set_pc(self.pc + 1)
         
     #-------------------------------------------------------------------
     def code_space_fill(self, addr, sz, ddstr):
@@ -372,15 +457,20 @@ class SimPic():
             self.c_line = 0
             self.asm_code = ""
         
-        lsb = self.code_space[addr]
-        msb = self.code_space[addr + 1]
+        lsb = self.code_space[addr*2]
+        msb = self.code_space[addr*2 + 1]
         opcode = (msb << 8) + lsb
-        #self.log(hex(msb), hex(lsb))
+        #self.log('**************** ', hex(msb), hex(lsb))
         
         # self.set_pc(self.pc + blen)
-        self.pc = self.pc + 2
+        self.pc = self.pc + 1
         self.set_reg('PC', self.pc)
+        #self.log('**************** pc ', hex(self.pc))
         f = inst_handler[msb]
+        s = get_pic16_inst_str(opcode, msb, lsb)
+        self.log("\n\n---------", tohex(addr, 2), hex(msb), hex(lsb), '<' + str(f)[10:20]+'>')
+        #self.log("------- asm_code    ", self.c_line, self.asm_code)
+        #self.log("------- get inst str", s)
         f(self, msb, lsb)
         
         #ch = self.get_uart_put_ch()
@@ -406,8 +496,8 @@ class SimPic():
         if self.stopped:
             return False
         
-        lsb = self.code_space[self.pc]
-        msb = self.code_space[self.pc + 1]
+        lsb = self.code_space[self.pc*2]
+        msb = self.code_space[self.pc*2 + 1]
         opcode = (msb << 8) + lsb
         #self.log(hex(msb), hex(lsb))        
         s = get_pic16_inst_str(opcode, msb, lsb)
@@ -423,6 +513,7 @@ class SimPic():
             return False
         
         return True
+    
     #-------------------------------------------------------------------
     def step_c_line(self):
         if self.stopped:

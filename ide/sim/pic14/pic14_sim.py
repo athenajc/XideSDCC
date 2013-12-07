@@ -179,7 +179,7 @@ class SimPic():
             
         self.mem[addr] = v
         
-        if key:
+        if key != "":
             self.log('set_reg ', key, v)
             self.set_reg(key, v)
         return v
@@ -530,7 +530,7 @@ class SimPic():
         opcode = (msb << 8) + lsb
         #self.log(hex(msb), hex(lsb))        
         s = get_pic14_inst_str(opcode, msb, lsb)
-        self.log('pc', tohex(self.pc/2, 4), tohex(opcode, 4), "   " + s)
+        self.log('pc', tohex(self.pc, 4), tohex(opcode, 4), "   " + s)
         self.load_inst()
         self.update_sfr()
         
@@ -595,7 +595,6 @@ class SimPic():
     
     #-------------------------------------------------------------------
     def step_out(self):
-        return False
         #self.log("step_out")
         if self.stopped:
             return False

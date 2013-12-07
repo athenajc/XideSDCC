@@ -452,11 +452,11 @@ def pic_hex_scan(frame, fn, mcu):
     fn = fn.replace('.hex', '.hex2asm')
     f = open(fn, 'w+')
     for r in lst:
-        print >>f, tohex(r.addr,4), tohex(r.bytes,2), tohex(r.type,2) + ':'
+        print >>f, tohex(r.addr/2,4), tohex(r.bytes,2), tohex(r.type,2) + ':'
         addr = r.addr
         for d in r.dd:
             s = get_inst(d)
-            print >>f,tohex(addr,4), d, ' ' +  s.lower()
+            print >>f,tohex(addr/2,4), d, ' ' +  s.lower()
             addr += 2
             
         print >>f,""
