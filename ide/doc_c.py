@@ -217,9 +217,9 @@ class DocC(DocBase):
         os.chdir(os.path.dirname(self.file_path))
         name, ext = self.file_name.split('.')
         
-        self.sim_frame = sim.SimFrame(self.app, self, 
+        self.sim_frame = sim.DebugFrame(self.app, self, 
                                   [self.file_path], 
-                                  self.config_file, 'debug')
+                                  self.config_file)
         
         self.app.SetTopWindow(self.sim_frame)
         self.sim_frame.Show(True)
@@ -241,7 +241,7 @@ class DocC(DocBase):
             
         self.sim_frame = sim.SimFrame(self.app, self, 
                                   [self.file_path], 
-                                  self.config_file, 'run')
+                                  self.config_file)
         
         self.app.SetTopWindow(self.sim_frame)
         self.sim_frame.Show(True)
@@ -378,7 +378,7 @@ class DocC(DocBase):
             hex_file = c_file.replace('.c', '.hex')
             obj_file = c_file.replace('.c', '.o')
             
-            temp_remove_sdcc_gsinit_startup(asm_file)
+            #temp_remove_sdcc_gsinit_startup(asm_file)
             
             lkr = " /usr/local/share/gputils/lkr/" + self.mcu_device + "_g.lkr "
             sdcc_lib = " /usr/local/share/sdcc/lib/pic14/libsdcc.lib "

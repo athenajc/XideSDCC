@@ -9,7 +9,7 @@ import subprocess
 
 from ide_global import *
 import utils
-from sim import SimFrame
+from sim import SimFrame, DebugFrame
 
 
 #----------------------------------------------------------------------------------------------
@@ -166,10 +166,33 @@ class Project():
         #self.cmd_queue = Queue.Queue()
         self.sim_frame = SimFrame(self.app, self.tree, 
                                   lst, 
-                                  self.config_file, 'debug')
+                                  self.config_file)
         
         self.app.SetTopWindow(self.sim_frame)
         self.sim_frame.Show(True)
+    
+    #-------------------------------------------------------------------
+    def debug_project(self):
+        log("PrjMgr.debug_project")
+        self.app.running = True
+        self.app.clear_debug()
+            
+        dprint("Debug", self.file_path)
+        self.get_project_main_file()
+        lst = self.other_c_file_list
+                    
+        lst.insert(0, self.main_file)
+        # set cwd to main file path
+        os.chdir(os.path.dirname(self.main_file))
+
+        #self.cmd_queue = Queue.Queue()
+        self.sim_frame = DebugFrame(self.app, self.tree, 
+                                  lst, 
+                                  self.config_file)
+        
+        self.app.SetTopWindow(self.sim_frame)
+        self.sim_frame.Show(True)    
+        
         
     #-------------------------------------------------------------------
     def _scan_xml_node_(self, xml_node, lst):
@@ -355,6 +378,7 @@ class PrjTree(wx.TreeCtrl):
             #["Build Option",     "Configure current project compile/build option", self.OnBuildOption],
             ["ID_CMPILE", "Compile Project",  "Compile current project", self.OnCompilePrj],
             ["ID_RUN",    "Run Project",  "Run the program", self.OnRunPrj],
+            ["ID_DEBUG",  "Debug Project",  "Debug the program", self.OnDebugPrj],
             [],
             ["ID_ADD_FILES", "Add Files",  "Add files to the project", self.OnAddFiles],
             #["Add Directory",  "Add directory to the project", self.OnAddFiles],
@@ -573,6 +597,12 @@ class PrjTree(wx.TreeCtrl):
         if self.prj:
             log("PrjMgr.OnRun")
             self.prj.run_project()
+            
+    #-------------------------------------------------------------------
+    def OnDebugPrj(self, event):
+        if self.prj:
+            log("PrjMgr.OnDebug")
+            self.prj.debug_project()
 
 
 #---------------------------------------------------------------------------------------------------

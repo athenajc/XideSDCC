@@ -22,6 +22,7 @@ class Menu(wx.Menu):
                     parent.Bind(wx.EVT_MENU, m[3], id = menu_id)
 
 #---------------------------------------------------------------------------------------------------
+# Debug event handler at ide_doc_book.py
 class MenuDebug(Menu):
     def __init__(self, frame, menubar):
         menu_lst = [
@@ -39,7 +40,8 @@ class MenuDebug(Menu):
         menubar.Append(self, "&Debug")
 
         self.Enable(ID_DBG_STOP, False)
-    
+        
+    #--------------------------------------------------------------------------------
     def update_ui(self, event_id):
         if event_id == ID_RUN:
             self.Enable(ID_DBG_STOP, True)

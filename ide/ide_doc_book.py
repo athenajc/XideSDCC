@@ -100,6 +100,11 @@ class DocBook(wx.aui.AuiNotebook):
     #-------------------------------------------------------------------
     def OnStartDebug(self, event):
         log("DocMgr.OnStartDebug")
+        doc = self.get_target_doc()
+        if doc is None:
+            self.app.prj_mgr.debug_project()
+            return
+        
         app = self.app
         doc = app.get_doc()
         
