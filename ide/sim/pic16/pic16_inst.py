@@ -413,10 +413,10 @@ def inst_subfwb(sim, msb, lsb):
     c = sim.get_c()
     sim.clear_status_flags()
     w, d, a, f = get_wdaf(sim, msb, lsb)
-    
-    v = w + comp8(f) + c
+    cf = comp8(f)
+    v = w + cf + c
         
-    if (w & 0xf) + (comp8(f) & 0xf) + c > 0xf:
+    if (w & 0xf) + (cf & 0xf) + c > 0xf:
         sim.set_dc(1)
         
     if v > 0xff:
@@ -441,10 +441,10 @@ def inst_subwfb(sim, msb, lsb):
     c = sim.get_c()
     sim.clear_status_flags()
     w, d, a, f = get_wdaf(sim, msb, lsb)
-    
-    v = f + comp8(w) + c
+    cw = comp8(w)
+    v = f + cw + c
         
-    if (f & 0xf) + (comp8(w) & 0xf) + c > 0xf:
+    if (f & 0xf) + (cw & 0xf) + c > 0xf:
         sim.set_dc(1)
         
     if v > 0xff:
@@ -468,10 +468,10 @@ def inst_subwf(sim, msb, lsb):
     #
     sim.clear_status_flags()
     w, d, a, f = get_wdaf(sim, msb, lsb)
-    
-    v = w + comp8(f) + 1
+    cw = comp8(w)
+    v = f + cw + 1
         
-    if (w & 0xf) + (comp8(f) & 0xf) + 1 > 0xf:
+    if (f & 0xf) + (cw & 0xf) + 1 > 0xf:
         sim.set_dc(1)
         
     if v > 0xff:
@@ -632,7 +632,7 @@ def inst_rcall(sim, msb, lsb):
 def inst_bz(sim, msb, lsb):
     #0xE0  1110 0000 nnnn nnnn  BZ n    Branch if PSR.Z is set
     if sim.get_z() == 1:
-        sim.jump(lsb)
+        sim.jump_rel(lsb)
 
 #----------------------------------------------------------------------------
 def inst_bnz(sim, msb, lsb):

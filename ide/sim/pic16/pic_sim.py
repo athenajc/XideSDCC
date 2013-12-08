@@ -329,7 +329,7 @@ class SimPic():
             addr += self.bank_addr
             
         v = self.mem[addr]
-        #self.log("     get freg " + hex(addr) + " = "+hex(v))
+        self.log("     get freg " + hex(addr) + " = "+hex(v))
         return v
     
     #-------------------------------------------------------------------

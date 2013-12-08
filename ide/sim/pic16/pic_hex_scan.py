@@ -287,7 +287,7 @@ def pic16_inst(s):
                'reserved','reserved','reserved','reserved',
                'CALL', 'CALL', 'LFSR'
                ]
-        inst = lst[v1]
+        inst = lst[v1] + ' ' + hex(utils.val8(lsb))
         
     elif v0 == 0xF:
         # Must check with prev inst
