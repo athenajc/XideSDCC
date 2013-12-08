@@ -55,7 +55,7 @@ def inst_sleep(sim, msb, lsb):
 #----------------------------------------------------------------------------
 def inst_clrwdt(sim, msb, lsb):
     #0000 0000 0000 0100   0x0004,CLRWDT    Restart watchdog timer
-    sim.clear_watch_dog
+    sim.clear_watch_dog()
 
 #----------------------------------------------------------------------------
 def inst_push(sim, msb, lsb):
@@ -67,11 +67,64 @@ def inst_pop(sim, msb, lsb):
     #0000 0000 0000 0110   0x0006,POP    Pop (and discard) top of stack
     sim.set_pc(sim.pop())
     
+def test(w):
+    dc = 0
+    v0 = w & 0xf
+    v1 = (w >> 4) & 0xf
+    if v0 > 9 or dc == 1:
+        v0 += 6
+        
+    if v0 > 0xf:
+        dc = 1
+        v0 &= 0xf
+    else:
+        dc = 0
+    if v1 > 9 or dc == 1:
+        v1 += 6 + dc
+        
+    if v1 > 0xf:
+        dc = 1
+        v1 &= 0xf
+    v = (v1 << 4) | v0
+    return hex(v & 0xff)
+
 #----------------------------------------------------------------------------
 def inst_daw(sim, msb, lsb):
     #0000 0000 0000 0111   0x0007,DAW C   Decimal adjust W
-    pass
-
+    #If (W < 3:0 >) > 9 or [DC = 1] then 
+    #(W < 3:0 >) + 6 -> W < 3:0 > ;
+    #else
+    #(W < 3:0 >) -> W < 3:0 > ;
+    
+    #If (W < 7:4 >) > 9 or [DC = 1] then 
+    #(W < 7:4 >) + 6 -> W < 7:4 > ;
+    #else
+    #(W < 7:4 >) -> W < 7:4 >.    
+    dc = sim.get_dc()
+    w = sim.get_wreg()
+    v0 = w & 0xf
+    v1 = (w >> 4) & 0xf
+    if v0 > 9 or dc == 1:
+        v0 += 6
+        
+    if v0 > 0xf:
+        dc = 1
+        v0 &= 0xf
+    else:
+        dc = 0
+    if v1 > 9 or dc == 1:
+        v1 += 6 + dc
+        
+    if v1 > 0xf:
+        dc = 1
+        v1 &= 0xf
+    v = (v1 << 4) | v0
+    sim.clear_status_flags()
+    sim.set_wreg(v)
+    
+    if dc == 1:
+        sim.set_c(1)
+    
 #----------------------------------------------------------------------------
 def inst_tblrd(sim, msb, lsb):
     #0000 0000 0000 1000   0x0008,TBLRD*    Table read
