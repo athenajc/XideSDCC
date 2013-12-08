@@ -653,6 +653,36 @@ def inst_bnn(sim, msb, lsb):
         sim.jump_rel(lsb)
         
 #----------------------------------------------------------------------------
+def inst_movff(sim, msb, lsb, msb1, lsb1):
+    src = ((msb & 0xf) << 8) | lsb
+    dst = ((msb1 & 0xf) << 8) | lsb1
+    v = sim.get_mem(src)
+    sim.set_mem(dst, v)
+
+#----------------------------------------------------------------------------
+def inst_call(sim, msb, lsb, msb1, lsb1):
+    k_msb = ((msb1 & 0xf) << 8) | lsb1
+    k_lsb = lsb
+    addr = (k_msb << 8) | k_lsb
+    fast = msb & 1
+    
+    sim.call(addr, fast)
+
+#----------------------------------------------------------------------------
+def inst_lfsr(sim, msb, lsb, msb1, lsb1):    
+    f = (lsb >> 4) & 3
+    k_msb = lsb & 0xf
+    k_lsb = lsb1
+    sim.set_fsr(f, k_msb, k_lsb)
+
+#----------------------------------------------------------------------------
+def inst_goto(sim, msb, lsb, msb1, lsb1):
+    k_msb = ((msb1 & 0xf) << 8) | lsb1
+    k_lsb = lsb
+    addr = (k_msb << 8) | k_lsb
+    sim.jump(addr)
+
+#----------------------------------------------------------------------------
 def inst_check_prev(sim, msb, lsb):
     pass
 
@@ -850,22 +880,22 @@ inst_handler = [
     inst_btfsc,    #BD
     inst_btfsc,    #BE
     inst_btfsc,    #BF
-    inst_reserved,    #C0
-    inst_reserved,    #C1
-    inst_reserved,    #C2
-    inst_reserved,    #C3
-    inst_reserved,    #C4
-    inst_reserved,    #C5
-    inst_reserved,    #C6
-    inst_reserved,    #C7
-    inst_reserved,    #C8
-    inst_reserved,    #C9
-    inst_reserved,    #CA
-    inst_reserved,    #CB
-    inst_reserved,    #CC
-    inst_reserved,    #CD
-    inst_reserved,    #CE
-    inst_reserved,    #CF
+    inst_movff,    #C0
+    inst_movff,    #C1
+    inst_movff,    #C2
+    inst_movff,    #C3
+    inst_movff,    #C4
+    inst_movff,    #C5
+    inst_movff,    #C6
+    inst_movff,    #C7
+    inst_movff,    #C8
+    inst_movff,    #C9
+    inst_movff,    #CA
+    inst_movff,    #CB
+    inst_movff,    #CC
+    inst_movff,    #CD
+    inst_movff,    #CE
+    inst_movff,    #CF
     inst_bra,    #D0
     inst_bra,    #D1
     inst_bra,    #D2
@@ -882,22 +912,22 @@ inst_handler = [
     inst_rcall,    #DD
     inst_rcall,    #DE
     inst_rcall,    #DF
-    inst_bz,    #E0
-    inst_bz,    #E1
-    inst_bnz,    #E2
-    inst_bnz,    #E3
-    inst_bc,    #E4
-    inst_bc,    #E5
-    inst_bnc,    #E6
-    inst_bnc,    #E7
-    inst_bov,    #E8
-    inst_bov,    #E9
-    inst_bnov,    #EA
-    inst_bnov,    #EB
-    inst_bn,    #EC
-    inst_bn,    #ED
-    inst_bnn,    #EE
-    inst_bnn,    #EF
+    inst_bz,     #E0
+    inst_bnz,    #E1
+    inst_bc,     #E2
+    inst_bnc,    #E3
+    inst_bov,    #E4
+    inst_bnov,    #E5
+    inst_bn,    #E6
+    inst_bnn,    #E7
+    inst_reserved,    #E8
+    inst_reserved,    #E9
+    inst_reserved,    #EA
+    inst_reserved,    #EB
+    inst_call,    #EC
+    inst_call,    #ED
+    inst_lfsr,    #EE
+    inst_goto,    #EF
     inst_check_prev,    #F0
     inst_check_prev,    #F1
     inst_check_prev,    #F2

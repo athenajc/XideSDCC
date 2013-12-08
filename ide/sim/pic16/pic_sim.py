@@ -100,11 +100,15 @@ class SimPic():
         self.c_line = 0
         self.load_code()
         self.mem_access_list = []
+        self.status_bits_name = ['C', 'DC', 'Z', 'OV', 'N']
 
     #-------------------------------------------------------------------
     def log(self, *args):
         #if self.c_line == 0:
         #    return
+        #import inspect
+        #s1 = inspect.stack()[1][3] + " "
+        
         msg = " "
         for t in args:
             msg = msg + str(t) + " "
@@ -228,7 +232,8 @@ class SimPic():
     #-------------------------------------------------------------------
     def get_mem(self, addr):
         v = self.mem[addr]
-        self.log("     get mem "+hex(addr)+" = "+hex(v))
+        key = self.mem_sfr_map.get(addr, "")
+        self.log("     get mem "+hex(addr) + " " + key +" = "+hex(v))
         return v    
     
     #-------------------------------------------------------------------
@@ -245,7 +250,7 @@ class SimPic():
         self.mem[addr] = v
         
         if key != "":
-            self.log('set_reg ', key, v)
+            #self.log('     set_reg ', key, v)
             self.set_reg(key, v)
         return v
 
@@ -336,7 +341,7 @@ class SimPic():
     
     #-------------------------------------------------------------------
     def set_wreg(self, v):
-        self.log("     set w = "+hex(v))
+        #self.log("     set w = "+hex(v))
         self.wreg = v
         self.set_sfr('WREG', v)
         
@@ -344,7 +349,7 @@ class SimPic():
     def get_wreg(self):
         v = self.get_sfr('WREG')
         self.wreg = v
-        self.log("     get w = "+hex(v))
+        #self.log("     get w = "+hex(v))
         return v
     
     #-------------------------------------------------------------------
@@ -373,6 +378,14 @@ class SimPic():
         return v
     
     #-------------------------------------------------------------------
+    def set_fsr(self, i, msb, lsb):
+        name = 'FSR' + str(i)
+        name_h = name + 'H'
+        name_l = name + 'L'
+        self.set_sfr(name_h, msb)
+        self.set_sfr(name_l, lsb)
+        
+    #-------------------------------------------------------------------
     def set_prod(self, v):
         self.log("     set prod = "+hex(v))
         self.set_sfr('PRODH', (v >> 8) & 0xff)
@@ -383,15 +396,14 @@ class SimPic():
         # N OV Z DC C
         v = self.status_reg
         b = get_bit(v, bit)
-            
-        self.log("     get status bit" + str(bit) + " = "+hex(b))
+        #self.log("     get status " + self.status_bits_name[bit] + " = "+hex(b))
         
         return b    
        
     #-------------------------------------------------------------------
     def set_status_reg(self, bit, v):
         # N OV Z DC C
-        self.log("     set status bit " + str(bit) + " = "+hex(v))
+        self.log("     set " + self.status_bits_name[bit] + " = "+hex(v))
         if v:
             self.status_reg = set_bit(self.status_reg, bit)
         else:
@@ -494,7 +506,7 @@ class SimPic():
         self.set_pc(self.pc + offset)
         
     #-------------------------------------------------------------------
-    def call(self, addr):
+    def call(self, addr, fast):
         self.push(self.pc)
         self.set_pc(addr)
         self.stack_depth += 1
@@ -581,18 +593,36 @@ class SimPic():
         lsb = self.code_space[addr]
         msb = self.code_space[addr + 1]
         opcode = (msb << 8) + lsb
+        inst_len = 1
         #self.log('**************** ', hex(msb), hex(lsb))
-        
-        # self.set_pc(self.pc + blen)
-        self.pc = self.pc + 1
+        #inst_call,    #EC
+        #inst_call,    #ED
+        #inst_lfsr,    #EE
+        #inst_goto,    #EF        
+        if (msb & 0xc0) == 0xc0:
+            inst_len = 2
+        elif msb >= 0xEC and msb <= 0xEF:
+            inst_len = 2
+
+        self.pc = self.pc + inst_len
         self.set_reg('PC', self.pc)
-        #self.log('**************** pc ', hex(self.pc))
+
         f = inst_handler[msb]
         s = get_pic16_inst_str(opcode, msb, lsb)
-        self.log("\n\n---------", tohex(addr/2, 2), hex(msb), hex(lsb), '<' + str(f)[10:20]+'>')
+        
+        self.log('\n------------------', tohex(self.pc, 4), tohex(opcode, 4), "   " + s + '   ------------------')
+        #self.log("    ", tohex(addr/2, 2), hex(msb), hex(lsb), '<' + str(f)[10:20]+'>')
         #self.log("------- asm_code    ", self.c_line, self.asm_code)
         #self.log("------- get inst str", s)
-        f(self, msb, lsb)
+        if inst_len == 2:
+            lsb1 = self.code_space[addr + 2]
+            msb1 = self.code_space[addr + 3]
+            if msb1 & 0xf0 != 0xf0:
+                self.log('Error following inst', hex(msb), hex(lsb), hex(msb1), hex(lsb1))
+            else:
+                f(self, msb, lsb, msb1, lsb1)
+        else:
+            f(self, msb, lsb)
         
         #ch = self.get_uart_put_ch()
         #if ch != 0:
@@ -617,12 +647,12 @@ class SimPic():
         if self.stopped:
             return False
         
-        lsb = self.code_space[self.pc*2]
-        msb = self.code_space[self.pc*2 + 1]
-        opcode = (msb << 8) + lsb
+        #lsb = self.code_space[self.pc*2]
+        #msb = self.code_space[self.pc*2 + 1]
+        #opcode = (msb << 8) + lsb
         #self.log(hex(msb), hex(lsb))        
-        s = get_pic16_inst_str(opcode, msb, lsb)
-        self.log('pc', tohex(self.pc, 4), tohex(opcode, 4), "   " + s)
+        #s = get_pic16_inst_str(opcode, msb, lsb)
+        
         self.load_inst()
         self.update_sfr()
         
@@ -643,9 +673,15 @@ class SimPic():
         n = self.c_line
         f = self.c_file
         i = 1
+        line = self.c_line
+        #if line > 0:
+            #line += 1
+        #self.log('\n-------------- line = ' + str(line) + ',   ' + str(self.c_file) + ' -----------')        
         while self.c_line == n and self.c_file == f:
             i += 1
-            self.log(tohex(self.pc, 4), self.asm_code)
+            
+            #self.log(tohex(self.pc, 4), self.asm_code)
+            
             self.load_inst()
             if i > 100:
                 return 'not finished'
@@ -657,7 +693,7 @@ class SimPic():
                 self.log('#end of simulation')
                 return False
             
-        self.log('-------------- ' + str(self.c_file) + ', line = ' + str(self.c_line) + ' -----------\n')
+        
         return True
     
     #-------------------------------------------------------------------

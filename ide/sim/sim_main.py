@@ -39,6 +39,40 @@ class StyledTextPanel (wx.Panel):
     def __del__(self):
         pass
     
+class TextCtrl(wx.TextCtrl):
+    def __init__(self, parent):
+        wx.TextCtrl.__init__(self, parent, -1, style = wx.TE_MULTILINE|wx.HSCROLL)
+        self.default_style = wx.TextAttr()
+        self.default_style.SetTextColour((0, 0, 0))
+        lst = [(0, 65, 120), (0, 120, 65), (120, 120, 0), (120, 0, 65)]
+        self.styles = []
+        for t in lst:
+            style = wx.TextAttr()
+            style.SetTextColour(t)
+            self.styles.append(style)
+            
+        self.style_index = 0
+        
+    def get_size(self):
+        return len(self.GetValue())    
+    
+    def set_style(self, i):
+        if i == None:
+            self.style = None
+        else:
+            self.style = self.styles[i]
+            
+    def set_next_style(self):
+        self.style_index += 1
+        self.style = self.styles[self.style_index % 4]
+        
+    def log(self, s):
+        p0 = self.get_size()
+        self.WriteText(s)
+        if self.style :
+            self.SetStyle(p0 + 8, p0 + len(s), self.style)
+            self.style = None
+        
 #---------------------------------------------------------------------------------------------------
 class TextPanel (wx.Panel):
     
@@ -49,7 +83,7 @@ class TextPanel (wx.Panel):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         
-        self.text = wx.TextCtrl(self, -1, style = wx.TE_MULTILINE|wx.HSCROLL)         
+        self.text = TextCtrl(self)
         sizer.Add(self.text, 1, wx.EXPAND)
         
         self.SetSizer(sizer)
@@ -243,6 +277,7 @@ class DebugFrame (wx.Frame):
         
         sim = self.sim
         if sim and not sim.stopped :
+            self.log_view.set_next_style()
             sim.step()
             
             doc = self.get_doc(sim.c_file)
@@ -363,12 +398,14 @@ class DebugFrame (wx.Frame):
     def OnStep(self, event):
         if self.sim and not self.sim.stopped :
             #self.sim.step_c_line()
+            self.log_view.set_style(None)
             self.sim.step()
             self.sim_update()
             
     #-------------------------------------------------------------------
     def OnStepOver(self, event):
         if self.sim and not self.sim.stopped :
+            self.log_view.set_style(None)
             result = self.sim.step_over()
             if result == 'not finished':
                 pass
@@ -377,12 +414,14 @@ class DebugFrame (wx.Frame):
     #-------------------------------------------------------------------
     def OnStepOut(self, event):
         if self.sim and not self.sim.stopped :
+            self.log_view.set_style(None)
             self.sim.step_out()
             self.sim_update()
             
     #-------------------------------------------------------------------
     def OnStop(self, event):
         if self.sim is not None:
+            self.log_view.set_next_style()
             self.log("Simulation aborted!\n")
             self.sim.stop()
             
@@ -396,7 +435,11 @@ class DebugFrame (wx.Frame):
         
     #-------------------------------------------------------------------
     def log(self, s):
-        self.log_view.WriteText(s)
+        #import inspect
+        #s1 = inspect.stack()[1][3] + " "
+        if s.find('------') >= 0:
+            self.log_view.set_next_style()
+        self.log_view.log(s)
         
     #-------------------------------------------------------------------
     def show_debug(self):

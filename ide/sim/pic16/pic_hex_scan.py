@@ -75,129 +75,6 @@ def read_file(file_path):
     return utils.read_file(file_path)
     
 #----------------------------------------------------------------------------
-def pic14_inst(s):
-    v = int('0x' + s, 16)
-    
-    msb = (v >> 8) & 0xff
-    lsb = v & 0xff
-    msb = msb & 0x3f
-
-    v0 = b_13_12 = (msb >> 4) & 0xf #bit 13, 12
-    v1 = b_11_10_9_8 = msb & 0xf        #bit 11, 10, 9, 8
-    v2 = b_7_6_5_4 = (lsb >> 4) & 0xf
-    v3 = b_3_2_1_0 = lsb & 0xf
-    f = get_bits(v, 0, 6)
-    inst = ''
-    if v0 == 0 and v1 == 0:
-        #0000 : 0000 0000 0000 0000 : NOP   No operation (MOVW 0,W)
-        #0008 : 0000 0000 0000 1000 : RETURN   Return from subroutine, W unmodified
-        #0009 : 0000 0000 0000 1001 : RETFIE   Return from interrupt
-        #0062 : 0000 0000 0110 0010 : OPTION   Copy W to OPTION register
-        #0063 : 0000 0000 0110 0011 : SLEEP   Go into standby mode
-        #0064 : 0000 0000 0110 0100 : CLRWDT   Restart watchdog timer
-        #0065,0066,0067 : 0000 0000 0110 01f : TRIS f   Copy W to tri-state register (f = 1, 2 or 3)
-        if lsb == 0x00: inst = 'nop'
-        elif lsb == 0x08: inst = 'return'
-        elif lsb == 0x09: inst = 'retfie'
-        elif lsb == 0x62: inst = 'option'
-        elif lsb == 0x63: inst = 'sleep'
-        elif lsb == 0x64: inst = 'clrwdt'
-        elif lsb == 0x65: inst = 'tris1'
-        elif lsb == 0x66: inst = 'tris2'
-        elif lsb == 0x67: inst = 'tris3'
-        else:
-            inst = 'movwf ' + hex(f)
-    elif v0 == 0:
-        # d - bit7, f bit0-6
-        #00 : 0000 0000 1 f : MOVWF f   f <- W
-        #01 : 0000 0001 d f : CLR f,d(bit 7)  Z dest <- 0, usually written CLRW or CLRF f
-        #02 : 0000 0010 d f : SUBWF f,d C Z dest <- f-W (dest <- f+~W+1)
-        #03 : 0000 0011 d f : DECF f,d  Z dest <- f-1
-        #04 : 0000 0100 d f : IORWF f,d  Z dest <- f | W, logical inclusive or
-        #05 : 0000 0101 d f : ANDWF f,d  Z dest <- f & W, logical and
-        #06 : 0000 0110 d f : XORWF f,d  Z dest <- f ^ W, logical exclusive or
-        #07 : 0000 0111 d f : ADDWF f,d C Z dest <- f+W
-        #08 : 0000 1000 d f : MOVF f,d  Z dest <- f
-        #09 : 0000 1001 d f : COMF f,d  Z dest <- ~f, bitwise complement
-        #0a : 0000 1010 d f : INCF f,d  Z dest <- f+1
-        #0b : 0000 1011 d f : DECFSZ f,d   dest <- f-1, then skip if zero
-        #0c : 0000 1100 d f : RRF f,d C  dest <- CARRY<<7 | f>>1, rotate right through carry
-        #0d : 0000 1101 d f : RLF f,d C  dest <- f<<1 | CARRY, rotate left through carry
-        #0e : 0000 1110 d f : SWAPF f,d   dest <- f<<4 | f>>4, swap nibbles
-        #0f : 0000 1111 d f : INCFSZ f,d   dest <- f+1, then skip if zero        
-               
-        lst = ['movwf', 'clrf', 'subwf', 'decf', 'iorwf', 'andwf', 'xorwf', 'addwf', 'movf', 'comf', 'incf', 'decfsz', 'rrf', 'rlf', 'swapf', 'incfsz']
-        inst = lst[v1]
-        d = get_bit(v, 7)
-        #f = get_bits(v, 0, 6)
-        inst += ' ' + hex(f) 
-        if d == 0:
-            inst += ', w'
-        elif v1 != 0x01:
-            inst += ', f'
-  
-    elif v0 == 1:
-        #& 0xfc
-        #10 : 0001 00 : bit(3, b7-b9) f(7, b0-b6) BCF f,b   Clear bit b of f
-        #14 : 0001 01 : bit f BSF f,b   Set bit b of f
-        #18 : 0001 10 : bit f BTFSC f,b   Skip if bit b of f is clear
-        #1c : 0001 11 : bit f BTFSS f,b   Skip if bit b of f is set        
-        lst = ['bcf', 'bsf', 'btfsc', 'btfss']
-        v1 &= 0xc
-        #f = v3 & 0x7f
-        b = get_bits(v, 7, 9)
-        
-        if v1 == 0:
-            inst = 'bcf'
-        elif v1 == 4:
-            inst = 'bsf'
-        elif v1 == 0x8:
-            inst = 'btfsc'
-        elif v1 == 0xc:
-            inst = 'btfss'
-        inst += ' ' + hex(f) + ',' + hex(b)
-    elif v0 == 2:
-        #& 0xf8
-        #20 : 0010 0 : k CALL k   Call subroutine
-        #28 : 0010 1 : k GOTO k   Jump to address k        
-        if v1 == 0:
-            inst = 'call'
-        elif v1 == 8:
-            inst = 'goto'
-        k = get_bits(v, 0, 10)
-        inst += ' ' + hex(k)
-    elif v0 == 3:
-        #30 : 0011 00 : x x k MOVLW k   W <- k
-        #34 : 0011 01 : x x k RETLW k   W <- k, then return from subroutine
-        #38 : 0011 1000 : k IORLW k  Z W <- k | W, bitwise logical or
-        #39 : 0011 1001 : k ANDLW k  Z W <- k & W, bitwise and
-        #3a : 0011 1010 : k XORLW k  Z W <- k ^ W, bitwise exclusive or
-        #3b : 0011 1011 : k (reserved)
-        #3c : 0011 110 : x k SUBLW k C Z W <- k-W (dest <- k+~W+1)
-        #3e : 0011 111 : x k ADDLW k C Z W <- k+W
-        
-        if v1 == 0:
-            inst = 'movlw'
-        elif v1 == 4:
-            inst = 'retlw'
-        elif v1 == 8:
-            inst = 'iorlw'
-        elif v1 == 9:
-            inst = 'andlw'
-        elif v1 == 0xa:
-            inst = 'xorlw'
-        elif v1 == 0xb:
-            inst = 'reserved'
-        elif v1 == 0xc:
-            inst = 'sublw'
-        elif v1 == 0xe:
-            inst = 'addlw'
-        k = v3
-        inst += ' ' + hex(k)
-            
-    return inst
-
-#----------------------------------------------------------------------------
 def pic16_inst(s):
     v = int('0x' + s, 16)
 
@@ -351,14 +228,14 @@ def pic16_inst(s):
 
         inst += ' ' + hex(n)
     elif v0 == 0xE:
-        #0xE0  1110 0000 n BZ n    Branch if PSR.Z is set
-        #0xE1  1110 0001 n BNZ n    Branch if PSR.Z is clear
-        #0xE2  1110 0010 n BC n    Branch if PSR.C is set
-        #0xE3  1110 0011 n BNC n    Branch if PSR.C is clear
-        #0xE4  1110 0100 n BOV n    Branch if PSR.V is set
-        #0xE5  1110 0101 n BNOV n    Branch if PSR.V is clear
-        #0xE6  1110 0110 n BN n    Branch if PSR.N is set
-        #0xE7  1110 0111 n BNN n    Branch if PSR.N is clear
+        #0xE0  1110 0000 nnnn nnnn  BZ n    Branch if PSR.Z is set
+        #0xE1  1110 0001 nnnn nnnn  BNZ n    Branch if PSR.Z is clear
+        #0xE2  1110 0010 nnnn nnnn  BC n    Branch if PSR.C is set
+        #0xE3  1110 0011 nnnn nnnn  BNC n    Branch if PSR.C is clear
+        #0xE4  1110 0100 nnnn nnnn  BOV n    Branch if PSR.V is set
+        #0xE5  1110 0101 nnnn nnnn  BNOV n    Branch if PSR.V is clear
+        #0xE6  1110 0110 nnnn nnnn  BN n    Branch if PSR.N is set
+        #0xE7  1110 0111 nnnn nnnn  BNN n    Branch if PSR.N is clear
         #0xE8 - 0xEB  1110 10  (reserved)
         #0xEC-0xED  1110 110 s k (lsbits) CALL k[, FAST]    Call subroutine
         #0xEE  1110 1110 00 f k (msb) LFSR f,k    Move 12-bit literal to FSRf
@@ -366,7 +243,7 @@ def pic16_inst(s):
                'reserved','reserved','reserved','reserved',
                'CALL', 'CALL', 'LFSR'
                ]
-        inst = lst[v1 >> 1]
+        inst = lst[v1]
         
     elif v0 == 0xF:
         # Must check with prev inst
