@@ -39,6 +39,8 @@ class StyledTextPanel (wx.Panel):
     def __del__(self):
         pass
     
+    
+#---------------------------------------------------------------------------------------------------
 class TextCtrl(wx.TextCtrl):
     def __init__(self, parent):
         wx.TextCtrl.__init__(self, parent, -1, style = wx.TE_MULTILINE|wx.HSCROLL)
@@ -73,6 +75,7 @@ class TextCtrl(wx.TextCtrl):
             self.SetStyle(p0 + 8, p0 + len(s), self.style)
             self.style = None
         
+        
 #---------------------------------------------------------------------------------------------------
 class TextPanel (wx.Panel):
     
@@ -91,6 +94,7 @@ class TextPanel (wx.Panel):
     
     def __del__(self):
         pass
+
 
 #---------------------------------------------------------------------------------------------------
 class PanelSplitter (wx.Panel):
@@ -124,7 +128,6 @@ class PanelSplitter (wx.Panel):
         self.splitter.SetSashPosition(0)
         self.splitter.Unbind(wx.EVT_IDLE)
 
-
         
 #---------------------------------------------------------------------------------------------------
 class MemViewer(wx.StaticBoxSizer):
@@ -143,7 +146,6 @@ class MemViewer(wx.StaticBoxSizer):
                         
         self.mem_text.SetValue(s)
         
-
     
 #---------------------------------------------------------------------------------------------------
 class DebugFrame (wx.Frame):
@@ -272,10 +274,14 @@ class DebugFrame (wx.Frame):
         
     #-------------------------------------------------------------------
     def OnTimer2Timer(self, event):
+        sim = self.sim
+
+        if sim.step_mode:
+            sim.step_tick()
+        
         if self.pause:
             return
         
-        sim = self.sim
         if sim and not sim.stopped :
             self.log_view.set_next_style()
             sim.step()
@@ -289,8 +295,7 @@ class DebugFrame (wx.Frame):
                     self.log(str(doc.breakpoints))
                     self.pause = True
                     self.toolbar.btn_pause()
-        
-            
+                    
     #-------------------------------------------------------------------
     def sim_run(self, command):
         
@@ -437,6 +442,8 @@ class DebugFrame (wx.Frame):
     def log(self, s):
         #import inspect
         #s1 = inspect.stack()[1][3] + " "
+        #if self.sim.step_mode:
+        #    return
         if s.find('------') >= 0:
             self.log_view.set_next_style()
         self.log_view.log(s)
@@ -787,26 +794,7 @@ class SimFrame (wx.Frame):
     #-------------------------------------------------------------------
     def OnContinue(self, event):
         self.pause = False
-        
-    #-------------------------------------------------------------------
-    def OnStep(self, event):
-        if self.sim and not self.sim.stopped :
-            #self.sim.step_c_line()
-            self.sim.step()
-            self.sim_update()
-            
-    #-------------------------------------------------------------------
-    def OnStepOver(self, event):
-        if self.sim and not self.sim.stopped :
-            self.sim.step_over()
-            self.sim_update()
-            
-    #-------------------------------------------------------------------
-    def OnStepOut(self, event):
-        if self.sim and not self.sim.stopped :
-            self.sim.step_out()
-            self.sim_update()
-            
+                    
     #-------------------------------------------------------------------
     def OnStop(self, event):
         if self.sim is not None:

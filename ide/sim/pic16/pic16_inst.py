@@ -40,7 +40,7 @@ def inst_msb_0(sim, msb, lsb):
 #----------------------------------------------------------------------------
 def inst_reset(sim, msb, lsb):
     #0000 0000 1111 1111   0x00FF,RESET cleared Software reset
-    pass
+    sim.reset()
 
 #----------------------------------------------------------------------------
 def inst_nop(sim, msb, lsb):
@@ -50,12 +50,12 @@ def inst_nop(sim, msb, lsb):
 #----------------------------------------------------------------------------
 def inst_sleep(sim, msb, lsb):
     #0000 0000 0000 0011   0x0003,SLEEP    Go into standby mode
-    pass
+    sim.sleep()
 
 #----------------------------------------------------------------------------
 def inst_clrwdt(sim, msb, lsb):
     #0000 0000 0000 0100   0x0004,CLRWDT    Restart watchdog timer
-    pass
+    sim.clear_watch_dog
 
 #----------------------------------------------------------------------------
 def inst_push(sim, msb, lsb):
@@ -121,13 +121,37 @@ def inst_movlw(sim, msb, lsb):
     # w = 0x5a
     sim.set_wreg(lsb)
     
+#----------------------------------------------------------------------------
+def inst_addlw(sim, msb, lsb):
+    # 0000 111f kkkk kkkk, k -> W + k , The eight-bit literal 'k' is loaded into W
+    # N OV DC Z C
+    sim.clear_status_flags()
+    w = sim.get_wreg()
+    k = lsb
+    v = w + k
+    if (w & 0xf) + (k & 0xf) > 0xf:
+        sim.set_dc(1)
+    if v > 0xff:
+        v &= 0xff
+        sim.set_c(1)
+        sim.set_ov(1)
     
+    if v == 0:
+        sim.set_z(1)
+        
+    if (v & 0x80) != 0:
+        sim.set_n(1)
+        
+    sim.set_wreg(v)
+    
+#----------------------------------------------------------------------------
 def get_daf(sim, msb, lsb):
     d = get_bit(msb, 1)
     a = get_bit(msb, 0)
     f = sim.get_freg(a, lsb)
     return d, a, f
 
+#----------------------------------------------------------------------------
 def get_wdaf(sim, msb, lsb):
     w = sim.get_wreg()
     d = get_bit(msb, 1)
@@ -704,7 +728,7 @@ inst_handler = [
     inst_reserved,    #0C
     inst_reserved,    #0D
     inst_movlw,       #0E
-    inst_reserved,    #0F
+    inst_addlw,      #0F
     inst_iorwf,    #10
     inst_iorwf,    #11
     inst_iorwf,    #12
@@ -969,6 +993,8 @@ def gen_pic16_inst_table():
                 inst_table[msb] = 'inst_decf'
             elif v1 == 0xE:
                 inst_table[msb] = 'inst_movlw'
+            elif v1 == 0xF:
+                inst_table[msb] = 'inst_addlw'
         elif v0 == 0x1:
             lst = ['iorwf', 'andwf', 'xorwf', 'comf']
             inst_table[msb] = 'inst_' + lst[v1 >> 2]
@@ -1061,6 +1087,8 @@ def get_pic16_inst_str(v, msb, lsb):
             inst = 'decf ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
         elif v1 == 0xE:
             inst = 'movlw ' + hex(lsb)
+        elif v1 == 0xF:
+            inst = 'addlw ' + hex(lsb)
             
     elif v0 == 0x1:
         lst = ['iorwf', 'andwf', 'xorwf', 'comf']

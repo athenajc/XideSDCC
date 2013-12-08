@@ -101,6 +101,7 @@ class SimPic():
         self.load_code()
         self.mem_access_list = []
         self.status_bits_name = ['C', 'DC', 'Z', 'OV', 'N']
+        self.step_mode = None
 
     #-------------------------------------------------------------------
     def log(self, *args):
@@ -545,6 +546,38 @@ class SimPic():
         self.set_pc(self.pc + 1)
         
     #-------------------------------------------------------------------
+    def reset(self):
+        self.log("     reset - not tested yet")
+        self.bank_addr = 0
+
+        for k, v in self.sfr_addr.items():
+            self.reg_table[k] = 0
+
+        self.c_line = 0
+        self.asm_code = ""
+        
+        self.stack = []
+        self.stack_depth = 0
+        self.err = 0
+        self.sbuf_list = []
+        self.init_memory()
+        self.init_registers()
+        self.c_file = ""
+        self.c_line = 0
+        self.load_code()
+        self.mem_access_list = []
+        self.step_mode = None
+        
+    #-------------------------------------------------------------------
+    def sleep(self):
+        self.log("     sleep - not yet implemented")
+        self.set_pc(0)
+        
+    #-------------------------------------------------------------------
+    def clear_watch_dog(self):
+        self.log("     clear watchdog - not yet implemented")
+        
+    #-------------------------------------------------------------------
     def code_space_fill(self, addr, sz, ddstr):
         i1 = 0
         i2 = 2
@@ -599,7 +632,7 @@ class SimPic():
         #inst_call,    #ED
         #inst_lfsr,    #EE
         #inst_goto,    #EF        
-        if (msb & 0xc0) == 0xc0:
+        if (msb & 0xf0) == 0xc0:
             inst_len = 2
         elif msb >= 0xEC and msb <= 0xEF:
             inst_len = 2
@@ -617,10 +650,9 @@ class SimPic():
         if inst_len == 2:
             lsb1 = self.code_space[addr + 2]
             msb1 = self.code_space[addr + 3]
-            if msb1 & 0xf0 != 0xf0:
-                self.log('Error following inst', hex(msb), hex(lsb), hex(msb1), hex(lsb1))
-            else:
-                f(self, msb, lsb, msb1, lsb1)
+            # if msb1 & 0xf0 != 0xf0:
+            #    self.log('Error following inst', hex(msb), hex(lsb), hex(msb1), hex(lsb1))
+            f(self, msb, lsb, msb1, lsb1)
         else:
             f(self, msb, lsb)
         
@@ -641,18 +673,14 @@ class SimPic():
         
         #while self.c_line == 0:
         #    self.load_inst()
-            
+        
     #-------------------------------------------------------------------
     def step(self):
         if self.stopped:
             return False
         
-        #lsb = self.code_space[self.pc*2]
-        #msb = self.code_space[self.pc*2 + 1]
-        #opcode = (msb << 8) + lsb
-        #self.log(hex(msb), hex(lsb))        
-        #s = get_pic16_inst_str(opcode, msb, lsb)
-        
+        self.step_mode = None
+
         self.load_inst()
         self.update_sfr()
         
@@ -666,32 +694,73 @@ class SimPic():
         return True
     
     #-------------------------------------------------------------------
-    def step_c_line(self):
+    def step_tick(self):
         if self.stopped:
+            return False
+        if self.step_mode == None:
             return False
         
         n = self.c_line
         f = self.c_file
         i = 1
-        line = self.c_line
+        
+        while self.c_line == n and self.c_file == f:
+            i += 1
+            self.load_inst()
+            if i > 10:
+                 break
+            
+        self.update_sfr()
+        
+        if self.step_mode == 'c_line':
+            if self.c_line != self.start_line or self.c_file != self.start_file:
+                self.step_mode = None
+        elif self.step_mode == 'over':
+            if self.stack_depth == self.start_stack_depth:
+                if self.c_line != self.start_line or self.c_file != self.start_file:
+                    self.step_mode = None
+        elif self.step_mode == 'out':
+            if self.stack_depth < self.start_stack_depth:
+                self.step_mode = None
+        
+        if self.err:
+            self.log("#simulation Error")
+            return False
+        if self.pc == 0 :
+            self.log("#end of simulation")
+            return False
+        
+        return True    
+    
+    #-------------------------------------------------------------------
+    def step_c_line(self):
+        if self.stopped:
+            return False
+        self.step_mode = 'c_line'
+        self.start_line = self.c_line
+        self.start_file = self.c_file
+        #n = self.c_line
+        #f = self.c_file
+        #i = 1
+        #line = self.c_line
         #if line > 0:
             #line += 1
         #self.log('\n-------------- line = ' + str(line) + ',   ' + str(self.c_file) + ' -----------')        
-        while self.c_line == n and self.c_file == f:
-            i += 1
+        #while self.c_line == n and self.c_file == f:
+            #i += 1
             
-            #self.log(tohex(self.pc, 4), self.asm_code)
+            ##self.log(tohex(self.pc, 4), self.asm_code)
             
-            self.load_inst()
-            if i > 100:
-                return 'not finished'
+            #self.load_inst()
+            #if i > 100:
+                #return 'not finished'
             
-            if self.err:
-                self.log('#simulation Error')
-                return False
-            if self.pc == 0 or self.stopped:
-                self.log('#end of simulation')
-                return False
+            #if self.err:
+                #self.log('#simulation Error')
+                #return False
+            #if self.pc == 0 or self.stopped:
+                #self.log('#end of simulation')
+                #return False
             
         
         return True
@@ -702,23 +771,26 @@ class SimPic():
 
         if self.stopped:
             return False
-        
-        s0 = self.stack_depth
-        if not self.step_c_line():
-            return False
-        s1 = self.stack_depth
+        self.step_mode = 'over'
+        self.start_stack_depth = self.stack_depth
+        self.start_line = self.c_line
+        self.start_file = self.c_file
+        #s0 = self.stack_depth
+        #if not self.step_c_line():
+        #    return False
+        #s1 = self.stack_depth
         
         # check stack depth if same means at same function        
-        if s1 <= s0:
-            return True
-        else:
-            i = 0
-            while self.stack_depth > s0:
-                i += 1
-                if i > 100:
-                    return False
-                if not self.step_c_line():
-                    return False
+        #if s1 <= s0:
+            #return True
+        #else:
+            #i = 0
+            #while self.stack_depth > s0:
+                #i += 1
+                #if i > 100:
+                    #return False
+                #if not self.step_c_line():
+                    #return False
         return True
         
     #-------------------------------------------------------------------
@@ -726,13 +798,14 @@ class SimPic():
         #self.log("step_out")
         if self.stopped:
             return False
-        
-        s0 = self.stack_depth
+        self.step_mode = 'out'
+        self.start_stack_depth = self.stack_depth
+        #s0 = self.stack_depth
         
         # check stack depth if same means at same function
-        while self.stack_depth >= s0:
-            if not self.step_c_line():
-                return False
+        #while self.stack_depth >= s0:
+            #if not self.step_c_line():
+                #return False
             
         return True
     

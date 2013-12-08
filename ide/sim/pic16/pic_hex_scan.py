@@ -85,7 +85,7 @@ def pic16_inst2(s):
     
     op = msb
     
-    if (op & 0xC0) == 0xC0:
+    if (op & 0xF0) == 0xC0:
         #0xC? 1100 source      s of MOVFF s,d    Move absolute
         #0xF? 1111 destination d of MOVFF s, d
         src = ((msb & 0xf) << 8) | lsb
@@ -172,6 +172,8 @@ def pic16_inst(s):
             inst = 'decf ' + hex(f) + ', ' + hex(d) + ', ' + str(a)
         elif v1 == 0xE:
             inst = 'movlw ' + hex(lsb)
+        elif v1 == 0xF:
+            inst = 'addlw ' + hex(lsb)
             
     elif v0 == 0x1:
         #0x10-0x13 0001 00 d a f IORWF f,d,a  Z N dest <- f | W, logical inclusive or
@@ -352,11 +354,12 @@ def pic_hex_scan(frame, fn, mcu):
             append_to_prev = False
         
         j = 9
+        n = len(line) - 2
         for i in range(record_bytes / 2):
             lsb = line[j:j+2]
             msb = line[j+2:j+4]
             op = int('0x' + msb, 16)
-            if (op & 0xc0) == 0xc0:
+            if (op & 0xF0) == 0xc0:
                 inst_len = 2
             elif op >= 0xEC and op <= 0xEF:
                 inst_len = 2
@@ -372,8 +375,10 @@ def pic_hex_scan(frame, fn, mcu):
                 msb1 = line[j+2:j+4]
                 r.dd.append(msb + lsb + msb1 + lsb1)
                 j += 4
-            if j >= record_bytes:
+                
+            if j >= n:
                 break
+            
         
         if append_to_prev == False:
             lst.append(r)
