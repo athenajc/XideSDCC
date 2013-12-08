@@ -311,7 +311,8 @@ class UartTextViewer(wx.Panel):
         s1 = ''.join(chr(i) for i in sbuf)
         s += s1 
         
-        lst = {'PORTA', 'PORTB', 'PC', 'WREG', 'BSR', 'PSR', 'STATUS', 'INDF0', 'INDF1'}
+        lst = {'PORTA', 'PORTB', 'PC', 'WREG', 'BSR', 'PSR', 'STATUS', 'INDF0', 'INDF1', 
+               'TABLAT', 'TBLPTRH', 'TBLPTRL'}
         for k in lst:
             v = sim.sfr_addr.get(k, 0)
             s += k + ':' + hex(v) + ' ' + hex(sim.mem[v]) + '\n'

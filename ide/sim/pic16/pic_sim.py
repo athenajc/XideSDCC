@@ -65,6 +65,7 @@ pic16_devices = ['18f1220', '18f1230', '18f1320', '18f1330', '18f13k22',
                 '18fam']
 
 
+    
 #----------------------------------------------------------------------------
 class SimPic():    
     def __init__(self, frame, hex_file, source_list, mcu_name, mcu_device):
@@ -75,7 +76,7 @@ class SimPic():
         self.hex_file = hex_file
         
         self.bank_addr = 0
-        
+
         #self.get_mcu_name()
         #print self.mcu_name, self.dev_name
         self.sfr_addr = get_sfr_addr(self.dev_name)
@@ -165,7 +166,65 @@ class SimPic():
     #-------------------------------------------------------------------
     def select_access_bank(self):
         self.log("     set bank")
+    
+    #-------------------------------------------------------------------
+    def get_tblptr(self):    
+        addr_h = self.get_sfr('TBLPTRH')
+        addr_l = self.get_sfr('TBLPTRL')
+        addr = (addr_h << 8) + addr_l
+        return addr 
+    
+    #-------------------------------------------------------------------
+    def set_tblptr(self, addr):    
+        addr_h = (addr >> 8) & 0xff
+        addr_l = addr & 0xff
+        self.set_sfr('TBLPTRH', addr_h)
+        self.set_sfr('TBLPTRL', addr_l)
         
+    #-------------------------------------------------------------------
+    def read_tbl(self, mode):
+        #0000 0000 0000 1000   0x0008,TBLRD*    Table read
+        #0000 0000 0000 1001   0x0009,TBLRD*+   Table read with postincrement
+        #0000 0000 0000 1010   0x000A,TBLRD*-   Table read with postdecrement
+        #0000 0000 0000 1011   0x000B,TBLRD+*   Table read with pre-increment            
+        
+        addr = self.get_tblptr()
+        
+        if mode == 3:
+            addr += 1
+        
+        v = self.mem[addr]
+        self.set_sfr('TABLAT', v)
+        
+        if mode == 1:
+            addr += 1
+        elif mode == 2:
+            addr -= 1
+            
+        self.set_tblptr(addr)
+        
+    #-------------------------------------------------------------------
+    def write_tbl(self, mode):
+        #0000 0000 0000 1000   0x0008,TBLWR*    Table write
+        #0000 0000 0000 1101   0x0009,TBLWR*+   Table write with postincrement
+        #0000 0000 0000 1110   0x000A,TBLWR*-   Table write with postdecrement
+        #0000 0000 0000 1111   0x000B,TBLWR+*   Table write with pre-increment
+        addr = self.get_tblptr()
+        
+        if mode == 3:
+            addr += 1
+        
+        v = self.mem[addr]
+        self.set_sfr('TABLAT', v)
+        
+        if mode == 1:
+            addr += 1
+        elif mode == 2:
+            addr -= 1
+            
+        self.set_tblptr(addr)
+        
+    
     #-------------------------------------------------------------------
     def get_mem(self, addr):
         v = self.mem[addr]
@@ -211,27 +270,62 @@ class SimPic():
             v = clear_bit(v, bit)
             
         self.set_mem(addr, v)
-        
+              
     #-------------------------------------------------------------------
     def set_sfr(self, k, v):
         #self.log('set sfr ', k, v)
         addr = self.sfr_addr[k]
         self.set_mem(addr, v)
         
+        # update reg_table
+        self.reg_table[k] = v
+        
     #-------------------------------------------------------------------
     def get_sfr(self, k):
         addr = self.sfr_addr[k]
         v = self.get_mem(addr)
+        
+        # update reg_table
+        self.reg_table[k] = v
         return v
     
     #-------------------------------------------------------------------
-    def update_sfr(self):     
+    def update_sfr(self):
         pass
         #n = 0x1000
         #for k, v in self.sfr_addr.items():
             #if v < n:
                 #self.set_sfr(k, self.mem[v])
+                
+    #-------------------------------------------------------------------
+    def set_freg(self, banksel, addr, v):
+        # banksel == 0, Select bank0
+        # banksel == 1, Select bank according BSR
+        if banksel == 1:
+            addr += self.bank_addr
+        #self.log("     set freg "+ hex(addr) + " = "+hex(v))
+        #self.freg[addr] = v
+        
+        self.set_mem(addr, v)
+        if addr == 3:
+            self.status_reg = v
+                    
+        #self.mem[addr] = v
+        #key = self.mem_sfr_map.get(addr, None)
+        #if key:
+        #    self.set_reg(key, v)
+        
+    #-------------------------------------------------------------------
+    def get_freg(self, banksel, addr):
+        # banksel == 0, Select bank0
+        # banksel == 1, Select bank according BSR
+        if banksel == 1:
+            addr += self.bank_addr
             
+        v = self.mem[addr]
+        #self.log("     get freg " + hex(addr) + " = "+hex(v))
+        return v
+    
     #-------------------------------------------------------------------
     def set_reg(self, k, v):
         self.reg_table[k] = v
@@ -252,11 +346,25 @@ class SimPic():
         self.wreg = v
         self.log("     get w = "+hex(v))
         return v
-        
+    
+    #-------------------------------------------------------------------
+    def store_wfreg(self, d, a, lsb, v):
+        if v == 0:
+            self.set_z(1)
+        elif v & 0x80:
+            self.set_n(1)
+                
+        if d == 0:
+            self.set_wreg(v)
+        else:
+            self.set_freg(a, lsb, v)
+
     #-------------------------------------------------------------------
     def set_bsr(self, v):
         self.log("     set bsr = "+hex(v))
         self.set_sfr('BSR', v)
+        self.bsr = v
+        self.bank_addr = v * 256
         
     #-------------------------------------------------------------------
     def get_bsr(self):
@@ -289,7 +397,13 @@ class SimPic():
         else:
             self.status_reg = clear_bit(self.status_reg, bit)
         self.set_reg('STATUS', self.status_reg)
-        
+    
+    #-------------------------------------------------------------------
+    def clear_status_flags(self):
+        # clear bit 0 - 5  N OV Z DC C
+        self.status_reg = self.status_reg & 0xe0
+        self.set_reg('STATUS', self.status_reg)
+    
     #-------------------------------------------------------------------
     def set_n(self, v):
         self.set_status_reg(4, v)
@@ -363,6 +477,13 @@ class SimPic():
         
     #-------------------------------------------------------------------
     def jump_rel(self, v):
+        offset = val8(v)
+        
+        self.log("     jump_rel  "+str(offset) )
+        self.set_pc(self.pc + offset)
+        
+    #-------------------------------------------------------------------
+    def ljump_rel(self, v):
         # bit 0-10, 0x7ff
         if v & 0x400:
             offset = (v & 0x3ff) - 0x400
@@ -379,14 +500,14 @@ class SimPic():
         self.stack_depth += 1
         
     #-------------------------------------------------------------------
-    def ret(self):
+    def ret(self, fast):
         addr = self.pop()
         self.set_pc(addr)
         self.stack_depth -= 1
         self.log("****** ret set pc = "+tohex(addr, 4), hex(self.get_reg('PC')))
         
     #-------------------------------------------------------------------
-    def retfie(self, s):
+    def retfie(self, fast):
         # Return from interrupt.
         # Stack is popped and Top-of-Stack(TOS) is loaded into the PC.
         # Interrupts are enabled by setting either the high or low priority gloable interrupt enbale bit.
@@ -445,7 +566,7 @@ class SimPic():
     #-------------------------------------------------------------------
     def load_inst(self):
         # get current program counter 
-        addr = self.pc   
+        addr = self.pc * 2
         if addr < len(self.addr_map_lst):
             t = self.addr_map_lst[addr]
             if t != 0:
@@ -457,8 +578,8 @@ class SimPic():
             self.c_line = 0
             self.asm_code = ""
         
-        lsb = self.code_space[addr*2]
-        msb = self.code_space[addr*2 + 1]
+        lsb = self.code_space[addr]
+        msb = self.code_space[addr + 1]
         opcode = (msb << 8) + lsb
         #self.log('**************** ', hex(msb), hex(lsb))
         
@@ -468,7 +589,7 @@ class SimPic():
         #self.log('**************** pc ', hex(self.pc))
         f = inst_handler[msb]
         s = get_pic16_inst_str(opcode, msb, lsb)
-        self.log("\n\n---------", tohex(addr, 2), hex(msb), hex(lsb), '<' + str(f)[10:20]+'>')
+        self.log("\n\n---------", tohex(addr/2, 2), hex(msb), hex(lsb), '<' + str(f)[10:20]+'>')
         #self.log("------- asm_code    ", self.c_line, self.asm_code)
         #self.log("------- get inst str", s)
         f(self, msb, lsb)

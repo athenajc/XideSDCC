@@ -875,13 +875,13 @@ class SimFrame (wx.Frame):
         event.Skip()
         
         
-        
+
         
 
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    
     app = wx.PySimpleApp()    
-
+    
     #lst = ["/home/athena/src/8051/BlinkLEDs/main.c"]    
     #lst = ["/home/athena/src/8051/blink_c/blink1.c","/home/athena/src/8051/blink_c/delay_ms.c","/home/athena/src/8051/blink_c/paulmon2.c"]
     if wx.Platform == '__WXMSW__' :

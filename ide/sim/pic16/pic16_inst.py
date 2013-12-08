@@ -1,5 +1,6 @@
 import os
 import utils
+from utils import *
 
 #----------------------------------------------------------------------------
 def get_bit(v, i):
@@ -38,55 +39,78 @@ def inst_msb_0(sim, msb, lsb):
         
 #----------------------------------------------------------------------------
 def inst_reset(sim, msb, lsb):
+    #0000 0000 1111 1111   0x00FF,RESET cleared Software reset
     pass
+
 #----------------------------------------------------------------------------
 def inst_nop(sim, msb, lsb):
+    #0000 0000 0000 0000   0x0000,NOP    No operation
     pass
+
 #----------------------------------------------------------------------------
 def inst_sleep(sim, msb, lsb):
+    #0000 0000 0000 0011   0x0003,SLEEP    Go into standby mode
     pass
+
 #----------------------------------------------------------------------------
 def inst_clrwdt(sim, msb, lsb):
+    #0000 0000 0000 0100   0x0004,CLRWDT    Restart watchdog timer
     pass
-#----------------------------------------------------------------------------
-def inst_nop(sim, msb, lsb):
-    pass
+
 #----------------------------------------------------------------------------
 def inst_push(sim, msb, lsb):
-    pass
+    #0000 0000 0000 0101   0x0005,PUSH    Push PC on top of stack
+    sim.push(sim.pc)
+
 #----------------------------------------------------------------------------
 def inst_pop(sim, msb, lsb):
-    pass
+    #0000 0000 0000 0110   0x0006,POP    Pop (and discard) top of stack
+    sim.set_pc(sim.pop())
+    
 #----------------------------------------------------------------------------
 def inst_daw(sim, msb, lsb):
+    #0000 0000 0000 0111   0x0007,DAW C   Decimal adjust W
     pass
+
 #----------------------------------------------------------------------------
 def inst_tblrd(sim, msb, lsb):
-    pass
+    #0000 0000 0000 1000   0x0008,TBLRD*    Table read
+    #0000 0000 0000 1001   0x0009,TBLRD*+   Table read with postincrement
+    #0000 0000 0000 1010   0x000A,TBLRD*-   Table read with postdecrement
+    #0000 0000 0000 1011   0x000B,TBLRD+*   Table read with pre-increment    
+    sim.read_tbl(lsb & 3)
+
 #----------------------------------------------------------------------------
 def inst_tblwr(sim, msb, lsb):
-    pass
+    #0000 0000 0000 1000   0x0008,TBLWR*    Table write
+    #0000 0000 0000 1101   0x0009,TBLWR*+   Table write with postincrement
+    #0000 0000 0000 1110   0x000A,TBLWR*-   Table write with postdecrement
+    #0000 0000 0000 1111   0x000B,TBLWR+*   Table write with pre-increment    
+    sim.write_tbl(lsb & 3)
+
 #----------------------------------------------------------------------------
 def inst_retfie(sim, msb, lsb):
-    # 0000 0000 0001 000s
-    
+    #0000 0000 0001 000s  0x0010-1,RETFIE [, FAST]    Return from interrupt
+        
     # Return from interrupt.
     # Stack is popped and Top-of-Stack(TOS) is loaded into the PC.
     # Interrupts are enabled by setting either the high or low priority gloable interrupt enbale bit.
     # if s == 1, the contents of the shadow register WS, STATUSS and BSRS are 
     # loaded into their corresponding registers - W, STATUS and BSR.
     # if s == 0, no update of these registers occurs(default)
-    
-    sim.retfie(lsb & 1)
+    fast = lsb & 1
+    sim.retfie(fast)
 
 #----------------------------------------------------------------------------
 def inst_return(sim, msb, lsb):
-    sim.ret()
+    #0000 0000 0001 001 s  0x0012-3,RETURN [, FAST]    Return from subroutine
+    fast = lsb & 1
+    sim.ret(fast)
 
 #----------------------------------------------------------------------------
 def inst_movlb(sim, msb, lsb):
-    # 0x01 0000 0001 0000 k MOVLB    Move literal k to bank select register 
-    k = get_bits(lsb, 0, 5)
+    # 0x01 0000 0001 0000 kkkk MOVLB    Move literal k to bank select register 
+    k = lsb & 0xf
     sim.set_bsr(k)
 
 #----------------------------------------------------------------------------
@@ -97,273 +121,456 @@ def inst_movlw(sim, msb, lsb):
     # w = 0x5a
     sim.set_wreg(lsb)
     
+    
+def get_daf(sim, msb, lsb):
+    d = get_bit(msb, 1)
+    a = get_bit(msb, 0)
+    f = sim.get_freg(a, lsb)
+    return d, a, f
+
+def get_wdaf(sim, msb, lsb):
+    w = sim.get_wreg()
+    d = get_bit(msb, 1)
+    a = get_bit(msb, 0)
+    f = sim.get_freg(a, lsb)
+    return w, d, a, f
+
+    
 #----------------------------------------------------------------------------
 def inst_mulwf(sim, msb, lsb):
     #0x02-0x03 0000 001a ffff ffff MULWF f,a    PRODH:PRODL <- W x f (unsigned)
-    # a is access
-    # a == 0, Access Bank will be selected, overriding the BSR value.
-    # a == 1, BSR will not be overridden(default)
-    w = sim.get_wreg()
-    f = sim.get_mem(lsb)
-    a = get_bit(msb, 0)
-    if a == 0:
-        sim.select_access_bank()
+    #
+    # d == 0, result -> w
+    # d == 1, result -> f
+    #
+    # a == 0, Select bank0
+    # a == 1, Select bank according BSR 
+    #
+    sim.clear_status_flags()
+    w, d, a, f = get_wdaf(sim, msb, lsb)
+
     v = w * f
     sim.set_prod(v)
-    
+
+
 #----------------------------------------------------------------------------
 def inst_decf(sim, msb, lsb):
     #0x04-0x07 0000 01da ffff ffff DECF f,d,a C Z N dest <- f - 1
-    pass
+    # affected flags : C Z N
+    # 0 <= f <= 255  bit0-7, lsb
+    #
+    # d == 0, result -> w
+    # d == 1, result -> f
+    #
+    # a == 0, Select bank0
+    # a == 1, Select bank according BSR 
+    #
+    sim.clear_status_flags()
+    
+    d, a, f = get_daf(sim, msb, lsb)
+        
+    v = f - 1
+    
+    if f == 0:
+        v = 0xff
+        sim.set_c(1)
+    else:
+        v = f - 1
+        
+    if v > 0xff:
+        sim.set_c(1)
+        v = v & 0xff
+        
+    sim.store_wfreg(d, a, lsb, v)
 
 #----------------------------------------------------------------------------
 def inst_iorwf(sim, msb, lsb):
     #0x10-0x13 0001 00da ffff ffff IORWF f,d,a  Z N dest <- f | W, logical inclusive or
-    pass
+    #
+    # d == 0, result -> w
+    # d == 1, result -> f
+    #
+    # a == 0, Select bank0
+    # a == 1, Select bank according BSR 
+    #    
+    sim.clear_status_flags()
+    w, d, a, f = get_wdaf(sim, msb, lsb)
+    v = w | f    
+    sim.store_wfreg(d, a, lsb, v)
 
 #----------------------------------------------------------------------------
 def inst_andwf(sim, msb, lsb):
     #0x14-0x17 0001 01da ffff ffff  ANDWF f,d,a  Z N dest <- f & W, logical and
-    # d == 0, result stored in W
-    # d == 1, result stored to f    
-    # a is access
-    # a == 0, Access Bank will be selected, overriding the BSR value.
-    # a == 1, BSR will not be overridden(default)
-    w = sim.get_wreg()
-    f = sim.get_mem(lsb)
-    d = get_bit(msb, 1)
-    a = get_bit(msb, 0)
-    if a == 0:
-        sim.select_access_bank()
-    v = w & f
-    if d == 0:
-        sim.set_wreg(v)
-    else:
-        sim.set_mem(lsb, v)
+    #
+    # d == 0, result -> w
+    # d == 1, result -> f
+    #
+    # a == 0, Select bank0
+    # a == 1, Select bank according BSR 
+    #
+    sim.clear_status_flags()
+    w, d, a, f = get_wdaf(sim, msb, lsb)
+    v = w & f    
+    sim.store_wfreg(d, a, lsb, v)
     
 #----------------------------------------------------------------------------
 def inst_xorwf(sim, msb, lsb):
-    w = sim.get_wreg()
-    f = sim.get_mem(lsb)
-    d = get_bit(msb, 1)
-    a = get_bit(msb, 0)
-    if a == 0:
-        sim.select_access_bank()
-    v = w | f
-    if d == 0:
-        sim.set_wreg(v)
-    else:
-        sim.set_mem(lsb, v)    
+    #0x18-0x1b 0001 10 d a f XORWF f,d,a  Z N dest <- f ^ W, exclusive or
+    #
+    # d == 0, result -> w
+    # d == 1, result -> f
+    #
+    # a == 0, Select bank0
+    # a == 1, Select bank according BSR 
+    #    
+    sim.clear_status_flags()
+    w, d, a, f = get_wdaf(sim, msb, lsb)
+    v = w ^ f    
+    sim.store_wfreg(d, a, lsb, v)
 
 #----------------------------------------------------------------------------
 def inst_comf(sim, msb, lsb):
-    pass
+    #0x1c-0x1f 0001 11da ffff ffff COMF f,d,a  Z N dest <- ~f, bitwise complement
+    sim.clear_status_flags()
+    
+    d, a, f = get_daf(sim, msb, lsb)
+
+    v = utils.comp8(f)
+
+    sim.store_wfreg(d, a, lsb, v)
+
 #----------------------------------------------------------------------------
 def inst_addwfc(sim, msb, lsb):
     #0x20-0x23 0010 00da ffff ffff ADDWFC f,d,a C Z N dest <- f + W + C
-    pass
-#----------------------------------------------------------------------------
-def inst_addwf(sim, msb, lsb):
-    #0x24-0x27 0010 01da ffff ffff ADDWF f,d,a C Z N dest <- f + W
     # affected flags : C, DC, N, OV, Z
     # 0 <= f <= 255  bit0-7, lsb
+    #
     # d == 0, result -> w
     # d == 1, result -> f
-    # a == 0, access bank will be selected, overriding the BSR value
-    # a == 1, the bank will be selected as per the BSR value(default)
-    w = sim.get_wreg()
-    f = sim.get_mem(lsb)
-    d = get_bit(msb, 1)
-    a = get_bit(msb, 0)
-    if a == 0:
-        sim.select_access_bank()
-    v = w + f
+    #
+    # a == 0, Select bank0
+    # a == 1, Select bank according BSR 
+    #
+    c = sim.get_c()
+    sim.clear_status_flags()
+    w, d, a, f = get_wdaf(sim, msb, lsb)
+
+    v = w + f + c
+    
     if v > 0xf:
         sim.set_dc(1)
-    else:
-        sim.set_dc(0)
         
     if v > 0xff:
         sim.set_ov(1)
         sim.set_c(1)
         v = v & 0xff
-    else:
-        sim.set_ov(0)
-        sim.set_c(0)
     
-    if v == 0:
-        sim.set_z(1)
-    else:
-        sim.set_z(0)
+    sim.store_wfreg(d, a, lsb, v)
+
+#----------------------------------------------------------------------------
+def inst_addwf(sim, msb, lsb):
+    #0x24-0x27 0010 01da ffff ffff ADDWF f,d,a C Z N dest <- f + W
+    # affected flags : C, DC, N, OV, Z
+    # 0 <= f <= 255  bit0-7, lsb
+    #
+    # d == 0, result -> w
+    # d == 1, result -> f
+    #
+    # a == 0, Select bank0
+    # a == 1, Select bank according BSR 
+    #
+    sim.clear_status_flags()
+    w, d, a, f = get_wdaf(sim, msb, lsb)
+    
+    v = w + f
         
-    if d == 0:
-        sim.set_wreg(v)
-    else:
-        sim.set_mem(lsb, v)    
+    if v > 0xf:
+        sim.set_dc(1)
+        
+    if v > 0xff:
+        sim.set_ov(1)
+        sim.set_c(1)
+        v = v & 0xff
+
+    sim.store_wfreg(d, a, lsb, v)
 
 #----------------------------------------------------------------------------
 def inst_incf(sim, msb, lsb):
     #0x28-0x2b 0000 10da ffff ffff INCF f,d,a C Z N dest <- f + 1
     # affected flags : C, DC, N, OV, Z
     # 0 <= f <= 255  bit0-7, lsb
+    #
     # d == 0, result -> w
     # d == 1, result -> f
-    # a == 0, access bank will be selected, overriding the BSR value
-    # a == 1, the bank will be selected as per the BSR value(default)
-    w = sim.get_wreg()
-    f = sim.get_mem(lsb)
-    d = get_bit(msb, 1)
-    a = get_bit(msb, 0)
-    if a == 0:
-        sim.select_access_bank()
+    #
+    # a == 0, Select bank0
+    # a == 1, Select bank according BSR 
+    #
+    sim.clear_status_flags()
+    
+    w, d, a, f = get_wdaf(sim, msb, lsb)
+    
     v = f + 1
     if v > 0xf:
         sim.set_dc(1)
-    else:
-        sim.set_dc(0)
         
     if v > 0xff:
         sim.set_ov(1)
         sim.set_c(1)
         v = v & 0xff
-    else:
-        sim.set_ov(0)
-        sim.set_c(0)
-    
-    if v == 0:
-        sim.set_z(1)
-    else:
-        sim.set_z(0)
-        
-    if d == 0:
-        sim.set_wreg(v)
-    else:
-        sim.set_mem(lsb, v)
 
+    sim.store_wfreg(d, a, lsb, v)
 
 #----------------------------------------------------------------------------
 def inst_decfsz(sim, msb, lsb):
     #0x2c-0x2f 0010 11da ffff ffff DECFSZ f,d,a    dest <- f - 1, skip if 0
-    pass
+    d, a, f = get_daf(sim, msb, lsb)
+    v = f - 1
+    sim.store_wfreg(d, a, lsb, v)
+    if v == 0:
+        sim.skip_next_inst()
+    
 #----------------------------------------------------------------------------
 def inst_rrncf(sim, msb, lsb):
     #0x40-0x43 0100 00da ffff ffff RRNCF f,d,a  Z N dest <- f>>1 | f<<7, rotate right (no carry)
-    pass
+    sim.clear_status_flags()
+    d, a, f = get_daf(sim, msb, lsb)
+    b0 = f & 1
+    v = (f >> 1) | (b0 << 7)
+    sim.store_wfreg(d, a, lsb, v)
+    
 #----------------------------------------------------------------------------
 def inst_rlncf(sim, msb, lsb):
     #0x44-0x47 0100 01da ffff ffff RLNCF f,d,a  Z N dest <- f<<1 | f>>7, rotate left (no carry)
-    pass
+    sim.clear_status_flags()
+    d, a, f = get_daf(sim, msb, lsb)
+    b7 = (f >> 7) & 1
+    v = (f << 1) | b7
+    sim.store_wfreg(d, a, lsb, v)
+
 #----------------------------------------------------------------------------
 def inst_infsnz(sim, msb, lsb):
     #0x48-0x4B 0100 10da ffff ffff INFSNZ f,d,a    dest <- f + 1, skip if not 0
-    pass
+    d, a, f = get_daf(sim, msb, lsb)
+    v = val8(f + 1)
+    sim.store_wfreg(d, a, lsb, v)
+    if v != 0:
+        sim.skip_next_inst()
+
 #----------------------------------------------------------------------------
 def inst_dcfsnz(sim, msb, lsb):
     #0x4c-0x4F 0100 11da ffff ffff DCFSNZ f,d,a    dest <- f - 1, skip if not 0
-    pass
+    d, a, f = get_daf(sim, msb, lsb)
+    v = f - 1
+    sim.store_wfreg(d, a, lsb, v)
+    if v != 0:
+        sim.skip_next_inst()
+
 #----------------------------------------------------------------------------
 def inst_movf(sim, msb, lsb):
     #0x50-0x53 0101 00da ffff ffff MOVF f,d,a  Z N dest <- f
-    pass
+    sim.clear_status_flags()
+    d, a, f = get_daf(sim, msb, lsb)
+    v = f
+    sim.store_wfreg(d, a, lsb, v)
+    
 #----------------------------------------------------------------------------
 def inst_subfwb(sim, msb, lsb):
     #0x54-0x57 0101 01da ffff ffff SUBFWB f,d,a C Z N dest <- W + ~f + C (dest <- W - f - Cinvert)
-    pass
+    # affected flags : C, DC, N, OV, Z
+    # 0 <= f <= 255  bit0-7, lsb
+    #
+    # d == 0, result -> w
+    # d == 1, result -> f
+    #
+    # a == 0, Select bank0
+    # a == 1, Select bank according BSR 
+    #
+    c = sim.get_c()
+    sim.clear_status_flags()
+    w, d, a, f = get_wdaf(sim, msb, lsb)
+    
+    v = w + comp8(f) + c
+        
+    if (w & 0xf) + (comp8(f) & 0xf) + c > 0xf:
+        sim.set_dc(1)
+        
+    if v > 0xff:
+        sim.set_ov(1)
+        sim.set_c(1)
+        v = v & 0xff
+       
+    sim.store_wfreg(d, a, lsb, v)
+    
 #----------------------------------------------------------------------------
 def inst_subwfb(sim, msb, lsb):
     #0x58-0x5B 0101 10da ffff ffff SUBWFB f,d,a C Z N dest <- f + ~W + C (dest <- f - W - Cinvert)
-    pass
+    # affected flags : C, DC, N, OV, Z
+    # 0 <= f <= 255  bit0-7, lsb
+    #
+    # d == 0, result -> w
+    # d == 1, result -> f
+    #
+    # a == 0, Select bank0
+    # a == 1, Select bank according BSR 
+    #
+    c = sim.get_c()
+    sim.clear_status_flags()
+    w, d, a, f = get_wdaf(sim, msb, lsb)
+    
+    v = f + comp8(w) + c
+        
+    if (f & 0xf) + (comp8(w) & 0xf) + c > 0xf:
+        sim.set_dc(1)
+        
+    if v > 0xff:
+        sim.set_ov(1)
+        sim.set_c(1)
+        v = v & 0xff
+    
+    sim.store_wfreg(d, a, lsb, v)
+    
 #----------------------------------------------------------------------------
 def inst_subwf(sim, msb, lsb):
     #0x5c-0x5F 0101 11da ffff ffff SUBWF f,d,a C Z N dest <- f - W (dest <- f + ~W + 1)        
-    pass
+    # affected flags : C, DC, N, OV, Z
+    # 0 <= f <= 255  bit0-7, lsb
+    #
+    # d == 0, result -> w
+    # d == 1, result -> f
+    #
+    # a == 0, Select bank0
+    # a == 1, Select bank according BSR 
+    #
+    sim.clear_status_flags()
+    w, d, a, f = get_wdaf(sim, msb, lsb)
+    
+    v = w + comp8(f) + 1
+        
+    if (w & 0xf) + (comp8(f) & 0xf) + 1 > 0xf:
+        sim.set_dc(1)
+        
+    if v > 0xff:
+        sim.set_ov(1)
+        sim.set_c(1)
+        v = v & 0xff
+    
+    sim.store_wfreg(d, a, lsb, v)
+    
 #----------------------------------------------------------------------------
 def inst_cpfslt(sim, msb, lsb):
-    #0x60, 0x61 0110 000 a f CPFSLT f,a    skip if f < W
-    pass
+    #0x60, 0x61 0110 000a ffff ffff CPFSLT f,a    skip if f < W
+    a = msb & 1
+    f = sim.get_freg(a, lsb)
+    w = sim.get_wreg()
+    if f < w:
+        sim.skip_next_inst()
+    
 #----------------------------------------------------------------------------
 def inst_cpfseq(sim, msb, lsb):
     #0x62, 0x63 0110 001 a f CPFSEQ f,a    skip if f == W
-    pass
+    a = msb & 1
+    f = sim.get_freg(a, lsb)
+    w = sim.get_wreg()
+    if f == w:
+        sim.skip_next_inst()
+    
 #----------------------------------------------------------------------------
 def inst_cpfsgt(sim, msb, lsb):
     #0x64, 0x65 0110 010 a f CPFSGT f,a    skip if f > W
-    pass
+    a = msb & 1
+    f = sim.get_freg(a, lsb)
+    w = sim.get_wreg()
+    if f > w:
+        sim.skip_next_inst()
+            
 #----------------------------------------------------------------------------
 def inst_tstfsz(sim, msb, lsb):
     #0x66, 0x67 0110 011 a f TSTFSZ f,a    skip if f == 0
-    pass
+    a = msb & 1
+    f = sim.get_freg(a, lsb)
+    if f == 0:
+        sim.skip_next_inst()
+    
 #----------------------------------------------------------------------------
 def inst_setf(sim, msb, lsb):
     #0x68, 0x69 0110 100 a f SETF f,a      f <- 0xFF
-    f = lsb
-    a = get_bit(msb, 1)
-    sim.set_mem(f, 1)
+    a = msb & 1
+    f = sim.set_freg(a, lsb, 0xff)
 
 #----------------------------------------------------------------------------
 def inst_clrf(sim, msb, lsb):
     # 0110 101a f CLRF f,a  1  f <- 0, PSR.Z <- 1
-    f = lsb
-    a = get_bit(msb, 1)
-    #print 'inst_clrf', f, a
-    sim.set_mem(f, 0)
+    a = msb & 1
+    sim.set_freg(a, lsb, 0)
+    sim.clear_status_flags()
     sim.set_z(1)
 
 #----------------------------------------------------------------------------
 def inst_negf(sim, msb, lsb):
     #0x6C, 0x6D 0110 110 a f NEGF f,a    C Z N f  <- -f
-    pass
+    sim.clear_status_flags()
+    a = msb & 1
+    f = sim.get_freg(a, lsb) 
+    if f > 0:
+        sim.set_n(1)
+        
+    if f == 0:
+        sim.set_z(1)
+    
+    v = comp8(f) + 1
+    if v > 0xff:
+        sim.set_c(1)
+        v &= 0xff
+        
+    sim.set_freg(a, lsb, v)
+    
 #----------------------------------------------------------------------------
 def inst_movwf(sim, msb, lsb):
     #0x6E, 0x6F 0110 111a ffff ffff MOVWF f,a    f  <- W
-    # a is access
-    # a == 0, Access Bank will be selected, overriding the BSR value.
-    # a == 1, BSR will not be overridden(default)
     w = sim.get_wreg()
     a = get_bit(msb, 0)
-    if a == 0:
-        sim.select_access_bank()
-
-    sim.set_mem(lsb, w)
+    
+    sim.set_freg(a, lsb, w)
         
 #----------------------------------------------------------------------------
 def inst_btg(sim, msb, lsb):
-    #0x7? 0111 bit a f BTG f,b,a    Toggle bit b of f
+    #0x7? 0111 bbba ffff ffff BTG f,b,a    Toggle bit b of f
     bit = get_bits(msb, 1, 3)
     a = get_bit(msb, 0)
-    f = lsb
-    v = sim.mem_get_bit(f, bit)
+    f = sim.get_freg(a, lsb)
+    v = get_bit(f, bit)
     if v == 0:
-        sim.mem_set_bit(f, bit, 1)
+        v = set_bit(f, bit)
     else:
-        sim.mem_set_bit(f, bit, 0)
+        v = clear_bit(f, bit)
+    sim.set_freg(a, lsb, v)
         
 #----------------------------------------------------------------------------
 def inst_bsf(sim, msb, lsb):
-    #0x8? 1000 bit a f BSF f,b,a    Set bit b of f
-    # a is access
-    # a = 0, Access Bank will be selected, overriding the BSR value.
-    # a = 1, the bank will be selected as per the BSR value.
+    #0x8? 1000 bbba ffff ffff BSF f,b,a    Set bit b of f
     bit = get_bits(msb, 1, 3)
     a = get_bit(msb, 0)
-    f = lsb
-    sim.mem_set_bit(f, bit, 1)
+    f = sim.get_freg(a, lsb)
+    v = set_bit(f, bit)
+    sim.set_freg(a, lsb, v)
 
 #----------------------------------------------------------------------------
 def inst_bcf(sim, msb, lsb):
-    #0x9? 1001 bit a f BCF f,b,a    Clear bit b of f
+    #0x9? 1001 bbba ffff ffff BCF f,b,a    Clear bit b of f
     bit = get_bits(msb, 1, 3)
     a = get_bit(msb, 0)
-    f = lsb
-    sim.mem_set_bit(f, bit, 0)
+    f = sim.get_freg(a, lsb)
+    v = clear_bit(f, bit)
+    sim.set_freg(a, lsb, v)
 
 #----------------------------------------------------------------------------
 def inst_btfss(sim, msb, lsb):
     #0xA? 1010 bbba ffff ffff  BTFSS f,b,a    Skip if bit b of f is set
     bit = get_bits(msb, 1, 3)
     a = get_bit(msb, 0)
-    f = lsb
-    v = sim.mem_get_bit(f, bit)
+    f = sim.get_freg(a, lsb)
+    v = get_bit(f, bit)
     if v != 0:
         sim.skip_next_inst()
     
@@ -372,8 +579,8 @@ def inst_btfsc(sim, msb, lsb):
     #0xB? 1011 bit a f BTFSC f,b,a    Skip if bit b of f is clear    
     bit = get_bits(msb, 1, 3)
     a = get_bit(msb, 0)
-    f = lsb
-    v = sim.mem_get_bit(f, bit)
+    f = sim.get_freg(a, lsb)
+    v = get_bit(f, bit)
     if v == 0:
         sim.skip_next_inst()
 
@@ -387,7 +594,7 @@ def inst_bra(sim, msb, lsb):
     #if n & 0x800:
         #n = (n & 0x7ff) - 0x800
         #print 'inst_bra', n
-    sim.jump_rel(n)
+    sim.ljump_rel(n)
     
 #----------------------------------------------------------------------------
 def inst_rcall(sim, msb, lsb):
@@ -406,43 +613,44 @@ def inst_bz(sim, msb, lsb):
 def inst_bnz(sim, msb, lsb):
     #0xE1  1110 0001 nnnn nnnn  BNZ n    Branch if PSR.Z is clear
     if sim.get_z() == 0:
-        sim.jump(lsb)
+        #sim.log('*** bnz *** z = 0, jump ', hex(lsb))
+        sim.jump_rel(lsb)
         
 #----------------------------------------------------------------------------
 def inst_bc(sim, msb, lsb):
     #0xE2  1110 0010 nnnn nnnn  BC n    Branch if PSR.C is set
     if sim.get_c() == 1:
-        sim.jump(lsb)
+        sim.jump_rel(lsb)
 
 #----------------------------------------------------------------------------
 def inst_bnc(sim, msb, lsb):
     #0xE3  1110 0011 nnnn nnnn  BNC n    Branch if PSR.C is clear
     if sim.get_c() == 0:
-        sim.jump(lsb)
+        sim.jump_rel(lsb)
         
 #----------------------------------------------------------------------------
 def inst_bov(sim, msb, lsb):
     #0xE4  1110 0100 nnnn nnnn  BOV n    Branch if PSR.V is set
     if sim.get_ov() == 1:
-        sim.jump(lsb)
+        sim.jump_rel(lsb)
         
 #----------------------------------------------------------------------------
 def inst_bnov(sim, msb, lsb):
     #0xE5  1110 0101 nnnn nnnn  BNOV n    Branch if PSR.V is clear
     if sim.get_ov() == 0:
-        sim.jump(lsb)
+        sim.jump_rel(lsb)
         
 #----------------------------------------------------------------------------
 def inst_bn(sim, msb, lsb):
     #0xE6  1110 0110 nnnn nnnn  BN n    Branch if PSR.N is set
     if sim.get_n() == 0:
-        sim.jump(lsb)
+        sim.jump_rel(lsb)
         
 #----------------------------------------------------------------------------
 def inst_bnn(sim, msb, lsb):
     #0xE7  1110 0111 nnnn nnnn  BNN n    Branch if PSR.N is clear      
     if sim.get_n() == 1:
-        sim.jump(lsb)
+        sim.jump_rel(lsb)
         
 #----------------------------------------------------------------------------
 def inst_check_prev(sim, msb, lsb):
