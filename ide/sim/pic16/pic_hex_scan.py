@@ -75,15 +75,57 @@ def read_file(file_path):
     return utils.read_file(file_path)
     
 #----------------------------------------------------------------------------
+def pic16_inst2(s):
+    inst = ' '
+        
+    msb = int('0x' + s[0:2], 16)
+    lsb = int('0x' + s[2:4], 16)
+    msb1 = int('0x' + s[4:6], 16)
+    lsb1 = int('0x' + s[6:8], 16)
+    
+    op = msb
+    
+    if (op & 0xC0) == 0xC0:
+        #0xC? 1100 source      s of MOVFF s,d    Move absolute
+        #0xF? 1111 destination d of MOVFF s, d
+        src = ((msb & 0xf) << 8) | lsb
+        dst = ((msb1 & 0xf) << 8) | lsb1
+        inst = 'movff ' + hex(src) + ', ' + hex(dst)
+        
+    elif op == 0xEC or op == '0xED':
+        k_msb = ((msb1 & 0xf) << 8) | lsb1
+        k_lsb = lsb
+        addr = (k_msb << 8) | k_lsb
+        fast = msb & 1
+        inst = 'call ' + hex(addr) 
+        if fast:
+            inst += ', fast'
+        
+    elif op == 0xEE:
+        f = (lsb >> 4) & 3
+        k_msb = lsb & 0xf
+        k_lsb = lsb1
+        k = (k_msb << 8) | k_lsb
+        inst == 'lfsr ' + str(f) + hex(k)
+        
+    elif op == 0xEF:
+        k_msb = ((msb1 & 0xf) << 8) | lsb1
+        k_lsb = lsb
+        addr = (k_msb << 8) | k_lsb
+        inst = 'goto ' + hex(addr)
+        
+    return inst
+
+#----------------------------------------------------------------------------
 def pic16_inst(s):
     v = int('0x' + s, 16)
 
     msb = (v >> 8) & 0xff
     lsb = v & 0xff
-    v0 = b_15_12 = (msb >> 4) & 0xf #bit 13, 12
-    v1 = b_11_8 = msb & 0xf        #bit 11, 10, 9, 8
-    v2 = b_7_4 = (lsb >> 4) & 0xf
-    v3 = b_3_0 = lsb & 0xf    
+    v0 = (msb >> 4) & 0xf #bit 13, 12
+    v1 = msb & 0xf        #bit 11, 10, 9, 8
+    v2 = (lsb >> 4) & 0xf
+    v3 = lsb & 0xf    
     
     inst = ' - '
     if msb == 0x00:
@@ -253,7 +295,7 @@ def pic16_inst(s):
         #0xEF 1110 1111 k (lsbits) GOTO k    Absolute jump, PC <- k
         #1111 k (msbits)
         #1111 k (No operation)    
-        inst = 'depend on previous '
+        inst = 'inst1 '
         
     return inst
 
@@ -313,28 +355,46 @@ def pic_hex_scan(frame, fn, mcu):
         for i in range(record_bytes / 2):
             lsb = line[j:j+2]
             msb = line[j+2:j+4]
-            r.dd.append(msb + lsb)
-            j += 4
+            op = int('0x' + msb, 16)
+            if (op & 0xc0) == 0xc0:
+                inst_len = 2
+            elif op >= 0xEC and op <= 0xEF:
+                inst_len = 2
+            else:
+                inst_len = 1
+            
+            if inst_len == 1:
+                r.dd.append(msb + lsb)
+                j += 4
+            else:
+                j += 4
+                lsb1 = line[j:j+2]
+                msb1 = line[j+2:j+4]
+                r.dd.append(msb + lsb + msb1 + lsb1)
+                j += 4
+            if j >= record_bytes:
+                break
         
         if append_to_prev == False:
             lst.append(r)
             prev_r = lst[index]
             index += 1
-    
-    if mcu == 'pic14':
-        get_inst = pic14_inst
-    else:
-        get_inst = pic16_inst
-        
+            
     fn = fn.replace('.hex', '.hex2asm')
     f = open(fn, 'w+')
     for r in lst:
         print >>f, tohex(r.addr/2,4), tohex(r.bytes,2), tohex(r.type,2) + ':'
         addr = r.addr
         for d in r.dd:
-            s = get_inst(d)
-            print >>f,tohex(addr/2,4), d, ' ' +  s.lower()
-            addr += 2
+            if len(d) == 4:
+                s = pic16_inst(d)
+                inst_len = 2
+                print >>f,tohex(addr/2,4), d + '     ', ' ' +  s.lower()
+            else:
+                s = pic16_inst2(d)
+                inst_len = 4
+                print >>f,tohex(addr/2,4), d[0:4] + ' ' + d[4:8], ' ' +  s.lower()
+            addr += inst_len
             
         print >>f,""
         

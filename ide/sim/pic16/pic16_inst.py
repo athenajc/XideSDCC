@@ -601,7 +601,8 @@ def inst_rcall(sim, msb, lsb):
     #0xD?  1101 1nnn nnnn nnnn RCALL n    Subroutine call to PC + 2n
     v = (msb << 8) | lsb
     addr = get_bits(v, 0, 10)
-    sim.call(addr)
+    
+    sim.call(sim.get_pc() + addr, 0)
 
 #----------------------------------------------------------------------------
 def inst_bz(sim, msb, lsb):
@@ -1006,7 +1007,7 @@ def gen_pic16_inst_table():
                    'reserved','reserved','reserved','reserved',
                    'CALL', 'CALL', 'LFSR'
                    ]
-            inst = lst[v1 >> 1]
+            inst = lst[v1]
             inst_table[msb] = 'inst_' + inst
         elif v0 == 0xF:
             inst_table[msb] = 'inst_check_prev'
@@ -1121,10 +1122,10 @@ def get_pic16_inst_str(v, msb, lsb):
                'reserved','reserved','reserved','reserved',
                'CALL', 'CALL', 'LFSR'
                ]
-        inst = lst[v1 >> 1]
+        inst = lst[v1]
         
     elif v0 == 0xF:
-        inst = 'depend on previous '
+        inst = 'msb1, lsb1'
         
     return inst.lower()
 
