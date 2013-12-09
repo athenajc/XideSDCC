@@ -22,6 +22,11 @@ class Sim():
         self.file_path = file_path
         self.source_list = source_list
         self.mode = command
+        if command == 'debug':
+            self.debug = True
+        else:
+            self.debug = False
+        self.step_mode = None
         self.step_over_mode = False
         self.stack_depth = 0
         
@@ -33,6 +38,7 @@ class Sim():
         self.addr_map_lst = rst.rst_scan(source_list)
         self.c_line = 0
         self.asm_code = ""
+        self.c_file = ""
         
         self.err = False
         #self.sfr = SfrDefine()
@@ -191,7 +197,7 @@ class Sim():
     
     #-------------------------------------------------------------------
     def log(self, *args):
-        if self.c_line == 0:
+        if not self.debug or self.c_line == 0:
             return
         msg = " "
         for t in args:
@@ -639,7 +645,7 @@ class Sim():
             #j = j + 8
 
     #-------------------------------------------------------------------
-    def load_inst(self):
+    def load_and_debug_inst(self):
         # get current program counter 
         addr = self.pc   
         if addr < len(self.addr_map_lst):
@@ -679,10 +685,31 @@ class Sim():
             self.log("\n     -- ", op_n, s, tohex(dd1, 2), tohex(dd2, 2)) 
         elif (op_n == 4) :
             self.log("\n     -- ", op_n, s, tohex(dd1, 2), tohex(dd2, 2), tohex(dd3, 2)) 
-        #end
-        
-        #self.parse_dddd(inst_code, dd1, dd2, dd3)
+
+            
+        # move the program counter to the next instruction
+        # self.set_pc(self.pc + blen)
+        self.pc = self.pc + op_n
     
+        f = self.inst_handler[inst_map_code]
+        f(op_n, inst_code, dd1, dd2, dd3)
+        
+        ch = self.get_uart_put_ch()
+        if ch != 0:
+            self.sbuf_list.append(ch)
+            
+    #-------------------------------------------------------------------
+    def load_inst(self):
+        # get current program counter 
+        addr = self.pc   
+        inst_code = self.code_space[addr]
+        dd1 = self.code_space[addr + 1]
+        dd2 = self.code_space[addr + 2]
+        dd3 = self.code_space[addr + 3]
+        sym = self.symbol_table[inst_code]
+        op_n = sym[1]
+        inst_map_code = sym[2]
+            
         # move the program counter to the next instruction
         # self.set_pc(self.pc + blen)
         self.pc = self.pc + op_n
@@ -704,16 +731,21 @@ class Sim():
         self.pc = 0x0
         self.cmd_queue = Queue.Queue()
         
-        while self.c_line == 0:
-            self.load_inst()
+        if self.debug:
+            while self.c_line == 0:
+                self.load_and_debug_inst()
             
     #-------------------------------------------------------------------
     def step(self):
         if self.stopped:
             return False
         
-        self.log(tohex(self.pc, 4), self.asm_code)
-        self.load_inst()
+        self.step_mode = None
+        
+        if self.debug:
+            self.load_and_debug_inst()
+        else:
+            self.load_inst()
         self.update_sfr()
         
         if self.err:
@@ -726,68 +758,84 @@ class Sim():
         return True
     
     #-------------------------------------------------------------------
-    def step_c_line(self):
+    def step_tick(self):
         if self.stopped:
+            return False
+        if self.step_mode == None:
             return False
         
         n = self.c_line
         f = self.c_file
+        i = 1
         
         while self.c_line == n and self.c_file == f:
-            self.log(tohex(self.pc, 4), self.asm_code)
-            self.load_inst()
+            i += 1
+            if self.debug:
+                self.load_and_debug_inst()
+            else:
+                self.load_inst()
+            if i > 10:
+                break
             
-            if self.err:
-                self.log('#simulation Error')
-                return False
-            if self.pc == 0 or self.stopped:
-                self.log('#end of simulation')
-                return False
-            
-        self.log('-------------- ' + str(self.c_file) + ', line = ' + str(self.c_line) + ' -----------\n')
+        self.update_sfr()
+        
+        if self.step_mode == 'c_line':
+            if self.c_line != self.start_line or self.c_file != self.start_file:
+                self.step_mode = None
+        elif self.step_mode == 'over':
+            if self.stack_depth == self.start_stack_depth:
+                if self.c_line != self.start_line or self.c_file != self.start_file:
+                    self.step_mode = None
+        elif self.step_mode == 'out':
+            if self.stack_depth < self.start_stack_depth:
+                self.step_mode = None
+        
+        if self.err:
+            self.log("#simulation Error")
+            return False
+        if self.pc == 0 :
+            self.log("#end of simulation")
+            return False
+        
+        return True    
+
+    #-------------------------------------------------------------------
+    def step_c_line(self):
+        if self.stopped:
+            return False
+        self.step_mode = 'c_line'
+        self.start_line = self.c_line
+        self.start_file = self.c_file
+        
         return True
-    
+
     #-------------------------------------------------------------------
     def step_over(self):
         #self.log("step_over")
+
         if self.stopped:
             return False
-        
-        s0 = self.stack_depth
-        if not self.step_c_line():
-            return False
-        s1 = self.stack_depth
-        
-        # check stack depth if same means at same function        
-        if s1 <= s0:
-            return True
-        else:
-            while self.stack_depth > s0:
-                if not self.step_c_line():
-                    return False
+        self.step_mode = 'over'
+        self.start_stack_depth = self.stack_depth
+        self.start_line = self.c_line
+        self.start_file = self.c_file
+
         return True
-    
+        
     #-------------------------------------------------------------------
     def step_out(self):
         #self.log("step_out")
         if self.stopped:
             return False
-        
-        s0 = self.stack_depth
-        
-        # check stack depth if same means at same function
-        while self.stack_depth >= s0:
-            if not self.step_c_line():
-                return False
-            
+        self.step_mode = 'out'
+        self.start_stack_depth = self.stack_depth
+
         return True
     
     #-------------------------------------------------------------------
     def stop(self):
         self.stopped = True
-        #self.thread.stop()
-        #self.thread.join()
-
+    
     #-------------------------------------------------------------------
     def pre_process_ihx_text(self, text):
         lst = []

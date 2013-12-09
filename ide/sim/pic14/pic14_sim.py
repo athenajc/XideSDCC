@@ -92,12 +92,17 @@ class SimPic():
         self.c_line = 0
         self.load_code()
         self.mem_access_list = []
+        self.status_bits_name = ['C', 'DC', 'Z', 'PD', 'TO', 'RP0', 'RP1', 'IRP']
+        self.step_mode = None
 
     #-------------------------------------------------------------------
     def log(self, *args):
         #if self.c_line == 0:
         #    return
-        msg = "ttt "
+        #import inspect
+        #s1 = inspect.stack()[1][3] + " "
+        
+        msg = " "
         for t in args:
             msg = msg + str(t) + " "
         s = get_hh_mm_ss() + msg + "\n"
@@ -163,7 +168,8 @@ class SimPic():
     #-------------------------------------------------------------------
     def get_mem(self, addr):
         v = self.mem[addr]
-        self.log("     get mem "+hex(addr)+" = "+hex(v))
+        key = self.mem_sfr_map.get(addr, "")
+        self.log("     get mem "+hex(addr) + " " + key +" = "+hex(v))
         return v    
     
     #-------------------------------------------------------------------
@@ -180,7 +186,7 @@ class SimPic():
         self.mem[addr] = v
         
         if key != "":
-            self.log('set_reg ', key, v)
+            #self.log('     set_reg ', key, v)
             self.set_reg(key, v)
         return v
 
@@ -212,10 +218,16 @@ class SimPic():
         addr = self.sfr_addr[k]
         self.set_mem(addr, v)
         
+        # update reg_table
+        self.reg_table[k] = v
+        
     #-------------------------------------------------------------------
     def get_sfr(self, k):
         addr = self.sfr_addr[k]
         v = self.get_mem(addr)
+        
+        # update reg_table
+        self.reg_table[k] = v
         return v
     
     #-------------------------------------------------------------------
@@ -402,7 +414,8 @@ class SimPic():
         
     #-------------------------------------------------------------------
     def jump_rel(self, v):
-        offset = byte_to_int(v)
+        offset = val8(v)
+        
         self.log("     jump_rel  "+str(offset) )
         self.set_pc(self.pc + offset)
         
@@ -525,12 +538,8 @@ class SimPic():
         if self.stopped:
             return False
         
-        lsb = self.code_space[self.pc*2]
-        msb = self.code_space[self.pc*2 + 1]
-        opcode = (msb << 8) + lsb
-        #self.log(hex(msb), hex(lsb))        
-        s = get_pic14_inst_str(opcode, msb, lsb)
-        self.log('pc', tohex(self.pc, 4), tohex(opcode, 4), "   " + s)
+        self.step_mode = None
+
         self.load_inst()
         self.update_sfr()
         
@@ -542,77 +551,83 @@ class SimPic():
             return False
         
         return True
-    
+
     #-------------------------------------------------------------------
-    def step_c_line(self):
+    def step_tick(self):
         if self.stopped:
+            return False
+        if self.step_mode == None:
             return False
         
         n = self.c_line
         f = self.c_file
         i = 1
+        
         while self.c_line == n and self.c_file == f:
             i += 1
-            self.log(tohex(self.pc, 4), self.asm_code)
             self.load_inst()
-            if i > 100:
-                return 'not finished'
+            if i > 10:
+                break
             
-            if self.err:
-                self.log('#simulation Error')
-                return False
-            if self.pc == 0 or self.stopped:
-                self.log('#end of simulation')
-                return False
-            
-        self.log('-------------- ' + str(self.c_file) + ', line = ' + str(self.c_line) + ' -----------\n')
+        self.update_sfr()
+        
+        if self.step_mode == 'c_line':
+            if self.c_line != self.start_line or self.c_file != self.start_file:
+                self.step_mode = None
+        elif self.step_mode == 'over':
+            if self.stack_depth == self.start_stack_depth:
+                if self.c_line != self.start_line or self.c_file != self.start_file:
+                    self.step_mode = None
+        elif self.step_mode == 'out':
+            if self.stack_depth < self.start_stack_depth:
+                self.step_mode = None
+        
+        if self.err:
+            self.log("#simulation Error")
+            return False
+        if self.pc == 0 :
+            self.log("#end of simulation")
+            return False
+        
+        return True    
+
+    #-------------------------------------------------------------------
+    def step_c_line(self):
+        if self.stopped:
+            return False
+        self.step_mode = 'c_line'
+        self.start_line = self.c_line
+        self.start_file = self.c_file
+        
         return True
-    
+
     #-------------------------------------------------------------------
     def step_over(self):
         #self.log("step_over")
 
         if self.stopped:
             return False
-        
-        s0 = self.stack_depth
-        if not self.step_c_line():
-            return False
-        s1 = self.stack_depth
-        
-        # check stack depth if same means at same function        
-        if s1 <= s0:
-            return True
-        else:
-            i = 0
-            while self.stack_depth > s0:
-                i += 1
-                if i > 100:
-                    return False
-                if not self.step_c_line():
-                    return False
+        self.step_mode = 'over'
+        self.start_stack_depth = self.stack_depth
+        self.start_line = self.c_line
+        self.start_file = self.c_file
+
         return True
-    
+        
     #-------------------------------------------------------------------
     def step_out(self):
         #self.log("step_out")
         if self.stopped:
             return False
-        
-        s0 = self.stack_depth
-        
-        # check stack depth if same means at same function
-        while self.stack_depth >= s0:
-            if not self.step_c_line():
-                return False
-            
+        self.step_mode = 'out'
+        self.start_stack_depth = self.stack_depth
+
         return True
     
     #-------------------------------------------------------------------
     def stop(self):
         self.stopped = True
-        
-        
+                
         
         
 

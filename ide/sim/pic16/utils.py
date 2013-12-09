@@ -269,3 +269,103 @@ def get_mem_sfr_map(dev_name):
             sfr_map[int(v, 16) & 0xff] = k
         
     return sfr_map
+
+import threading
+import time
+        
+class TimerClass(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.event = threading.Event()
+        
+        self.cpu_clock = 12*1024*1024
+        self.interval = 1.0 / cpu_clock
+        self.count = 0
+        
+    def run(self):
+        while not self.event.is_set():
+            #print self.count
+            #self.count -= 1
+            self.event.wait(self.interval)
+            self.count += 1
+
+    def stop(self):
+        self.event.set()
+        
+def test1():
+    tmr = TimerClass()
+    t0 = time.time()
+    tmr.start()
+    
+    time.sleep(1)
+    n = tmr.count
+    tmr.stop()
+    del tmr
+    tmr = None
+    t1 = time.time()
+    print t1 - t0, n    
+
+
+from threading import Timer
+import sched, time
+s = sched.scheduler(time.time, time.sleep)
+
+cpu_clock = 12*1024*1024
+interval = 1.0 / cpu_clock
+t = cpu_clock
+def print_time(): 
+    #print "From print_time", time.time()
+    global t, interval
+    t -= 1
+    if t > 1:
+        s.enter(interval, 1, print_time, ())
+
+def print_some_times(t):
+    global interval
+    print time.time()
+    s.enter(interval, 1, print_time, ())
+    #s.enter(10, 1, print_time, ())
+    s.run()
+    print time.time()
+
+class TestObj():
+    def __init__(self):
+        self.t = 0
+        self.cpu_clock = 1024 #12*1024
+        self.interval = 1.0 / self.cpu_clock
+        self.s = sched.scheduler(time.time, time.sleep)
+        self.s.enter(self.interval, 1, self.tick, ())
+        self.stop = False
+        
+    def tick(self):
+        self.t += 1
+            
+    def run(self):
+        self.s.run()
+    
+    def next(self):
+        if self.t < self.cpu_clock:
+            self.s.enter(self.interval, 1, self.tick, ())
+        else:
+            self.stop = True
+            
+#---- for testing -------------------------------------------------------------
+if __name__ == '__main__':    
+    t0 = time.time()
+    obj = TestObj()
+    obj.run()
+    while not obj.stop :
+        #print obj.t
+        obj.next()
+        
+    t1 = time.time()
+    print t1 - t0, obj.t
+    
+    #t = Timer(3.0, obj.tick)
+    #t.start()
+
+    #print interval
+    #print_some_times(10)
+    
+
+    

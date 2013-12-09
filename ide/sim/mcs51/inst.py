@@ -577,7 +577,7 @@ def inst_jbc(inst_bytes, inst, op1, op2, op3):
       #(bit) = 0
       #PC = PC + offset
     #]]
-    sim.log('mem_get bit '+ hex(op1))
+    #sim.log('mem_get bit '+ hex(op1))
     if (sim.mem_get_bit(op1)) :
         #sim.mem_set_bit(op1, 0)
         sim.jump_rel(op2)
@@ -677,7 +677,7 @@ def inst_lcall(inst_bytes, inst, op1, op2, op3):
     #(SP) = PC[15-8]
     #PC = addr16
     #]]
-    print("inst_lcall", inst_bytes, hex((op1 * 256) + op2))
+    #print("inst_lcall", inst_bytes, hex((op1 * 256) + op2))
     sim.call((op1 * 256) + op2)
 
 
