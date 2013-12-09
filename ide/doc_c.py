@@ -216,7 +216,7 @@ class DocC(DocBase):
         # set cwd to doc file_path
         os.chdir(os.path.dirname(self.file_path))
         name, ext = self.file_name.split('.')
-        
+        self.compile_before_debug()
         self.sim_frame = sim.DebugFrame(self.app, self, 
                                   [self.file_path], 
                                   self.config_file)
@@ -335,16 +335,16 @@ class DocC(DocBase):
             return
             
         del config
-    
+
     #-------------------------------------------------------------------
-    def compile(self):
+    def compile_before_debug(self):
         result = 0
         dprint("Compile", self.file_path)
         self.load_config()
         #-- do the compilation
         # --model-small --code-loc 0x2000 --data-loc 0x30 --stack-after-data --xram
         #flag = " --debug --peep-asm " #" --disable-warning 59 "
-        flag = " " + self.app.cflags + " " + self.app.ldflags + " " 
+        flag = "  --debug " + self.app.cflags + " " + self.app.ldflags + " " 
         
         SDCC_bin_path = get_sdcc_bin_path()    
         self.dirname = os.path.dirname(self.file_path)
@@ -395,7 +395,29 @@ class DocC(DocBase):
     
             dprint("Cmd", cmd)
             os.chdir(os.path.dirname(self.file_path))
-            result = self.run_cmd(cmd)            
+            result = self.run_cmd(cmd)
+            
+        return result # return True if it compiled ok
+    
+    #-------------------------------------------------------------------
+    def compile(self):
+        result = 0
+        dprint("Compile", self.file_path)
+        self.load_config()
+        #-- do the compilation
+        # --model-small --code-loc 0x2000 --data-loc 0x30 --stack-after-data --xram
+        #flag = " --debug --peep-asm " #" --disable-warning 59 "
+        flag = " " + self.app.cflags + " " + self.app.ldflags + " " 
+        
+        SDCC_bin_path = get_sdcc_bin_path()    
+        self.dirname = os.path.dirname(self.file_path)
+        os.chdir(self.dirname)
+        
+        cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path 
+
+        dprint("Cmd", cmd)
+        os.chdir(os.path.dirname(self.file_path))
+        result = self.run_cmd(cmd)
         return result # return True if it compiled ok
 
     #-------------------------------------------------------------------

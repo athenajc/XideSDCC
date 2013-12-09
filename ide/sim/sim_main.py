@@ -157,6 +157,10 @@ class DebugFrame (wx.Frame):
                             style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL)
         self.app = app
         self.parent = parent
+        
+        icon = wx.Icon(self.app.dirname + 'sim/images/dbg_frame.ico', wx.BITMAP_TYPE_ICO)
+        self.SetIcon(icon)
+        
         self.sim = None
         self.log_queue = Queue.Queue()
         self.config_file = config_file
@@ -595,6 +599,9 @@ class SimFrame (wx.Frame):
                             style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL)
         self.app = app
         self.parent = parent
+        icon = wx.Icon(self.app.dirname + 'sim/images/sim_frame.ico', wx.BITMAP_TYPE_ICO)
+        self.SetIcon(icon)
+        
         self.sim = None
         self.log_queue = Queue.Queue()
         self.config_file = config_file

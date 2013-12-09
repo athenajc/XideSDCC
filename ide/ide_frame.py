@@ -25,6 +25,9 @@ class IdeFrame (wx.Frame):
         self.deact_time = time.time()
         self.SetMinSize(wx.Size(1024, 768))
         
+        icon = wx.Icon(self.app.dirname + 'images/frame.ico', wx.BITMAP_TYPE_ICO)
+        self.SetIcon(icon)
+
         #-- tell wxAuiManager to manage this frame
         self.mgr = wx.aui.AuiManager()
         self.mgr.SetManagedWindow(frame)
