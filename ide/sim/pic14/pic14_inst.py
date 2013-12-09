@@ -65,17 +65,17 @@ def inst_clrwdt(sim, msb, lsb):
 #----------------------------------------------------------------------------
 def inst_tris1(sim, msb, lsb):
     w = sim.get_wreg()
-    sim.set_reg('trisa', w)
+    sim.set_sfr('trisa', w)
 
 #----------------------------------------------------------------------------
 def inst_tris2(sim, msb, lsb):
     w = sim.get_wreg()
-    sim.set_reg('trisb', w)    
+    sim.set_sfr('trisb', w)    
 
 #----------------------------------------------------------------------------
 def inst_tris3(sim, msb, lsb):
     w = sim.get_wreg()
-    sim.set_reg('trisc', w)    
+    sim.set_sfr('trisc', w)    
 
 #----------------------------------------------------------------------------
 def inst_movwf(sim, msb, lsb):
@@ -173,11 +173,10 @@ def inst_iorwf(sim, msb, lsb):
     v = sim.get_freg(f)
     w = sim.get_wreg()
     v = v | w
+    sim.clear_status_reg_flags()
     if v == 0:
-        z = 1
-    else:
-        z = 0
-    sim.set_z(z)
+        sim.set_z(1)
+    
     if d == 0:
         sim.set_wreg(v)
     else:
@@ -256,14 +255,16 @@ def inst_addwf(sim, msb, lsb):
     if v > 0xff:
         c = 1
         v = v & 0xff
-    elif v > 0xf:
+        
+    if (v & 0xf) + (w & 0xf) > 0xf:
         dc = 1
-    elif v == 0:
+        
+    if v == 0:
         z = 1
 
     sim.set_c(c)
     sim.set_z(z)
-    sim.set_dc(dc)    
+    sim.set_dc(dc)
     
     if d == 0:
         sim.set_wreg(v)
@@ -287,7 +288,7 @@ def inst_movf(sim, msb, lsb):
     f = lsb & 0x7f
     v = sim.get_freg(f)
     w = sim.get_wreg()
-
+    sim.clear_status_reg_flags()
     if v == 0:
         z = 1
     else:
@@ -315,13 +316,10 @@ def inst_comf(sim, msb, lsb):
     f = lsb & 0x7f
     v = ~sim.get_freg(f)
     w = sim.get_wreg()
-
+    sim.clear_status_reg_flags()
     if v == 0:
-        z = 1
-    else:
-        z = 0
-        
-    sim.set_z(z)
+        sim.set_z(1)
+    
     if d == 0:
         sim.set_wreg(v)
     else:
@@ -345,13 +343,9 @@ def inst_incf(sim, msb, lsb):
     v = sim.get_freg(f)
     v = (v + 1) & 0xff
     
+    sim.clear_status_reg_flags()
     if v == 0:
-        v = 0
-        z = 1
-    else:
-        z = 0
-        
-    sim.set_z(z)
+        sim.set_z(1)
     
     if d == 0:
         sim.set_wreg(v)
@@ -374,6 +368,8 @@ def inst_decfsz(sim, msb, lsb):
     d = (lsb >> 7) & 1
     f = lsb & 0x7f
     v = sim.get_freg(f)
+    sim.clear_status_reg_flags()
+    
     if v == 1:
         v = 0
         z = 1
@@ -420,7 +416,7 @@ def inst_rlf(sim, msb, lsb):
     v = sim.get_freg(f)
     bit7 = (v >> 7) & 1
     c = sim.get_c()
-    v = (v << 1) | c
+    v = ((v << 1) & 0xff) | c
     sim.set_c(bit7)
     if d == 0:
         sim.set_wreg(v)
@@ -449,7 +445,7 @@ def inst_incfsz(sim, msb, lsb):
     f = lsb & 0x7f
     v = sim.get_freg(f)
     v = (v + 1) & 0xff
-    
+    sim.clear_status_reg_flags()
     if v == 0:
         v = 0
         z = 1
@@ -507,6 +503,7 @@ def inst_btfss(sim, msb, lsb):
     f = lsb & 0x7f
     v = sim.get_freg(f)
     b = get_bit(v, bit)
+    sim.log('inst_btfss ', f, bit, v, b)
     if b != 0:
         sim.skip_next_inst()
 
@@ -539,6 +536,7 @@ def inst_iorlw(sim, msb, lsb):
     w = sim.get_wreg()
     k = lsb
     w = k | w
+    sim.clear_status_reg_flags()
     if w == 0:
         z = 1
     else:
@@ -552,6 +550,7 @@ def inst_andlw(sim, msb, lsb):
     w = sim.get_wreg()
     k = lsb
     w = k & w
+    sim.clear_status_reg_flags()
     if w == 0:
         z = 1
     else:
@@ -565,7 +564,7 @@ def inst_xorlw(sim, msb, lsb):
     w = sim.get_wreg()
     k = lsb
     w = k ^ w
-    
+    sim.clear_status_reg_flags()
     if w == 0:
         z = 1
     else:
@@ -580,12 +579,15 @@ def inst_sublw(sim, msb, lsb):
     k = lsb
     if k > w:
         w = k - w
-        c = 1
-        z = 0
-    elif k < w:
-        w = k + ~w + 1
         c = 0
         z = 0
+    elif k < w:
+        w = (k + ~w + 1) & 0xff
+        c = 1
+        if w == 0:
+            z = 1
+        else:
+            z = 0
     else:
         w = 0
         c = 1
@@ -603,7 +605,7 @@ def inst_addlw(sim, msb, lsb):
     k = lsb
     w = k + w
     
-    if w > 0xf:
+    if (w & 0xf) + (k & 0xf) > 0xf:
         dc = 1
         
     if w > 0xff:
@@ -828,7 +830,7 @@ def get_pic14_inst_str(v, msb, lsb):
             inst = 'sublw'
         elif v1 == 0xe:
             inst = 'addlw'
-        k = v3
+        k = lsb
         inst += ' ' + hex(k)
             
     return inst

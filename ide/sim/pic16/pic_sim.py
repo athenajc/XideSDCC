@@ -76,7 +76,7 @@ class SimPic():
         self.hex_file = hex_file
         
         self.bank_addr = 0
-
+        self.inst_addr = 0
         #self.get_mcu_name()
         #print self.mcu_name, self.dev_name
         self.sfr_addr = get_sfr_addr(self.dev_name)
@@ -612,6 +612,7 @@ class SimPic():
     def load_inst(self):
         # get current program counter 
         addr = self.pc * 2
+        self.inst_addr = self.pc * 2
         if addr < len(self.addr_map_lst):
             t = self.addr_map_lst[addr]
             if t != 0:

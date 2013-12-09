@@ -22,6 +22,7 @@ class Sim():
         self.file_path = file_path
         self.source_list = source_list
         self.mode = command
+        self.inst_addr = 0
         if command == 'debug':
             self.debug = True
         else:
@@ -648,6 +649,7 @@ class Sim():
     def load_and_debug_inst(self):
         # get current program counter 
         addr = self.pc   
+        self.inst_addr = self.pc
         if addr < len(self.addr_map_lst):
             t = self.addr_map_lst[addr]
             if t != 0:
@@ -702,6 +704,7 @@ class Sim():
     def load_inst(self):
         # get current program counter 
         addr = self.pc   
+        self.inst_addr = self.pc
         inst_code = self.code_space[addr]
         dd1 = self.code_space[addr + 1]
         dd2 = self.code_space[addr + 2]

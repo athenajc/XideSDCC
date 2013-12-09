@@ -57,7 +57,7 @@ class SimPic():
         self.dev_name = mcu_device
         self.source_list = source_list
         self.hex_file = hex_file
-        
+        self.inst_addr = 0
         self.bank_addr = 0
         
         #self.get_mcu_name()
@@ -250,8 +250,10 @@ class SimPic():
     
     #-------------------------------------------------------------------
     def set_freg(self, addr, v):
-        addr += self.bank_addr
-        #self.log("     set freg "+ hex(addr) + " = "+hex(v))
+        if not addr in [2, 3, 4, 0xA, 0xB]:
+            addr += self.bank_addr
+        key = self.mem_sfr_map.get(addr, "")
+        self.log("     set freg " + key + " " + hex(addr) + " = "+hex(v))
         #self.freg[addr] = v
         self.set_mem(addr, v)
         if addr == 3:
@@ -264,9 +266,11 @@ class SimPic():
         
     #-------------------------------------------------------------------
     def get_freg(self, addr):
-        addr += self.bank_addr
+        if not addr in [2, 3, 4, 0xA, 0xB]:
+            addr += self.bank_addr        
+
         v = self.mem[addr]
-        #self.log("     get freg " + hex(addr) + " = "+hex(v))
+        self.log("     get freg " + hex(addr) + " = "+hex(v))
         return v
     
     #-------------------------------------------------------------------
@@ -300,7 +304,7 @@ class SimPic():
         self.set_sfr('PRODL', v & 0xff)
     
     #-------------------------------------------------------------------
-    def set_status_reg(self, bit, v):
+    def set_status_reg(self, bit, v, name = ''):
         #bit 7:
         #IRP: Register Bank Select bit (used for indirect addressing)
         #0 = Bank 0, 1 (00h - FFh)
@@ -342,20 +346,37 @@ class SimPic():
         #1 = A carry-out from the most significant bit of the result occurred
         #0 = No carry-out from the most significant bit of the result occurred
         #Note: For borrow the second operand the polarity is reversed. A subtraction is executed by adding the two's complement of. For rotate (RRF, RLF) instructions, this bit is loaded with either the high or low order bit of the source register.        
-
-        self.log("     set status bit " + str(bit) + " = "+hex(v))
+        if name:
+            self.log("     set status " + name + " bit " + str(bit) + " = "+hex(v))
+        else:
+            self.log("     set status bit " + str(bit) + " = "+hex(v))
 
         if v:
             self.status_reg = set_bit(self.status_reg, bit)
         else:
             self.status_reg = clear_bit(self.status_reg, bit)
-        self.set_freg(3, self.status_reg)
+        #self.set_freg(3, self.status_reg)
+        self.mem[0x03] = self.status_reg
+        self.mem[0x83] = self.status_reg
+        self.mem[0x103] = self.status_reg
+        self.mem[0x183] = self.status_reg
         
         if bit == 5 or bit == 6:
             bank = (self.status_reg >> 5) & 0x3
             self.bank_addr = bank * 0x80
-            
+            if bit == 6:
+                self.log("     select bank " + str(bank) + ", " + hex(self.bank_addr))
                 
+    #-------------------------------------------------------------------
+    def clear_status_reg_flags(self):
+        self.status_reg = self.status_reg & 0xf0
+        
+        #self.set_freg(3, self.status_reg)
+        self.mem[0x03] = self.status_reg
+        self.mem[0x83] = self.status_reg
+        self.mem[0x103] = self.status_reg
+        self.mem[0x183] = self.status_reg        
+        
     #-------------------------------------------------------------------
     def get_status_reg(self, bit):
         v = self.status_reg
@@ -367,15 +388,15 @@ class SimPic():
                 
     #-------------------------------------------------------------------
     def set_z(self, v):
-        self.set_status_reg(2, v)
+        self.set_status_reg(2, v, 'z')
 
     #-------------------------------------------------------------------
     def set_dc(self, v):
-        self.set_status_reg(1, v)
+        self.set_status_reg(1, v, 'dc')
         
     #-------------------------------------------------------------------
     def set_c(self, v):
-        self.set_status_reg(0, v)
+        self.set_status_reg(0, v, 'c')
         
     #-------------------------------------------------------------------
     def get_c(self):
@@ -450,7 +471,7 @@ class SimPic():
     #-------------------------------------------------------------------
     def skip_next_inst(self):
         self.log("     skip next inst")
-        self.set_pc(self.pc + 2)
+        self.set_pc(self.pc + 1)
         
     #-------------------------------------------------------------------
     def code_space_fill(self, addr, sz, ddstr):
@@ -487,6 +508,8 @@ class SimPic():
     def load_inst(self):
         # get current program counter 
         addr = self.pc
+        self.set_reg('PC', self.pc)
+        self.inst_addr = self.pc
         if addr < len(self.addr_map_lst):
             t = self.addr_map_lst[addr]
             #print addr, len(self.addr_map_lst), t
@@ -506,13 +529,13 @@ class SimPic():
         
         # self.set_pc(self.pc + blen)
         self.pc = self.pc + 1
-        self.set_reg('PC', self.pc)
+        
         #self.log('**************** pc ', hex(self.pc))
         f = inst_handler[msb]
         s = get_pic14_inst_str(opcode, msb, lsb)
-        self.log("\n\n---------", tohex(addr, 2), hex(msb), hex(lsb), '<' + str(f)[10:20]+'>')
-        #self.log("------- asm_code    ", self.c_line, self.asm_code)
-        #self.log("------- get inst str", s)
+        self.log("---------", tohex(addr, 4) + "  " + tohex(msb, 2) + tohex(lsb, 2) + '  <' + s +'>')
+        #self.log("asm_code    ", self.c_line, self.asm_code)
+        #self.log("     ", s)
         f(self, msb, lsb)
         
         #ch = self.get_uart_put_ch()

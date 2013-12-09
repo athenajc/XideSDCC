@@ -27,10 +27,10 @@ class AsmView(StyledText):
         
     #-------------------------------------------------------------------
     def set_text(self, text):
-        self.addr_lst = []
+        self.addr_lst = [0]
                 
         for line in text.split('\n'):
-            addr = 0xffff
+            addr = 0
             s = line[0:4].strip()
             if s != "":
                 addr = int('0x' + s, 16)
@@ -316,6 +316,7 @@ class DebugFrame (wx.Frame):
             self.log_view.set_next_style()
             if sim.step_mode:
                 sim.step_tick()
+                self.sim_update()
             else:
                 sim.step()
             
@@ -378,7 +379,7 @@ class DebugFrame (wx.Frame):
     def sim_update(self):
         sim = self.sim
         
-        self.asm_view.goto_addr(sim.pc)
+        self.asm_view.goto_addr(sim.inst_addr)
         
         s = '%06x' % sim.pc
         for t in self.doc_book.docs:

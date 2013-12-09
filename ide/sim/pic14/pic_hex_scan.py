@@ -159,10 +159,10 @@ def pic14_inst(s):
     elif v0 == 2:
         #& 0xf8
         #20 : 0010 0kkk kkkk kkkk CALL k   Call subroutine
-        #28 : 0010 1kkk kkkk kkkk GOTO k   Jump to address k        
-        if v1 == 0:
+        #28 : 0010 1kkk kkkk kkkk GOTO k   Jump to address k
+        if (v1 & 0x8) == 0:
             inst = 'call'
-        elif v1 == 8:
+        elif (v1 & 0x8) == 8:
             inst = 'goto'
         k = get_bits(v, 0, 10)
         inst += ' ' + hex(k)
@@ -192,7 +192,7 @@ def pic14_inst(s):
             inst = 'sublw'
         elif v1 == 0xe:
             inst = 'addlw'
-        k = v3
+        k = lsb
         inst += ' ' + hex(k)
             
     return inst
