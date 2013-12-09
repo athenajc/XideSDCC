@@ -18,7 +18,34 @@ import pic14
 
 import sim_doc_lexer as doc_lexer
 import sim_doc_base as doc_base
+from sim_doc_base import StyledText
 
+#---------------------------------------------------------------------------------------------------
+class AsmView(StyledText):
+    def __init__(self, parent):
+        StyledText.__init__(self, parent)
+        
+    #-------------------------------------------------------------------
+    def set_text(self, text):
+        self.addr_lst = []
+                
+        for line in text.split('\n'):
+            addr = 0xffff
+            s = line[0:4].strip()
+            if s != "":
+                addr = int('0x' + s, 16)
+            self.addr_lst.append(addr)
+            
+        self.SetText(text)
+        
+    #-------------------------------------------------------------------
+    def goto_addr(self, addr):
+        if addr in self.addr_lst:
+            line = self.addr_lst.index(addr)
+            self.goto_line(line)
+            return line
+    
+    
 #---------------------------------------------------------------------------------------------------
 class StyledTextPanel (wx.Panel):
     
@@ -29,7 +56,7 @@ class StyledTextPanel (wx.Panel):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         
-        self.text = doc_base.StyledText(self)
+        self.text = AsmView(self)
         
         sizer.Add(self.text, 1, wx.EXPAND)
         
@@ -73,7 +100,7 @@ class TextCtrl(wx.TextCtrl):
         p0 = self.get_size()
         self.WriteText(s)
         if self.style :
-            self.SetStyle(p0 + 8, p0 + len(s), self.style)
+            self.SetStyle(p0, p0 + len(s), self.style)
             self.style = None
         
         
@@ -315,7 +342,7 @@ class DebugFrame (wx.Frame):
             self.sim = pic14.Sim(self, self.ihx_path, self.file_list, self.mcu_name, self.mcu_device)
             s = self.sim.disassembly()
             
-        self.asm_view.SetText(s)
+        self.asm_view.set_text(s)
         self.sim.start()
         self.running = True
         if self.debug_mode:
@@ -351,8 +378,7 @@ class DebugFrame (wx.Frame):
     def sim_update(self):
         sim = self.sim
         
-        s = '%04X' % sim.pc
-        self.asm_view.search_addr(s)
+        self.asm_view.goto_addr(sim.pc)
         
         s = '%06x' % sim.pc
         for t in self.doc_book.docs:
