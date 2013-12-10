@@ -81,8 +81,38 @@ def word_to_int(v):
     if (v > 0x7fff) :
         v = (v & 0x7fff) - 0x10000;
     return v
+def comp8(v):
+    v1 = 0
+    for i in range(8):
+        b = (v >> i) & 1
+        if b == 0:
+            v1 |= 1 << i
+    #print v, v1, hex(v), hex(v1), bin(v), bin(v1)
+    return v1
 
+def hex8(v):
+    if v >= 0:
+        return hex(v)
+    else:
+        return hex(comp8(-v) + 1)
 
+def val8(v):
+    if v & 0x80:
+        v = comp8(v - 1)
+        return -v
+    else:
+        return v
+    
+def tobin(v):
+    s = ""
+    for i in range(8):
+        if v & (1 << (7 - i)):
+            s += '1'
+        else:
+            s += '0'
+            
+    return s
+    
 #----------------------------------------------------------------------------
 def set_bit(v, i):
     v |= 1 << i
@@ -121,21 +151,24 @@ def tohex(value, n):
             value = 0x100 + value
         elif (n == 4) :
             value = 0x10000 + value
+        elif (n == 6) :
+            value = 0x1000000 + value
         elif (value > -128) :
             value = 0x100 + value
         else :
-            value = 0x10000000 + value
+            value = 0x100000000 + value
 
     if n == 2 :
         return "%02X" % value
     elif n == 4 :
         return '%04X' % value
+    elif n == 6 :
+        return '%06X' % value
     elif n == 8 :
         return "%08X" % value
     else :
         return "%X" % value 
-    #end
-#end
+
 
 def read_file(path):    
     with open(path, 'r') as content_file:

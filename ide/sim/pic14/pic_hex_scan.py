@@ -1,6 +1,8 @@
 import os
 import utils
 
+from pic_lst_scan import pic_lst_scan
+
 #:BBAAAATT[DDDDDDDD]CC
 
 # where
@@ -199,7 +201,7 @@ def pic14_inst(s):
 
 
 #----------------------------------------------------------------------------
-def pic_hex_scan(frame, fn, mcu):
+def pic_hex_scan(frame, fn, mcu, addr_map_lst):
    
     text = read_file(fn)
 
@@ -219,49 +221,43 @@ def pic_hex_scan(frame, fn, mcu):
         s = ll + ' ' + aaaa + ' ' + tt + '  ' + dd + '  +' + cc
         if tt == '04':
             if line.find(":020000040000FA") >= 0:
-                print s, 'Extended address line'
+                pass #print s, 'Extended address line'
             else:
-                print s,'type = 04'
+                pass #print s,'type = 04'
         elif tt == '01':
             if line.find(':00000001FF') >= 0:
-                print s, '  End of file', line
+                pass #print s, '  End of file', line
                 break
             else:
-                print s, 'type = 01'
+                pass #print s, 'type = 01'
         elif tt != '00':
-            print s, 'type = ' + tt
+            pass #print s, 'type = ' + tt
         else:
-            print s
+            pass #print s
                    
         record_bytes = int("0x" + ll, 16)
         record_addr = int("0x" + aaaa, 16)
         record_type = int("0x" + tt, 16)
-        #if prev_r :
-        #    print tohex(prev_r.addr, 4), tohex(prev_r.bytes, 2), tohex(prev_r.addr + prev_r.bytes, 4), aaaa
-        if record_type == 0 and prev_r and prev_r.addr + prev_r.bytes == record_addr and prev_r.type == 0 :
-            prev_r.bytes += record_bytes
-            r = prev_r
-            append_to_prev = True
-        else:
-            r = Obj()
-            r.bytes = record_bytes
-            r.addr = record_addr
-            r.type = record_type
-            r.dd = []
-            append_to_prev = False
+
+        r = Obj()
+        r.bytes = record_bytes
+        r.addr = record_addr
+        r.type = record_type
+        r.line = s
+        r.insts = []
         
         j = 9
-        for i in range(record_bytes / 2):
+        n = record_bytes / 2
+        for i in range(n):
             lsb = line[j:j+2]
             msb = line[j+2:j+4]
-            r.dd.append(msb + lsb)
+            r.insts.append(msb + lsb)
             j += 4
         
-        if append_to_prev == False:
-            lst.append(r)
-            prev_r = lst[index]
-            index += 1
-    
+        lst.append(r)
+        prev_r = lst[index]
+        index += 1
+
     if mcu == 'pic14':
         get_inst = pic14_inst
     else:
@@ -269,23 +265,34 @@ def pic_hex_scan(frame, fn, mcu):
         
     fn = fn.replace('.hex', '.hex2asm')
     f = open(fn, 'w+')
+    
     for r in lst:
-        print >>f, tohex(r.addr/2,4), tohex(r.bytes,2), tohex(r.type,2) + ':'
-        addr = r.addr
-        for d in r.dd:
-            s = get_inst(d)
-            print >>f,tohex(addr/2,4), d, ' ' +  s.lower()
-            addr += 2
+        addr = r.addr/2
+        #print >>f, tohex(r.addr, 6), tohex(addr,6), tohex(r.bytes,2), tohex(r.type,2) + ':'
+        #print >>f, r.line
+        for inst in r.insts:
+            s = get_inst(inst)
+            m = addr_map_lst[addr]
+            if m != 0:
+                inst = m[2]
+                s1 = str(m[1]) + ":" + m[0]
+                print >>f,tohex(addr,6) + ":" + inst + ":" +  s.lower()  + ":" + s1
+            else:
+                s1 = "0"
+                print >>f,tohex(addr,6) + ":" + inst + ":" +  s.lower()  + ":" + s1
+            addr+=1
             
-        print >>f,""
+        #print >>f,""
         
     f.close()
         
-    print '\n' + fn
+    #print '\n' + fn
     text = read_file(fn)
-    print text
+    #print text
     return text
     
+import os
+
 #----------------------------------------------------------------------------
 def test_pic_hex_scan(fn):
     cfn = fn.replace('.hex', '.c')
@@ -293,15 +300,23 @@ def test_pic_hex_scan(fn):
     mcu = None
     if text.find('pic16f') >= 0 or text.find('PIC16F') >= 0:
         mcu = 'pic14'
-    elif text.find('pic18f') >= 0 or text.find('PIC18F') >= 0:
-        mcu = 'pic16'
     else:
         print fn
         print 'Error: Cannot detect pic model'
         
+        
     if mcu:
         print mcu, fn
-        pic_hex_scan(None, fn, mcu)
+        
+        path = os.path.dirname(fn)
+        source_list = []
+        for f in os.listdir(path):
+            if f.endswith('.lst'):
+                source_list.append(path + os.sep + f)
+        #print source_list
+        addr_map_lst = pic_lst_scan(source_list)
+        #print addr_map_lst
+        pic_hex_scan(None, fn, mcu, addr_map_lst)
     
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    

@@ -31,7 +31,7 @@ class AsmView(StyledText):
                 
         for line in text.split('\n'):
             addr = 0
-            s = line[0:4].strip()
+            s = line[0:6].strip()
             if s != "":
                 addr = int('0x' + s, 16)
             self.addr_lst.append(addr)

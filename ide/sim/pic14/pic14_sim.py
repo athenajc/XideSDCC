@@ -70,7 +70,7 @@ class SimPic():
         for k, v in self.sfr_addr.items():
             self.mem_sfr_map[v] = k
             self.reg_table[k] = 0
-            
+        
         #print self.mem_sfr_map
         
         self.addr_map_lst = pic_lst_scan.pic_lst_scan(source_list)
@@ -107,7 +107,7 @@ class SimPic():
             msg = msg + str(t) + " "
         s = get_hh_mm_ss() + msg + "\n"
         if self.frame == None:
-            print get_hh_mm_ss() + msg
+            pass #print msg
         else:
             self.frame.log(s)
 
@@ -143,8 +143,11 @@ class SimPic():
     
     #-------------------------------------------------------------------
     def disassembly(self):
-        return pic_hex_scan(self.frame, self.hex_file, self.mcu_name)
-        
+        #return pic_hex_scan(self.frame, self.hex_file, self.mcu_name)
+        fn = self.hex_file.replace('.hex', '.hex2asm')
+        text = read_file(fn)
+        #print text
+        return text        
     #-------------------------------------------------------------------
     def init_registers(self):
         self.status_reg = 0
@@ -171,7 +174,13 @@ class SimPic():
         key = self.mem_sfr_map.get(addr, "")
         self.log("     get mem "+hex(addr) + " " + key +" = "+hex(v))
         return v    
-    
+    #-------------------------------------------------------------------
+    def update_pc_from_PCL(self):
+        pch = self.get_sfr('PCLATH')
+        pcl = self.get_sfr('PCL')
+        v = (pch << 8) | pcl
+        self.set_pc(v)
+        
     #-------------------------------------------------------------------
     def set_mem(self, addr, v):
         key = self.mem_sfr_map.get(addr, "")
@@ -188,6 +197,9 @@ class SimPic():
         if key != "":
             #self.log('     set_reg ', key, v)
             self.set_reg(key, v)
+            if key == 'PCL':
+                self.update_pc_from_PCL()
+                
         return v
 
     #-------------------------------------------------------------------
@@ -267,7 +279,7 @@ class SimPic():
     #-------------------------------------------------------------------
     def get_freg(self, addr):
         if not addr in [2, 3, 4, 0xA, 0xB]:
-            addr += self.bank_addr        
+            addr += self.bank_addr
 
         v = self.mem[addr]
         self.log("     get freg " + hex(addr) + " = "+hex(v))
@@ -277,12 +289,12 @@ class SimPic():
     def set_wreg(self, v):
         self.log("     set w = "+hex(v))
         self.wreg = v
-        self.set_reg('W', v)
+        self.set_sfr('W', v)
         
     #-------------------------------------------------------------------
     def get_wreg(self):
-        #v = self.get_sfr('W')
-        v = self.wreg
+        v = self.get_sfr('W')
+        #v = self.wreg
         self.log("     get w = "+hex(v))
         return v
         
@@ -357,9 +369,6 @@ class SimPic():
             self.status_reg = clear_bit(self.status_reg, bit)
         #self.set_freg(3, self.status_reg)
         self.mem[0x03] = self.status_reg
-        self.mem[0x83] = self.status_reg
-        self.mem[0x103] = self.status_reg
-        self.mem[0x183] = self.status_reg
         
         if bit == 5 or bit == 6:
             bank = (self.status_reg >> 5) & 0x3
@@ -373,9 +382,6 @@ class SimPic():
         
         #self.set_freg(3, self.status_reg)
         self.mem[0x03] = self.status_reg
-        self.mem[0x83] = self.status_reg
-        self.mem[0x103] = self.status_reg
-        self.mem[0x183] = self.status_reg        
         
     #-------------------------------------------------------------------
     def get_status_reg(self, bit):
@@ -385,7 +391,7 @@ class SimPic():
         self.log("     get status bit" + str(bit) + " = "+hex(b))
         
         return b
-                
+        
     #-------------------------------------------------------------------
     def set_z(self, v):
         self.set_status_reg(2, v, 'z')
@@ -401,7 +407,15 @@ class SimPic():
     #-------------------------------------------------------------------
     def get_c(self):
         return self.get_status_reg(0)
-        
+
+    #-------------------------------------------------------------------
+    def get_z(self):
+        return self.get_status_reg(2)
+    
+    #-------------------------------------------------------------------
+    def get_dc(self):
+        return self.get_status_reg(1)
+    
     #-------------------------------------------------------------------
     def push(self, v):
         self.log("     push "+hex(v))
@@ -428,7 +442,10 @@ class SimPic():
         self.log("     set pc = "+tohex(v, 4), hex(self.get_reg('PC')))
         self.pc = v
         self.set_reg('PC', v)
-                
+        
+        k = self.sfr_addr['PCL']
+        self.mem[k] = v & 0xff
+        
     #-------------------------------------------------------------------
     def jump(self, addr):
         self.set_pc(addr)
@@ -705,6 +722,10 @@ def convert_header_files():
             if f.find(d) >= 0:
                 f1 = f.replace('.inc', '.sfr')
                 convert_inc(src_path + f, dst_path + f1)
+
+
+from pic14_test_inst import pic14_test_inst
+        
             
 def test_sim():
     #fn = "/home/athena/src/pic14/0004/uart_tx.hex"
@@ -714,9 +735,10 @@ def test_sim():
     #frame, hex_file, source_list, mcu_name, mcu_device
     sim = SimPic(None, hex_fn, [fn], 'pic14', '16f628a')
     sim.start()
-    
-    for i in range(10):
-        sim.step()    
+    pic14_test_inst(sim)
+            
+    #for i in range(10):
+    #    sim.step()    
 
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    

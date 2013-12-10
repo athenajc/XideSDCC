@@ -136,6 +136,7 @@ def lst_scan_file(fn, fn_index):
     lst_file = path + ".lst"
     
     if not os.path.exists(lst_file):
+        print 'file not exist ' + lst_file
         return []
     #print lst_file
     text = utils.read_file(lst_file)
@@ -148,7 +149,7 @@ def lst_scan_file(fn, fn_index):
         header = 'gplink'
         
     c_name = path + ".c"
-    ##print c_name
+    #print c_name
     lst = lst_get_lines(text, fn_index)
     #print lst
     return lst
@@ -165,7 +166,7 @@ def pic_lst_scan(source_list):
             while a[0] >= len(lst):
                 lst.append(0)
             lst[a[0]] = [a[1], a[2], a[3], a[4]]
-        
+
         fn_index += 1
     
     return lst

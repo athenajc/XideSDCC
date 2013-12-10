@@ -1,5 +1,6 @@
 import os
 import utils
+from utils import *
 
 #----------------------------------------------------------------------------
 def get_bit(v, i):
@@ -93,6 +94,8 @@ def inst_clrf(sim, msb, lsb):
     d = (lsb >> 7) & 1
     f = lsb & 0x7f
     sim.set_z(1)
+    sim.set_c(0)
+    sim.set_dc(0)
     if d == 0:
         sim.set_wreg(0)
     else:
@@ -114,21 +117,25 @@ def inst_subwf(sim, msb, lsb):
     
     d = (lsb >> 7) & 1
     f = lsb & 0x7f
-    v = sim.get_freg(f)
+    fv = sim.get_freg(f)
     w = sim.get_wreg()
-    if v > w:
+    v = fv + comp8(w) + 1
+    
+    c = dc = z = 0
+    if v > 0xff:
         c = 1
-        z = 0
-        v = v - w
-    elif v == w:
-        c = z = 1
-        v = 0
-    else:
-        c = z = 0
-        v = v + ~w + 1
+        v = v & 0xff
         
+    if (v & 0xf) + (w & 0xf) > 0xf:
+        dc = 1
+        
+    if v == 0:
+        z = 1
+
     sim.set_c(c)
     sim.set_z(z)
+    sim.set_dc(dc)
+    
     if d == 0:
         sim.set_wreg(v)
     else:
@@ -287,7 +294,6 @@ def inst_movf(sim, msb, lsb):
     d = (lsb >> 7) & 1
     f = lsb & 0x7f
     v = sim.get_freg(f)
-    w = sim.get_wreg()
     sim.clear_status_reg_flags()
     if v == 0:
         z = 1
@@ -493,6 +499,7 @@ def inst_btfsc(sim, msb, lsb):
     f = lsb & 0x7f
     v = sim.get_freg(f)
     b = get_bit(v, bit)
+    #print 'inst_btfsc', b
     if b == 0:
         sim.skip_next_inst()
 
@@ -575,27 +582,27 @@ def inst_xorlw(sim, msb, lsb):
 #----------------------------------------------------------------------------
 def inst_sublw(sim, msb, lsb):
     #3c : 0011 110x kkkk kkkk SUBLW k C Z W <- k-W (dest <- k+~W+1)
-    w = sim.get_wreg()
+    sim.clear_status_reg_flags()
+    c = dc = z = 0
+    w = (comp8(sim.get_wreg()) + 1) & 0xff
     k = lsb
-    if k > w:
-        w = k - w
-        c = 0
-        z = 0
-    elif k < w:
-        w = (k + ~w + 1) & 0xff
+    
+    # check dc at first, before add w and f
+    if (w & 0xf) + (k & 0xf) > 0xf:
+        dc = 1
+        
+    w = w + k
+    if w > 0xff:
         c = 1
-        if w == 0:
-            z = 1
-        else:
-            z = 0
-    else:
-        w = 0
-        c = 1
+        w = w & 0xff
+            
+    if w == 0:
         z = 1
         
     sim.set_wreg(w)
     sim.set_c(c)
     sim.set_z(z)
+    sim.set_dc(dc)    
 
 #----------------------------------------------------------------------------
 def inst_addlw(sim, msb, lsb):
@@ -603,11 +610,13 @@ def inst_addlw(sim, msb, lsb):
     c = z = dc = 0
     w = sim.get_wreg() 
     k = lsb
-    w = k + w
     
+    # check dc at first, before add w and f
     if (w & 0xf) + (k & 0xf) > 0xf:
         dc = 1
-        
+    
+    w = k + w
+    
     if w > 0xff:
         c = 1
         w = w & 0xff
