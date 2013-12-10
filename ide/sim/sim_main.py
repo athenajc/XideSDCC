@@ -345,6 +345,8 @@ class DebugFrame (wx.Frame):
             
         self.asm_view.set_text(s)
         self.sim.start()
+        self.sim.enable_debug(True)
+        
         self.running = True
         if self.debug_mode:
             self.pause = True
@@ -719,15 +721,15 @@ class SimFrame (wx.Frame):
         #if not self.debug_mode:
         self.step_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.OnStepTimerTick, self.step_timer)
-        self.step_timer.Start(1)  # 1 milliseconds, 1 second = 1000 millisecond
+        #self.step_timer.Start(1)  # 1 milliseconds, 1 second = 1000 millisecond
         self.sim_update()
         self.toolbar.btn_run()
         #event = wx.CommandEvent(wx.wxEVT_COMMAND_BUTTON_CLICKED, ID_RUN)
         #wx.PostEvent(self.toolbar, event)    
         #self.Bind(wx.EVT_IDLE, self.OnIdle)
-        self.cpu_clock = 12*1024*1024
+        self.cpu_clock = 2*1024*1024
         self.interval = 1.0 / self.cpu_clock
-        self.tick_count = self.cpu_clock >> 10
+        self.tick_count = (self.cpu_clock >> 10)
         self.t0 = time.time()
         self.in_tick = False
         
@@ -747,23 +749,21 @@ class SimFrame (wx.Frame):
     
     #-------------------------------------------------------------------
     def OnStepTimerTick(self, event):
-        if self.in_tick:
-            return
-        
         if self.pause :
             return
 
         self.in_tick = True
         sim = self.sim
         if sim and not sim.stopped :
-            for i in range(self.tick_count):
-                sim.step()
-                if self.sim.stopped or self.stop:
-                    self.in_tick = False
-                    return
-                #time.sleep(self.interval)
+            self.step_timer.Stop() 
+            sim.step(self.tick_count)
 
-        self.in_tick = False
+        self.sim_update()
+ 
+        if self.sim.stopped:
+            self.sim_stop()
+        else:
+            self.step_timer.Start(1) 
         
     #-------------------------------------------------------------------
     def OnTimer1Timer(self, event):  
@@ -771,24 +771,23 @@ class SimFrame (wx.Frame):
         if self.command == 'run':
             self.timer1.Stop()
             self.sim_run(self.command)
-            self.timer1.Start(10)
             
             self.pause = False
             self.running = True
 
             self.command = None
         
-        if self.sim is None:
-            return
+        #if self.sim is None:
+            #return
         
-        if self.sim.stopped:
-            self.sim_stop()
-            return
+        #if self.sim.stopped:
+            #self.sim_stop()
+            #return
         
-        if self.pause:
-            return
+        #if self.pause:
+            #return
         
-        self.sim_update()
+        #self.sim_update()
         
         
     #-------------------------------------------------------------------
@@ -802,8 +801,9 @@ class SimFrame (wx.Frame):
             self.sim = pic14.Sim(self, self.ihx_path, self.file_list, self.mcu_name, self.mcu_device)
 
         self.sim.start()
+        self.sim.enable_debug(False)
         self.running = True
-            
+        self.step_timer.Start(10) 
         
     #-------------------------------------------------------------------
     def sim_stop(self):

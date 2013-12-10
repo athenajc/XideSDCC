@@ -94,6 +94,7 @@ class SimPic():
         self.mem_access_list = []
         self.status_bits_name = ['C', 'DC', 'Z', 'PD', 'TO', 'RP0', 'RP1', 'IRP']
         self.step_mode = None
+        self.debug = False
 
     #-------------------------------------------------------------------
     def log(self, *args):
@@ -101,6 +102,8 @@ class SimPic():
         #    return
         #import inspect
         #s1 = inspect.stack()[1][3] + " "
+        if not self.debug:
+            return
         
         msg = " "
         for t in args:
@@ -166,13 +169,15 @@ class SimPic():
         
     #-------------------------------------------------------------------
     def select_access_bank(self):
-        self.log("     set bank")
+        if self.debug:
+            self.log("     set bank")
         
     #-------------------------------------------------------------------
     def get_mem(self, addr):
         v = self.mem[addr]
         key = self.mem_sfr_map.get(addr, "")
-        self.log("     get mem "+hex(addr) + " " + key +" = "+hex(v))
+        if self.debug:
+            self.log("     get mem "+hex(addr) + " " + key +" = "+hex(v))
         return v    
     #-------------------------------------------------------------------
     def update_pc_from_PCL(self):
@@ -184,7 +189,8 @@ class SimPic():
     #-------------------------------------------------------------------
     def set_mem(self, addr, v):
         key = self.mem_sfr_map.get(addr, "")
-        self.log("     set mem " + hex(addr) + " " + key + " = " + hex(v))
+        if self.debug:
+            self.log("     set mem " + hex(addr) + " " + key + " = " + hex(v))
         if (v > 0xff) :
             self.log(v, "> 0xff")
             v = bits_and(v, 0xff)
@@ -207,10 +213,12 @@ class SimPic():
         v = self.get_mem(addr)
 
         if v & (1 << bit):
-            self.log("     get bit " + str(bit) + " of " + tohex(addr, 4), 1)
+            if self.debug: 
+                self.log("     get bit " + str(bit) + " of " + tohex(addr, 4), 1)
             return 1
         else:
-            self.log("     get bit " + str(bit) + " of " + tohex(addr, 4), 0)
+            if self.debug: 
+                self.log("     get bit " + str(bit) + " of " + tohex(addr, 4), 0)
             return 0
                 
     #-------------------------------------------------------------------
@@ -265,7 +273,8 @@ class SimPic():
         if not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
         key = self.mem_sfr_map.get(addr, "")
-        self.log("     set freg " + key + " " + hex(addr) + " = "+hex(v))
+        if self.debug:
+            self.log("     set freg " + key + " " + hex(addr) + " = "+hex(v))
         #self.freg[addr] = v
         self.set_mem(addr, v)
         if addr == 3:
@@ -282,12 +291,14 @@ class SimPic():
             addr += self.bank_addr
 
         v = self.mem[addr]
-        self.log("     get freg " + hex(addr) + " = "+hex(v))
+        if self.debug:
+            self.log("     get freg " + hex(addr) + " = "+hex(v))
         return v
     
     #-------------------------------------------------------------------
     def set_wreg(self, v):
-        self.log("     set w = "+hex(v))
+        if self.debug:
+            self.log("     set w = "+hex(v))
         self.wreg = v
         self.set_sfr('W', v)
         
@@ -295,23 +306,68 @@ class SimPic():
     def get_wreg(self):
         v = self.get_sfr('W')
         #v = self.wreg
-        self.log("     get w = "+hex(v))
+        if self.debug:
+            self.log("     get w = "+hex(v))
         return v
+    
+    #-------------------------------------------------------------------
+    def set_option_reg(self, v):
+        #bit 7:
+        #RBPU: PORTB Pull-up Enable bit
+        #0 = PORTB pull-ups are disabled
+        #1 = PORTB pull-ups are enabled (by individual port latch values). 
+         
+        #bit 6
+        #INTEDG: Interrupt Edge Select bit
+        #1 = Interrupt on rising edge of RB0/INT pin
+        #0 = Interrupt on falling edge of RB0/INT pin
+         
+        #bit 5
+        #T0CS: TMR0 Clock Source Select bit
+        #1 = Transition on RA4/T0CKI pin
+        #0 = Internal instruction cycle clock (CLKOUT)
+         
+        #bit 4:
+        #T0SE: TMR0 Source Edge Select bit
+        #1 = Increment on high-to-low transition on RA4/T0CKI pin
+        #0 = Increment on low-to-high transition on RA4/T0CKI pin
+         
+        #bit 3:
+        #PSA: Prescaler Assignment bit
+        #1 = Prescaler assigned to the WDT
+        #0 = Prescaler assigned to TMR0
+        #bit 2,1,0:
+        #PS2:PS0: Prescaler Rate Select bits 
+         
+        #Bit Value  TMR0 Rate   WDT Rate
+        #  000        1 : 2         1 : 1
+        #  001        1 : 4         1 : 2
+        #  010        1 : 8         1 : 4
+        #  011        1 : 16        1 : 8
+        #  100        1 : 32        1 : 16
+        #  101        1 : 64        1 : 32
+        #  110        1 : 128       1 : 64
+        #  111        1 : 256
+        self.set_sfr('OPTION', v)
+        
         
     #-------------------------------------------------------------------
     def set_bsr(self, v):
-        self.log("     set bsr = "+hex(v))
+        if self.debug:
+            self.log("     set bsr = "+hex(v))
         self.set_sfr('BSR', v)
         
     #-------------------------------------------------------------------
     def get_bsr(self):
         v = self.get_sfr('BSR')
-        self.log("     get bsr = "+hex(v))
+        if self.debug:
+            self.log("     get bsr = "+hex(v))
         return v
     
     #-------------------------------------------------------------------
     def set_prod(self, v):
-        self.log("     set prod = "+hex(v))
+        if self.debug:
+            self.log("     set prod = "+hex(v))
         self.set_sfr('PRODH', (v >> 8) & 0xff)
         self.set_sfr('PRODL', v & 0xff)
     
@@ -358,10 +414,11 @@ class SimPic():
         #1 = A carry-out from the most significant bit of the result occurred
         #0 = No carry-out from the most significant bit of the result occurred
         #Note: For borrow the second operand the polarity is reversed. A subtraction is executed by adding the two's complement of. For rotate (RRF, RLF) instructions, this bit is loaded with either the high or low order bit of the source register.        
-        if name:
-            self.log("     set status " + name + " bit " + str(bit) + " = "+hex(v))
-        else:
-            self.log("     set status bit " + str(bit) + " = "+hex(v))
+        if self.debug:
+            if name:
+                self.log("     set status " + name + " bit " + str(bit) + " = "+hex(v))
+            else:
+                self.log("     set status bit " + str(bit) + " = "+hex(v))
 
         if v:
             self.status_reg = set_bit(self.status_reg, bit)
@@ -374,7 +431,8 @@ class SimPic():
             bank = (self.status_reg >> 5) & 0x3
             self.bank_addr = bank * 0x80
             if bit == 6:
-                self.log("     select bank " + str(bank) + ", " + hex(self.bank_addr))
+                if self.debug:
+                    self.log("     select bank " + str(bank) + ", " + hex(self.bank_addr))
                 
     #-------------------------------------------------------------------
     def clear_status_reg_flags(self):
@@ -387,8 +445,8 @@ class SimPic():
     def get_status_reg(self, bit):
         v = self.status_reg
         b = get_bit(v, bit)
-            
-        self.log("     get status bit" + str(bit) + " = "+hex(b))
+        if self.debug:
+            self.log("     get status bit" + str(bit) + " = "+hex(b))
         
         return b
         
@@ -418,7 +476,8 @@ class SimPic():
     
     #-------------------------------------------------------------------
     def push(self, v):
-        self.log("     push "+hex(v))
+        if self.debug:
+            self.log("     push "+hex(v))
         self.stack.insert(0, v)
         self.set_reg('SP', len(self.stack))
         # print("     #stack = "+tostring(#self.stack))
@@ -431,7 +490,8 @@ class SimPic():
             return 0
         v = self.stack.pop(0)
         self.set_reg('SP', len(self.stack))
-        self.log("     pop "+hex(v))
+        if self.debug:
+            self.log("     pop "+hex(v))
         return v
 
     #-------------------------------------------------------------------
@@ -439,7 +499,8 @@ class SimPic():
         #PCL      0FF9
         #PCLATH   0FFA
         #PCLATU   0FFB
-        self.log("     set pc = "+tohex(v, 4), hex(self.get_reg('PC')))
+        if self.debug:
+            self.log("     set pc = "+tohex(v, 4), hex(self.get_reg('PC')))
         self.pc = v
         self.set_reg('PC', v)
         
@@ -453,8 +514,8 @@ class SimPic():
     #-------------------------------------------------------------------
     def jump_rel(self, v):
         offset = val8(v)
-        
-        self.log("     jump_rel  "+str(offset) )
+        if self.debug:
+            self.log("     jump_rel  "+str(offset) )
         self.set_pc(self.pc + offset)
         
     #-------------------------------------------------------------------
@@ -468,7 +529,8 @@ class SimPic():
         addr = self.pop()
         self.set_pc(addr)
         self.stack_depth -= 1
-        self.log("****** ret set pc = "+tohex(addr, 4), hex(self.get_reg('PC')))
+        if self.debug:
+            self.log("****** ret set pc = "+tohex(addr, 4), hex(self.get_reg('PC')))
         
     #-------------------------------------------------------------------
     def retfie(self):
@@ -487,7 +549,8 @@ class SimPic():
         
     #-------------------------------------------------------------------
     def skip_next_inst(self):
-        self.log("     skip next inst")
+        if self.debug:
+            self.log("     skip next inst")
         self.set_pc(self.pc + 1)
         
     #-------------------------------------------------------------------
@@ -527,21 +590,22 @@ class SimPic():
         addr = self.pc
         self.set_reg('PC', self.pc)
         self.inst_addr = self.pc
-        if addr < len(self.addr_map_lst):
-            t = self.addr_map_lst[addr]
-            #print addr, len(self.addr_map_lst), t
-            if t != 0:
-                self.c_file = t[0]
-                self.c_line = t[1]
-                self.asm_code = t[2]
-        else:
-            self.c_file = ""
-            self.c_line = 0
-            self.asm_code = ""
+        if self.debug:
+            if addr < len(self.addr_map_lst):
+                t = self.addr_map_lst[addr]
+                #print addr, len(self.addr_map_lst), t
+                if t != 0:
+                    self.c_file = t[0]
+                    self.c_line = t[1]
+                    self.asm_code = t[2]
+            else:
+                self.c_file = ""
+                self.c_line = 0
+                self.asm_code = ""
         
         lsb = self.code_space[addr*2]
         msb = self.code_space[addr*2 + 1] & 0x3f
-        opcode = (msb << 8) + lsb
+        
         #self.log('**************** ', hex(msb), hex(lsb))
         
         # self.set_pc(self.pc + blen)
@@ -549,8 +613,10 @@ class SimPic():
         
         #self.log('**************** pc ', hex(self.pc))
         f = inst_handler[msb]
-        s = get_pic14_inst_str(opcode, msb, lsb)
-        self.log("---------", tohex(addr, 4) + "  " + tohex(msb, 2) + tohex(lsb, 2) + '  <' + s +'>')
+        if self.debug:
+            opcode = (msb << 8) + lsb
+            s = get_pic14_inst_str(opcode, msb, lsb)
+            self.log("---------", tohex(addr, 4) + "  " + tohex(msb, 2) + tohex(lsb, 2) + '  <' + s +'>')
         #self.log("asm_code    ", self.c_line, self.asm_code)
         #self.log("     ", s)
         f(self, msb, lsb)
@@ -558,7 +624,22 @@ class SimPic():
         #ch = self.get_uart_put_ch()
         #if ch != 0:
             #self.sbuf_list.append(ch)
-                
+            
+    #-------------------------------------------------------------------
+    def load_inst_no_log(self):
+        addr = self.pc+self.pc
+        lsb = self.code_space[addr]
+        msb = self.code_space[addr + 1] & 0x3f
+        
+        self.pc = self.pc + 1
+
+        f = inst_handler[msb]
+        f(self, msb, lsb)
+            
+    #-------------------------------------------------------------------
+    def enable_debug(self, flag):
+        self.debug = flag
+        
     #-------------------------------------------------------------------
     def start(self):
         self.stopped = False
@@ -574,14 +655,27 @@ class SimPic():
         #    self.load_inst()
             
     #-------------------------------------------------------------------
-    def step(self):
+    def step(self, count=1):
         if self.stopped:
             return False
         
         self.step_mode = None
-
-        self.load_inst()
-        self.update_sfr()
+        if self.debug:
+            self.load_inst()
+            self.update_sfr()
+        else:
+            for i in range(count):
+                addr = self.pc+self.pc
+                lsb = self.code_space[addr]
+                msb = self.code_space[addr + 1] & 0x3f
+                
+                self.pc += 1
+        
+                f = inst_handler[msb]
+                f(self, msb, lsb)
+                
+                if self.err or self.pc == 0:
+                    break            
         
         if self.err:
             self.log("#simulation Error")

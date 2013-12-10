@@ -660,7 +660,11 @@ class SimPic():
         #ch = self.get_uart_put_ch()
         #if ch != 0:
             #self.sbuf_list.append(ch)
-                
+            
+    #-------------------------------------------------------------------
+    def enable_debug(self, flag):
+        self.debug = flag
+        
     #-------------------------------------------------------------------
     def start(self):
         self.stopped = False
@@ -676,13 +680,13 @@ class SimPic():
         #    self.load_inst()
         
     #-------------------------------------------------------------------
-    def step(self):
+    def step(self, count = 1):
         if self.stopped:
             return False
         
         self.step_mode = None
-
-        self.load_inst()
+        for i in range(count):
+            self.load_inst()
         self.update_sfr()
         
         if self.err:

@@ -40,6 +40,7 @@ def inst_msb_0(sim, msb, lsb):
 
 #----------------------------------------------------------------------------
 def inst_nop(sim, msb, lsb):
+    #0000 : 0000 0000 0000 0000 : NOP   No operation (MOVW 0,W)
     pass
 
 #----------------------------------------------------------------------------
@@ -49,11 +50,14 @@ def inst_return(sim, msb, lsb):
 
 #----------------------------------------------------------------------------
 def inst_retfie(sim, msb, lsb):
+    #0008 : 0000 0000 0000 1000 : RETURN   Return from subroutine, W unmodified
     sim.retfie()
 
 #----------------------------------------------------------------------------
 def inst_option(sim, msb, lsb):
-    pass
+    #0062 : 0000 0000 0110 0010 : OPTION   Copy W to OPTION register
+    w = sim.get_wreg()
+    sim.set_option_reg(w)
 
 #----------------------------------------------------------------------------
 def inst_sleep(sim, msb, lsb):

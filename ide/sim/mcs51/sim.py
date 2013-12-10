@@ -725,6 +725,10 @@ class Sim():
             self.sbuf_list.append(ch)
             
     #-------------------------------------------------------------------
+    def enable_debug(self, flag):
+        self.debug = flag
+        
+    #-------------------------------------------------------------------
     def start(self):
         self.stopped = False
         self.running = True
@@ -739,7 +743,7 @@ class Sim():
                 self.load_and_debug_inst()
             
     #-------------------------------------------------------------------
-    def step(self):
+    def step(self, count = 1):
         if self.stopped:
             return False
         
@@ -748,7 +752,10 @@ class Sim():
         if self.debug:
             self.load_and_debug_inst()
         else:
-            self.load_inst()
+            for i in range(count):
+                self.load_inst()
+                if self.err or self.pc == 0:
+                    break                            
         self.update_sfr()
         
         if self.err:

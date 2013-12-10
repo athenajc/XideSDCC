@@ -321,8 +321,9 @@ class UartTextViewer(wx.Panel):
         #s += 'mem 0x86 = ' + hex(sim.mem[0x86]) + '\n'
         #s += 'mem 0x87 = ' + hex(sim.mem[0x87]) + '\n'        
         
-        for a in sim.mem_access_list:
-            s += 'mem ' + hex(a) + ' = ' + hex(sim.mem[a]) + '\n'
+        if sim.debug:
+            for a in sim.mem_access_list:
+                s += 'mem ' + hex(a) + ' = ' + hex(sim.mem[a]) + '\n'
             
         #s += 'sbuf list = ' + str(sim.sbuf_list) + '\n'
             
