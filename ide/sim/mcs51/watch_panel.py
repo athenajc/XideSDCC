@@ -213,7 +213,7 @@ class RegTextCtrlList(wx.StaticBoxSizer):
         if sim is None:
             return
 
-        self.a_text.set_value(sim.get_reg('a'))
+        self.a_text.set_value(sim.get_reg('acc'))
         self.c_text.set_value(sim.get_reg('c'))
         self.r0_text.set_value(sim.get_reg('r0'))
         self.r1_text.set_value(sim.get_reg('r1'))

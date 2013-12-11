@@ -250,7 +250,7 @@ class DocC(DocBase):
     #-------------------------------------------------------------------
     def sim_close(self):
         self.sim_frame = None
-        self.app.toolbar.debug_stopped()
+        self.app.toolbar.tb_debug.debug_stopped()
         
     #-------------------------------------------------------------------
     def c_pre_process(self, s):

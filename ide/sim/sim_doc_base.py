@@ -148,12 +148,18 @@ class StyledText(stc.StyledTextCtrl):
         
     #-------------------------------------------------------------------
     def search_addr(self, token):
-        p1 = self.FindText(1, self.GetLength(), token, 0)
-        if p1 == -1:
-            return -1
-        line = self.LineFromPosition(p1)
-        self.goto_line(line)
-        return line
+        text = self.GetText()
+        i = 0
+        token = token.upper()
+        for line in text.split('\n'):
+            i += 1
+            n = line.find(token)
+            if n >= 0 and n < 20:
+                self.goto_line(i)
+                return i
+            
+            
+        return 0
   
 #---------------------------------------------------------------------------------------------------
 class DocBase(StyledText):

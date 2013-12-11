@@ -98,3 +98,25 @@ def array_list(table, n):
     for t in table:
         lst[t[0]] = t[1]
     return lst
+
+def comp8(v):
+    v1 = 0
+    for i in range(8):
+        b = (v >> i) & 1
+        if b == 0:
+            v1 |= 1 << i
+    #print v, v1, hex(v), hex(v1), bin(v), bin(v1)
+    return v1
+
+def hex8(v):
+    if v >= 0:
+        return hex(v)
+    else:
+        return hex(comp8(-v) + 1)
+
+def val8(v):
+    if v & 0x80:
+        v = comp8(v - 1)
+        return -v
+    else:
+        return v

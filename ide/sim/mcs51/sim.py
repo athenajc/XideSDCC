@@ -200,6 +200,8 @@ class Sim():
     def log(self, *args):
         if not self.debug or self.c_line == 0:
             return
+        if self.step_mode:
+            return
         msg = " "
         for t in args:
             msg = msg + str(t) + " "
@@ -355,7 +357,7 @@ class Sim():
     def set_a(self, v):
         self.log1("     set a = "+hex(v))
         self.a = (v)
-        self.set_reg('a', v)
+        self.set_sfr('acc', v)
         
     #-------------------------------------------------------------------
     def set_b(self, v):
@@ -474,7 +476,7 @@ class Sim():
         
     #-------------------------------------------------------------------
     def jump_rel(self, v):
-        offset = byte_to_int(v)
+        offset = val8(v)
         self.log("     jump_rel  "+str(offset) )
         self.set_pc(self.pc + offset)
         
@@ -660,7 +662,7 @@ class Sim():
             self.c_file = ""
             self.c_line = 0
             self.asm_code = ""
-        
+        self.log('------------', self.c_file, self.c_line)
         inst_code = self.code_space[addr]
         dd1 = self.code_space[addr + 1]
         dd2 = self.code_space[addr + 2]
@@ -784,7 +786,7 @@ class Sim():
                 self.load_and_debug_inst()
             else:
                 self.load_inst()
-            if i > 10:
+            if i > 100:
                 break
             
         self.update_sfr()
@@ -979,22 +981,22 @@ class Sim():
                         #idx = lst.index(dd.op1) 
                     label = map_list.get_symbol(int('0x' + dd.op1, 16))
                     if label:
-                        s += "   %04X   %s  %s %s, (%s)\n" % (addr, dd_str, label, dd.inst_str, dd.op1)
+                        s += "   %06X   %s  %s %s, (%s)\n" % (addr, dd_str, label, dd.inst_str, dd.op1)
                     else:
-                        s += "   %04X   %s  %s, %s\n" % (addr, dd_str, dd.inst_str, dd.op1)
+                        s += "   %06X   %s  %s, %s\n" % (addr, dd_str, dd.inst_str, dd.op1)
                 elif inst == 'jb   ' or inst == 'jnb  ' :
                     offset = int('0x' + dd.op2, 16)
-                    s += "   %04X   %s  %s, %s, %s  =%x\n" % (addr, dd_str, dd.inst_str, dd.op1, dd.op2, addr + sym[1] + offset)
+                    s += "   %06X   %s  %s, %s, %s  =%x\n" % (addr, dd_str, dd.inst_str, dd.op1, dd.op2, addr + sym[1] + offset)
                 else:
                     
                     if dd.op_n == 3:
-                        s += "   %04X   %s  %s %s, %s, %s\n" % (addr, dd_str, dd.inst_str, dd.op1, dd.op2, dd.op3)
+                        s += "   %06X   %s  %s %s, %s, %s\n" % (addr, dd_str, dd.inst_str, dd.op1, dd.op2, dd.op3)
                     elif dd.op_n == 2:
-                        s += "   %04X   %s  %s %s, %s\n" % (addr, dd_str, dd.inst_str, dd.op1, dd.op2)
+                        s += "   %06X   %s  %s %s, %s\n" % (addr, dd_str, dd.inst_str, dd.op1, dd.op2)
                     elif dd.op_n == 1:
-                        s += "   %04X   %s  %s %s\n" % (addr, dd_str, dd.inst_str, dd.op1)
+                        s += "   %06X   %s  %s %s\n" % (addr, dd_str, dd.inst_str, dd.op1)
                     else:
-                        s += "   %04X   %s  %s\n" % (addr, dd_str, dd.inst_str)
+                        s += "   %06X   %s  %s\n" % (addr, dd_str, dd.inst_str)
                 addr += sym[1]
 
                     
