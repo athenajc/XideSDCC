@@ -105,25 +105,25 @@ def word_to_int(v):
     #elif (op_type == OP_RELADDR) : 
         #return opvalue
     #elif (op_type == OP_R0) : 
-        #return sim.r0
+        #return sim.get_r(0)
     #elif (op_type == OP_R1) : 
-        #return sim.r1
+        #return sim.get_r(1)
     #elif (op_type == OP_R2) : 
-        #return sim.r2
+        #return sim.get_r(2)
     #elif (op_type == OP_R3) : 
-        #return sim.r3
+        #return sim.get_r(3)
     #elif (op_type == OP_R4) : 
-        #return sim.r4
+        #return sim.get_r(4)
     #elif (op_type == OP_R5) : 
-        #return sim.r5
+        #return sim.get_r(5)
     #elif (op_type == OP_R6) : 
-        #return sim.r6
+        #return sim.get_r(6)
     #elif (op_type == OP_R7) : 
-        #return sim.r7
+        #return sim.get_r(7)
     #elif (op_type == OP_ATR0) : 
-        #return sim.get_mem(sim.r0)
+        #return sim.get_mem_r(0)
     #elif (op_type == OP_ATR1) : 
-        #return sim.get_mem(sim.r1)
+        #return sim.get_mem_r(1)
     #elif (op_type == OP_ATA) : 
         #return sim.get_mem(sim.a)
     #elif (op_type == OP_ATDPTR) : 
@@ -142,25 +142,25 @@ def get_arth_inst_op2(inst, op1):
     elif (inst == 0x05) : 
         v2 = sim.get_mem(op1)
     elif (inst == 0x06) : 
-        v2 = sim.get_mem(sim.r0)
+        v2 = sim.get_mem_r(0)
     elif (inst == 0x07) : 
-        v2 = sim.get_mem(sim.r1)
+        v2 = sim.get_mem_r(1)
     elif (inst == 0x08) : 
-        v2 = sim.r0
+        v2 = sim.get_r(0)
     elif (inst == 0x09) : 
-        v2 = sim.r1
+        v2 = sim.get_r(1)
     elif (inst == 0x0A) : 
-        v2 = sim.r2
+        v2 = sim.get_r(2)
     elif (inst == 0x0B) : 
-        v2 = sim.r3
+        v2 = sim.get_r(3)
     elif (inst == 0x0C) : 
-        v2 = sim.r4
+        v2 = sim.get_r(4)
     elif (inst == 0x0D) : 
-        v2 = sim.r5
+        v2 = sim.get_r(5)
     elif (inst == 0x0E) : 
-        v2 = sim.r6
+        v2 = sim.get_r(6)
     elif (inst == 0x0F) : 
-        v2 = sim.r7
+        v2 = sim.get_r(7)
 
     return v2
 
@@ -256,16 +256,16 @@ def inst_anl(inst_bytes, inst, op1, op2, op3):
     elif (inst == 0x53) : sim.set_mem(op1, bits_and(sim.get_mem(op1), op2))    # ANL iram addr,#data  0x53  3  None
     elif (inst == 0x54) : sim.set_a(bits_and(sim.a, op1))             # ANL A,#data  0x54  2  None
     elif (inst == 0x55) : sim.set_a(bits_and(sim.a, sim.get_mem(op1)))    # ANL A,iram addr  0x55  2  None
-    elif (inst == 0x56) : sim.set_a(bits_and(sim.a, sim.get_mem(sim.r0))) # ANL A,@R0  0x56  1  None
-    elif (inst == 0x57) : sim.set_a(bits_and(sim.a, sim.get_mem(sim.r1))) # ANL A,@R1  0x57  1  None
-    elif (inst == 0x58) : sim.set_a(bits_and(sim.a, sim.r0))  # ANL A,R0  0x58  1  None
-    elif (inst == 0x59) : sim.set_a(bits_and(sim.a, sim.r1))  # ANL A,R1  0x59  1  None
-    elif (inst == 0x5A) : sim.set_a(bits_and(sim.a, sim.r2))  # ANL A,R2  0x5A  1  None
-    elif (inst == 0x5B) : sim.set_a(bits_and(sim.a, sim.r3))  # ANL A,R3  0x5B  1  None
-    elif (inst == 0x5C) : sim.set_a(bits_and(sim.a, sim.r4))  # ANL A,R4  0x5C  1  None
-    elif (inst == 0x5D) : sim.set_a(bits_and(sim.a, sim.r5))  # ANL A,R5  0x5D  1  None
-    elif (inst == 0x5E) : sim.set_a(bits_and(sim.a, sim.r6))  # ANL A,R6  0x5E  1  None
-    elif (inst == 0x5F) : sim.set_a(bits_and(sim.a, sim.r7))  # ANL A,R7  0x5F  1  None
+    elif (inst == 0x56) : sim.set_a(bits_and(sim.a, sim.get_mem_r(0))) # ANL A,@R0  0x56  1  None
+    elif (inst == 0x57) : sim.set_a(bits_and(sim.a, sim.get_mem_r(1))) # ANL A,@R1  0x57  1  None
+    elif (inst == 0x58) : sim.set_a(bits_and(sim.a, sim.get_r(0)))  # ANL A,R0  0x58  1  None
+    elif (inst == 0x59) : sim.set_a(bits_and(sim.a, sim.get_r(1)))  # ANL A,R1  0x59  1  None
+    elif (inst == 0x5A) : sim.set_a(bits_and(sim.a, sim.get_r(2)))  # ANL A,R2  0x5A  1  None
+    elif (inst == 0x5B) : sim.set_a(bits_and(sim.a, sim.get_r(3)))  # ANL A,R3  0x5B  1  None
+    elif (inst == 0x5C) : sim.set_a(bits_and(sim.a, sim.get_r(4)))  # ANL A,R4  0x5C  1  None
+    elif (inst == 0x5D) : sim.set_a(bits_and(sim.a, sim.get_r(5)))  # ANL A,R5  0x5D  1  None
+    elif (inst == 0x5E) : sim.set_a(bits_and(sim.a, sim.get_r(6)))  # ANL A,R6  0x5E  1  None
+    elif (inst == 0x5F) : sim.set_a(bits_and(sim.a, sim.get_r(7)))  # ANL A,R7  0x5F  1  None
     elif (inst == 0x82) : sim.set_c(bits_and(sim.c, sim.mem_get_bit(op1)))  # ANL C,bit addr  0x82  2  C
     elif (inst == 0xB0) : sim.set_c(bits_and(sim.c, sim.mem_get_nbit(op1)))  # ANL C,/bit addr  0xB0  2  C
     
@@ -282,34 +282,34 @@ def inst_cjne(inst_bytes, inst, op1, op2, op3):
         v1 = sim.a
         v2 = sim.get_mem(op1)
     elif (inst == 0xB6) :  # CJNE @R0,#data,reladdr  0xB6  3  C
-        v1 = sim.get_mem(sim.r0)
+        v1 = sim.get_mem_r(0)
         v2 = op1
     elif (inst == 0xB7) : # CJNE @R1,#data,reladdr  0xB7  3  C
-        v1 = sim.get_mem(sim.r1)
+        v1 = sim.get_mem_r(1)
         v2 = op1
     elif (inst == 0xB8) : # CJNE R0,#data,reladdr  0xB8  3  C
-        v1 = sim.r0 
+        v1 = sim.get_r(0) 
         v2 = op1
     elif (inst == 0xB9) : # CJNE R1,#data,reladdr  0xB9  3  C
-        v1 = sim.r1
+        v1 = sim.get_r(1)
         v2 = op1
     elif (inst == 0xBA) : # CJNE R2,#data,reladdr  0xBA  3  C
-        v1 = sim.r2
+        v1 = sim.get_r(2)
         v2 = op1
     elif (inst == 0xBB) : # CJNE R3,#data,reladdr  0xBB  3  C
-        v1 = sim.r3
+        v1 = sim.get_r(3)
         v2 = op1
     elif (inst == 0xBC) : # CJNE R4,#data,reladdr  0xBC  3  C
-        v1 = sim.r4
+        v1 = sim.get_r(4)
         v2 = op1
     elif (inst == 0xBD) : # CJNE R5,#data,reladdr  0xBD  3  C
-        v1 = sim.r5
+        v1 = sim.get_r(5)
         v2 = op1
     elif (inst == 0xBE) : # CJNE R6,#data,reladdr  0xBE  3  C
-        v1 = sim.r6
+        v1 = sim.get_r(6)
         v2 = op1
     elif (inst == 0xBF) : # CJNE R7,#data,reladdr  0xBF  3  C
-        v1 = sim.r7
+        v1 = sim.get_r(7)
         v2 = op1
 
     
@@ -414,25 +414,25 @@ def inst_dec(inst_bytes, inst, op1, op2, op3):
     elif (inst == 0x15) : 
         sim.set_mem(op1, dec(sim.get_mem(op1)))
     elif (inst == 0x16) : 
-        sim.set_mem(sim.r0, dec(sim.get_mem(sim.r0)))
+        sim.set_mem_r(0, dec(sim.get_mem_r(0)))
     elif (inst == 0x17) : 
-        sim.set_mem(sim.r1, dec(sim.get_mem(sim.r1)))
+        sim.set_mem_r(1, dec(sim.get_mem_r(1)))
     elif (inst == 0x18) : 
-        sim.set_r(0, dec(sim.r0))
+        sim.set_r(0, dec(sim.get_r(0)))
     elif (inst == 0x19) : 
-        sim.set_r(1, dec(sim.r1))
+        sim.set_r(1, dec(sim.get_r(1)))
     elif (inst == 0x1A) : 
-        sim.set_r(2, dec(sim.r2))
+        sim.set_r(2, dec(sim.get_r(2)))
     elif (inst == 0x1B) : 
-        sim.set_r(3, dec(sim.r3))
+        sim.set_r(3, dec(sim.get_r(3)))
     elif (inst == 0x1C) : 
-        sim.set_r(4, dec(sim.r4))
+        sim.set_r(4, dec(sim.get_r(4)))
     elif (inst == 0x1D) : 
-        sim.set_r(5, dec(sim.r5))
+        sim.set_r(5, dec(sim.get_r(5)))
     elif (inst == 0x1E) : 
-        sim.set_r(6, dec(sim.r6))
+        sim.set_r(6, dec(sim.get_r(6)))
     elif (inst == 0x1F) : 
-        sim.set_r(7, dec(sim.r7))
+        sim.set_r(7, dec(sim.get_r(7)))
 
 
 def inst_div(inst_bytes, inst, op1, op2, op3):
@@ -484,14 +484,14 @@ def inst_djnz(inst_bytes, inst, op1, op2, op3):
     #]]
     
     if (inst == 0xD5) : v = sim.set_mem(op1, dec(sim.get_mem(op1)))
-    elif (inst == 0xD8) : v = sim.set_r(0, dec(sim.r0))
-    elif (inst == 0xD9) : v = sim.set_r(1, dec(sim.r1))
-    elif (inst == 0xDA) : v = sim.set_r(2, dec(sim.r2))
-    elif (inst == 0xDB) : v = sim.set_r(3, dec(sim.r3))
-    elif (inst == 0xDC) : v = sim.set_r(4, dec(sim.r4))
-    elif (inst == 0xDD) : v = sim.set_r(5, dec(sim.r5))
-    elif (inst == 0xDE) : v = sim.set_r(6, dec(sim.r6))
-    elif (inst == 0xDF) : v = sim.set_r(7, dec(sim.r7))
+    elif (inst == 0xD8) : v = sim.set_r(0, dec(sim.get_r(0)))
+    elif (inst == 0xD9) : v = sim.set_r(1, dec(sim.get_r(1)))
+    elif (inst == 0xDA) : v = sim.set_r(2, dec(sim.get_r(2)))
+    elif (inst == 0xDB) : v = sim.set_r(3, dec(sim.get_r(3)))
+    elif (inst == 0xDC) : v = sim.set_r(4, dec(sim.get_r(4)))
+    elif (inst == 0xDD) : v = sim.set_r(5, dec(sim.get_r(5)))
+    elif (inst == 0xDE) : v = sim.set_r(6, dec(sim.get_r(6)))
+    elif (inst == 0xDF) : v = sim.set_r(7, dec(sim.get_r(7)))
     #end
     #--print(v, op1, op2)
     if (v != 0) :
@@ -534,16 +534,16 @@ def inst_inc(inst_bytes, inst, op1, op2, op3):
     #]]
     if (inst == 0x04) :   sim.set_a(inc(sim.a))
     elif (inst == 0x05) : sim.set_mem(op1, inc(sim.get_mem(op1)))
-    elif (inst == 0x06) : sim.set_mem(sim.r0, inc(sim.get_mem(sim.r0)))
-    elif (inst == 0x07) : sim.set_mem(sim.r1, inc(sim.get_mem(sim.r1)))
-    elif (inst == 0x08) : sim.set_r(0, inc(sim.r0))
-    elif (inst == 0x09) : sim.set_r(1, inc(sim.r1))
-    elif (inst == 0x0A) : sim.set_r(2, inc(sim.r2))
-    elif (inst == 0x0B) : sim.set_r(3, inc(sim.r3))
-    elif (inst == 0x0C) : sim.set_r(4, inc(sim.r4))
-    elif (inst == 0x0D) : sim.set_r(5, inc(sim.r5))
-    elif (inst == 0x0E) : sim.set_r(6, inc(sim.r6))
-    elif (inst == 0x0F) : sim.set_r(7, inc(sim.r7))
+    elif (inst == 0x06) : sim.set_mem_r(0, inc(sim.get_mem_r(0)))
+    elif (inst == 0x07) : sim.set_mem_r(1, inc(sim.get_mem_r(1)))
+    elif (inst == 0x08) : sim.set_r(0, inc(sim.get_r(0)))
+    elif (inst == 0x09) : sim.set_r(1, inc(sim.get_r(1)))
+    elif (inst == 0x0A) : sim.set_r(2, inc(sim.get_r(2)))
+    elif (inst == 0x0B) : sim.set_r(3, inc(sim.get_r(3)))
+    elif (inst == 0x0C) : sim.set_r(4, inc(sim.get_r(4)))
+    elif (inst == 0x0D) : sim.set_r(5, inc(sim.get_r(5)))
+    elif (inst == 0x0E) : sim.set_r(6, inc(sim.get_r(6)))
+    elif (inst == 0x0F) : sim.set_r(7, inc(sim.get_r(7)))
     elif (inst == 0xA3) : sim.set_dptr(inc16(sim.get_dptr()))
 
 
@@ -710,23 +710,23 @@ def inst_mov(inst_bytes, inst, op1, op2, op3):
     # Internal RAM location 0x50" whereas the opposite would be generally presumed.
 
     # print("mov ", tohex(inst, 2), tohex(op1, 2), tohex(op2, 2))
-    if   (inst == 0x76) : sim.set_mem(sim.r0, op1)       # MOV @R0,#data  0x76  2  None        
-    elif (inst == 0x77) : sim.set_mem(sim.r1, op1)   # MOV @R1,#data  0x77  2  None
-    elif (inst == 0xF6) : sim.set_mem(sim.r0, sim.a) # MOV @R0,A  0xF6  1  None
-    elif (inst == 0xF7) : sim.set_mem(sim.r1, sim.a) # MOV @R1,A  0xF7  1  None
-    elif (inst == 0xA6) : sim.set_mem(sim.r0, sim.get_mem(op1)) # MOV @R0,iram addr  0xA6  2  None       
-    elif (inst == 0xA7) : sim.set_mem(sim.r1, sim.get_mem(op1)) # MOV @R1,iram addr  0xA7  2  None
+    if   (inst == 0x76) : sim.set_mem_r(0, op1)       # MOV @R0,#data  0x76  2  None        
+    elif (inst == 0x77) : sim.set_mem_r(1, op1)   # MOV @R1,#data  0x77  2  None
+    elif (inst == 0xF6) : sim.set_mem_r(0, sim.a) # MOV @R0,A  0xF6  1  None
+    elif (inst == 0xF7) : sim.set_mem_r(1, sim.a) # MOV @R1,A  0xF7  1  None
+    elif (inst == 0xA6) : sim.set_mem_r(0, sim.get_mem(op1)) # MOV @R0,iram addr  0xA6  2  None       
+    elif (inst == 0xA7) : sim.set_mem_r(1, sim.get_mem(op1)) # MOV @R1,iram addr  0xA7  2  None
     elif (inst == 0x74) : sim.set_a(op1) # MOV A,#data  0x74  2  None
-    elif (inst == 0xE6) : sim.set_a(sim.get_mem(sim.r0)) # MOV A,@R0  0xE6  1  None
-    elif (inst == 0xE7) : sim.set_a(sim.get_mem(sim.r1)) # MOV A,@R1  0xE7  1  None
-    elif (inst == 0xE8) : sim.set_a(sim.r0) # MOV A,R0  0xE8  1  None
-    elif (inst == 0xE9) : sim.set_a(sim.r1) # MOV A,R1  0xE9  1  None
-    elif (inst == 0xEA) : sim.set_a(sim.r2) # MOV A,R2  0xEA  1  None
-    elif (inst == 0xEB) : sim.set_a(sim.r3) # MOV A,R3  0xEB  1  None
-    elif (inst == 0xEC) : sim.set_a(sim.r4) # MOV A,R4  0xEC  1  None
-    elif (inst == 0xED) : sim.set_a(sim.r5) # MOV A,R5  0xED  1  None
-    elif (inst == 0xEE) : sim.set_a(sim.r6) # MOV A,R6  0xEE  1  None
-    elif (inst == 0xEF) : sim.set_a(sim.r7) # MOV A,R7  0xEF  1  None
+    elif (inst == 0xE6) : sim.set_a(sim.get_mem_r(0)) # MOV A,@R0  0xE6  1  None
+    elif (inst == 0xE7) : sim.set_a(sim.get_mem_r(1)) # MOV A,@R1  0xE7  1  None
+    elif (inst == 0xE8) : sim.set_a(sim.get_r(0)) # MOV A,R0  0xE8  1  None
+    elif (inst == 0xE9) : sim.set_a(sim.get_r(1)) # MOV A,R1  0xE9  1  None
+    elif (inst == 0xEA) : sim.set_a(sim.get_r(2)) # MOV A,R2  0xEA  1  None
+    elif (inst == 0xEB) : sim.set_a(sim.get_r(3)) # MOV A,R3  0xEB  1  None
+    elif (inst == 0xEC) : sim.set_a(sim.get_r(4)) # MOV A,R4  0xEC  1  None
+    elif (inst == 0xED) : sim.set_a(sim.get_r(5)) # MOV A,R5  0xED  1  None
+    elif (inst == 0xEE) : sim.set_a(sim.get_r(6)) # MOV A,R6  0xEE  1  None
+    elif (inst == 0xEF) : sim.set_a(sim.get_r(7)) # MOV A,R7  0xEF  1  None
     elif (inst == 0xE5) : sim.set_a(sim.get_mem(op1)) # MOV A,iram addr  0xE5  2  None
 
     elif (inst == 0x90) : sim.set_dptr((op1 * 256) + op2) # MOV DPTR,#data16  0x90  3  None
@@ -756,16 +756,16 @@ def inst_mov(inst_bytes, inst, op1, op2, op3):
     elif (inst == 0xAF) : sim.set_r(7, sim.get_mem(op1)) # MOV R7,iram addr  0xAF  2  None
     
     elif (inst == 0x75) : sim.set_mem(op1, op2) # MOV iram addr,#data  0x75  3  None
-    elif (inst == 0x86) : sim.set_mem(op1, sim.get_mem(sim.r0)) # MOV iram addr,@R0  0x86  2  None
-    elif (inst == 0x87) : sim.set_mem(op1, sim.get_mem(sim.r1)) # MOV iram addr,@R1  0x87  2  None
-    elif (inst == 0x88) : sim.set_mem(op1, sim.r0) # MOV iram addr,R0  0x88  2  None
-    elif (inst == 0x89) : sim.set_mem(op1, sim.r1) # MOV iram addr,R1  0x89  2  None
-    elif (inst == 0x8A) : sim.set_mem(op1, sim.r2) # MOV iram addr,R2  0x8A  2  None
-    elif (inst == 0x8B) : sim.set_mem(op1, sim.r3) # MOV iram addr,R3  0x8B  2  None
-    elif (inst == 0x8C) : sim.set_mem(op1, sim.r4) # MOV iram addr,R4  0x8C  2  None
-    elif (inst == 0x8D) : sim.set_mem(op1, sim.r5) # MOV iram addr,R5  0x8D  2  None
-    elif (inst == 0x8E) : sim.set_mem(op1, sim.r6) # MOV iram addr,R6  0x8E  2  None
-    elif (inst == 0x8F) : sim.set_mem(op1, sim.r7) # MOV iram addr,R7  0x8F  2  None
+    elif (inst == 0x86) : sim.set_mem(op1, sim.get_mem_r(0)) # MOV iram addr,@R0  0x86  2  None
+    elif (inst == 0x87) : sim.set_mem(op1, sim.get_mem_r(1)) # MOV iram addr,@R1  0x87  2  None
+    elif (inst == 0x88) : sim.set_mem(op1, sim.get_r(0)) # MOV iram addr,R0  0x88  2  None
+    elif (inst == 0x89) : sim.set_mem(op1, sim.get_r(1)) # MOV iram addr,R1  0x89  2  None
+    elif (inst == 0x8A) : sim.set_mem(op1, sim.get_r(2)) # MOV iram addr,R2  0x8A  2  None
+    elif (inst == 0x8B) : sim.set_mem(op1, sim.get_r(3)) # MOV iram addr,R3  0x8B  2  None
+    elif (inst == 0x8C) : sim.set_mem(op1, sim.get_r(4)) # MOV iram addr,R4  0x8C  2  None
+    elif (inst == 0x8D) : sim.set_mem(op1, sim.get_r(5)) # MOV iram addr,R5  0x8D  2  None
+    elif (inst == 0x8E) : sim.set_mem(op1, sim.get_r(6)) # MOV iram addr,R6  0x8E  2  None
+    elif (inst == 0x8F) : sim.set_mem(op1, sim.get_r(7)) # MOV iram addr,R7  0x8F  2  None
     elif (inst == 0xF5) : sim.set_mem(op1, sim.a) # MOV iram addr,A  0xF5  2  None
     elif (inst == 0x85) : sim.set_mem(op2, sim.get_mem(op1)) # MOV iram addr,iram addr  0x85  3  None
 
@@ -807,14 +807,14 @@ def inst_movx(inst_bytes, inst, op1, op2, op3):
     #MOVX A,@R1  0xE3  1  None
     #]]
     if (inst == 0xF0)   : sim.set_ext_mem(sim.get_dptr(), sim.a)     #MOVX @DPTR,A  0xF0  1  None
-    elif (inst == 0xF2) : sim.set_ext_mem(sim.r0, sim.a)       #MOVX @R0,A    0xF2  1  None
-    elif (inst == 0xF3) : sim.set_ext_mem(sim.r1, sim.a)
+    elif (inst == 0xF2) : sim.set_ext_mem(sim.get_r(0), sim.a)       #MOVX @R0,A    0xF2  1  None
+    elif (inst == 0xF3) : sim.set_ext_mem(sim.get_r(1), sim.a)
     elif (inst == 0xE0) :  #MOVX A,@DPTR  0xE0  1  None
         addr = sim.get_dptr()
         v = sim.get_ext_mem(addr)
         sim.set_a(v)
-    elif (inst == 0xE2) : sim.set_a(sim.get_ext_mem(sim.r0))
-    elif (inst == 0xE3) : sim.set_a(sim.get_ext_mem(sim.r1))
+    elif (inst == 0xE2) : sim.set_a(sim.get_ext_mem(sim.get_r(0)))
+    elif (inst == 0xE3) : sim.set_a(sim.get_ext_mem(sim.get_r(1)))
     
 
 def inst_mul(inst_bytes, inst, op1, op2, op3):
@@ -880,16 +880,16 @@ def inst_orl(inst_bytes, inst, op1, op2, op3):
         v1 = sim.a
         if (inst == 0x44) : v2 = op1
         elif (inst == 0x45) : v2 = sim.get_mem(op1)
-        elif (inst == 0x46) : v2 = sim.get_mem(sim.r0)
-        elif (inst == 0x47) : v2 = sim.get_mem(sim.r1)
-        elif (inst == 0x48) : v2 = sim.r0
-        elif (inst == 0x49) : v2 = sim.r1
-        elif (inst == 0x4A) : v2 = sim.r2
-        elif (inst == 0x4B) : v2 = sim.r3
-        elif (inst == 0x4C) : v2 = sim.r4
-        elif (inst == 0x4D) : v2 = sim.r5
-        elif (inst == 0x4E) : v2 = sim.r6
-        elif (inst == 0x4F) : v2 = sim.r7
+        elif (inst == 0x46) : v2 = sim.get_mem_r(0)
+        elif (inst == 0x47) : v2 = sim.get_mem_r(1)
+        elif (inst == 0x48) : v2 = sim.get_r(0)
+        elif (inst == 0x49) : v2 = sim.get_r(1)
+        elif (inst == 0x4A) : v2 = sim.get_r(2)
+        elif (inst == 0x4B) : v2 = sim.get_r(3)
+        elif (inst == 0x4C) : v2 = sim.get_r(4)
+        elif (inst == 0x4D) : v2 = sim.get_r(5)
+        elif (inst == 0x4E) : v2 = sim.get_r(6)
+        elif (inst == 0x4F) : v2 = sim.get_r(7)
 
     #--print("bits_or", v1, v2)
     sim.set_a(bits_or(v1, v2))
@@ -1173,34 +1173,34 @@ def inst_xch(inst_bytes, inst, op1, op2, op3):
         v2 = sim.get_mem(op1)
         sim.set_mem(op1, v1)
     elif (inst == 0xC6) :        #XCH A,@R0  0xC6  1  None
-        v2 = sim.get_mem(sim.r0)   
-        sim.set_mem(sim.r0, v1)
+        v2 = sim.get_mem_r(0)   
+        sim.set_mem_r(0, v1)
     elif (inst == 0xC7) :        #XCH A,@R1  0xC7  1  None
-        v2 = sim.get_mem(sim.r1)   
-        sim.set_mem(sim.r1, v1)
+        v2 = sim.get_mem_r(1)   
+        sim.set_mem_r(1, v1)
     elif (inst == 0xC8) : 
-        v2 = sim.r0  
+        v2 = sim.get_r(0)  
         sim.set_r(0, v1)
     elif (inst == 0xC9) : 
-        v2 = sim.r1  
+        v2 = sim.get_r(1)  
         sim.set_r(1, v1)
     elif (inst == 0xCA) : 
-        v2 = sim.r2  
+        v2 = sim.get_r(2)  
         sim.set_r(2, v1)
     elif (inst == 0xCB) : 
-        v2 = sim.r3  
+        v2 = sim.get_r(3)  
         sim.set_r(3, v1)
     elif (inst == 0xCC) : 
-        v2 = sim.r4  
+        v2 = sim.get_r(4)  
         sim.set_r(4, v1)
     elif (inst == 0xCD) : 
-        v2 = sim.r5  
+        v2 = sim.get_r(5)  
         sim.set_r(5, v1)
     elif (inst == 0xCE) : 
-        v2 = sim.r6  
+        v2 = sim.get_r(6)  
         sim.set_r(6, v1)
     elif (inst == 0xCF) : 
-        v2 = sim.r7  
+        v2 = sim.get_r(7)  
         sim.set_r(7, v1)    
 
     sim.set_a(v2)
@@ -1222,9 +1222,9 @@ def inst_xchd(inst_bytes, inst, op1, op2, op3):
 
     # get address by instruction
     if (inst == 0xD6) :
-        addr = sim.r0
+        addr = sim.get_r(0)
     elif (inst == 0xD7) :
-        addr = sim.r1
+        addr = sim.get_r(1)
     
     r = sim.get_mem(addr)
     r_3_0 = bits_and(v2, 0x0f)
@@ -1268,25 +1268,25 @@ def inst_xrl(inst_bytes, inst, op1, op2, op3):
     elif (inst == 0x65) : 
         sim.set_a(sim.a ^ sim.get_mem(op1))
     elif (inst == 0x66) : 
-        sim.set_a(sim.a ^ sim.get_mem(sim.r0))
+        sim.set_a(sim.a ^ sim.get_mem_r(0))
     elif (inst == 0x67) : 
-        sim.set_a(sim.a ^ sim.get_mem(sim.r1))
+        sim.set_a(sim.a ^ sim.get_mem_r(1))
     elif (inst == 0x68) : 
-        sim.set_a(sim.a ^ sim.r0)
+        sim.set_a(sim.a ^ sim.get_r(0))
     elif (inst == 0x69) : 
-        sim.set_a(sim.a ^ sim.r1)
+        sim.set_a(sim.a ^ sim.get_r(1))
     elif (inst == 0x6A) : 
-        sim.set_a(sim.a ^ sim.r2)
+        sim.set_a(sim.a ^ sim.get_r(2))
     elif (inst == 0x6B) : 
-        sim.set_a(sim.a ^ sim.r3)
+        sim.set_a(sim.a ^ sim.get_r(3))
     elif (inst == 0x6C) : 
-        sim.set_a(sim.a ^ sim.r4)
+        sim.set_a(sim.a ^ sim.get_r(4))
     elif (inst == 0x6D) : 
-        sim.set_a(sim.a ^ sim.r5)
+        sim.set_a(sim.a ^ sim.get_r(5))
     elif (inst == 0x6E) : 
-        sim.set_a(sim.a ^ sim.r6)
+        sim.set_a(sim.a ^ sim.get_r(6))
     elif (inst == 0x6F) : 
-        sim.set_a(sim.a ^ sim.r7)
+        sim.set_a(sim.a ^ sim.get_r(7))
 
 
 def inst_undef(inst_bytes, inst, op1, op2, op3):

@@ -431,6 +431,7 @@ class DebugFrame (wx.Frame):
     #-------------------------------------------------------------------
     def OnContinue(self, event):
         self.pause = False
+        self.sim.step_mode = 'run'
         self.step_timer.Start(1)
         
     #-------------------------------------------------------------------

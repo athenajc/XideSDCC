@@ -23,6 +23,7 @@ class Sim():
         self.source_list = source_list
         self.mode = command
         self.inst_addr = 0
+        self.mcu_name = '8051'
         if command == 'debug':
             self.debug = True
         else:
@@ -163,6 +164,7 @@ class Sim():
                 'sm2': 0x9D,
                 'sm1': 0x9E,
                 'sm0': 0x9F,
+                'r0':0,'r1':1,'r2':2,'r3':3,'r4':4,'r5':5,'r6':6,'r7':7,
             }
         self.SBUF = self.sfr_map['sbuf']
         self.RI  = self.sfr_map['ri']
@@ -236,7 +238,7 @@ class Sim():
     def log(self, *args):
         if not self.debug or self.c_line == 0:
             return
-        if self.step_mode:
+        if self.step_mode != None:
             return
         msg = " "
         for t in args:
@@ -292,8 +294,15 @@ class Sim():
     #-------------------------------------------------------------------
     def mem_get_bit(self, bitaddr):
         # mem 0x80 - 0x8F
-        bit = bitaddr & 7
-        addr = bitaddr - bit
+        if bitaddr < 0x80:
+            # 0x20 - 0x2F
+            bit = bitaddr & 7
+            addr = (bitaddr >> 3) + 0x20
+        else:
+            # access SFR's bits
+            bit = bitaddr & 7
+            addr = bitaddr - bit
+            
         v = self.get_mem(addr)
         
         ## print(bitaddr, bits_rshift(bitaddr, 3), bitaddr % 8) 
@@ -315,8 +324,15 @@ class Sim():
     #-------------------------------------------------------------------
     def mem_get_nbit(self, bitaddr):
         # mem 0x80 - 0x8F
-        bit = bitaddr & 7
-        addr = bitaddr - bit
+        if bitaddr < 0x80:
+            # 0x20 - 0x2F
+            bit = bitaddr & 7
+            addr = (bitaddr >> 3) + 0x20
+        else:
+            # access SFR's bits
+            bit = bitaddr & 7
+            addr = bitaddr - bit
+            
         v = self.get_mem(addr)
 
         if v & (1 << bit):
@@ -327,8 +343,14 @@ class Sim():
     #-------------------------------------------------------------------
     def mem_set_bit(self, bitaddr, b):
         # mem 0x80 - 0x8F
-        bit = bitaddr & 7
-        addr = bitaddr - bit
+        if bitaddr < 0x80:
+            # 0x20 - 0x2F
+            bit = bitaddr & 7
+            addr = (bitaddr >> 3) + 0x20
+        else:
+            # access SFR's bits
+            bit = bitaddr & 7
+            addr = bitaddr - bit
         
         #if bitaddr == self.TI or bitaddr == self.RI:
             ##self.log('@---------------- set TI addr = ' + hex(addr))
@@ -343,8 +365,10 @@ class Sim():
             
         self.set_mem(addr, v)
         
-        if addr == self.PSW:
-            self.set_psw(v, bit, b)
+        if addr >= 0x80:
+            # Access SFR
+            if addr == self.PSW:
+                self.set_psw(v, bit, b)
         
     #-------------------------------------------------------------------
     def get_code_space(self, addr):
@@ -385,6 +409,36 @@ class Sim():
             self.log("******* set sbuf = " + tohex(v, 0))
         else:
             self.log("     set mem "+tohex(addr, 4)+" = "+tohex(v, 0))
+        
+        if (v > 0xff) :
+            self.log(v, "> 0xff")
+            v = bits_and(v, 0xff)
+    
+        self.mem[addr] = v
+        
+        # check if set sfr region
+        if addr >= 0x80 and addr <= 0xFF:
+            if addr == self.ACC:
+                self.a = v
+            elif addr == self.PSW:
+                self.psw = v
+
+        return v
+        
+    #-------------------------------------------------------------------
+    # indirect addressing always access memory, not SFR
+    def get_mem_r(self, i):
+        addr = self.get_r(i)
+        v = self.mem[addr]
+            
+        self.log("     get mem "+tohex(addr,4)+" = "+tohex(v, 0))
+        return v    
+    
+    #-------------------------------------------------------------------
+    # indirect addressing always access memory, not SFR
+    def set_mem_r(self, i, v):
+        addr = self.get_r(i)
+        self.log("     set mem "+tohex(addr, 4)+" = "+tohex(v, 0))
         
         if (v > 0xff) :
             self.log(v, "> 0xff")
@@ -496,37 +550,18 @@ class Sim():
         return self.mem[addr]
         
     #-------------------------------------------------------------------
-    def update_sfr(self):        
+    def update_sfr(self):
         for k, v in self.sfr_map.items():
             self.set_reg(k, self.mem[v])
 
     #-------------------------------------------------------------------
-    def set_r(self, i, v):
-        k = 'r' + str(i)
-        self.log1("     set "+k+" = "+hex(v))
-        self.set_reg(k, v)
-        
-        if (i == 0) : self.r0 = v
-        elif (i == 1) : self.r1 = v
-        elif (i == 2) : self.r2 = v
-        elif (i == 3) : self.r3 = v
-        elif (i == 4) : self.r4 = v
-        elif (i == 5) : self.r5 = v
-        elif (i == 6) : self.r6 = v
-        elif (i == 7) : self.r7 = v
+    def set_r(self, i, v):        
+        self.mem[self.bank_addr + i] = v
         return v
     
     #-------------------------------------------------------------------
     def get_r(self, i):
-        if (i == 0) : v = self.r0
-        elif (i == 1) : v = self.r1
-        elif (i == 2) : v = self.r2
-        elif (i == 3) : v = self.r3
-        elif (i == 4) : v = self.r4
-        elif (i == 5) : v = self.r5
-        elif (i == 6) : v = self.r6
-        elif (i == 7) : v = self.r7
-        self.log1("     get r"+str(i)+" = "+hex(v))
+        v = self.mem[self.bank_addr + i]
         return v
     
     #-------------------------------------------------------------------
