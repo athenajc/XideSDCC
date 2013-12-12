@@ -120,3 +120,14 @@ def val8(v):
         return -v
     else:
         return v
+    
+def getbit(x, bit):
+    # print("getbit", x, p, bit(p))
+    return x & (1 << bit)
+
+def setbit(x, bit):
+    return x | (1 << bit)
+
+def clearbit(v1, bit):
+    v2 = ~(1 << bit)
+    return v1 & v2

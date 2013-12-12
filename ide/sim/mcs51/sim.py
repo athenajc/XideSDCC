@@ -15,6 +15,8 @@ import rst
 class Obj():
     def __init__(self):
         pass
+    
+       
         
 class Sim():
     def __init__(self, frame, file_path, source_list, command):
@@ -51,14 +53,6 @@ class Sim():
         self.sp = 0
         self.mem = []
         self.stack = []
-        self.r0 = 0
-        self.r1 = 0
-        self.r2 = 0
-        self.r3 = 0
-        self.r4 = 0
-        self.r5 = 0
-        self.r6 = 0
-        self.r7 = 0
         self.c = 0
         self.ac = 0
         self.ov = 0
@@ -66,18 +60,6 @@ class Sim():
         self.bank = 0
         self.bank_addr = 0
 
-        #self.SP = 0x81
-        #self.DPL  = 0x82
-        #self.DPH  = 0x83
-        #self.PCON = 0x87
-        #self.TCON = 0x88
-        #self.TMOD = 0x89
-        #self.TL0 =  0x8A
-        #self.TL1 = 0x8B
-        #self.TH0 = 0x8C
-        #self.TH1 =  0x8D
-        #self.SCON = 0x98
-        #self.SBUF = 0x99
         self.P0    = 0x80
         self.SP    = 0x81
         self.DPL   = 0x82
@@ -107,20 +89,28 @@ class Sim():
         self.A     = 0xE0
         self.B     = 0xF0
         
-        #self.RI  = 0x98
-        #self.TI  = 0x99
-        #self.RB8 = 0x9A
-        #self.TB8 = 0x9B
-        #self.REN = 0x9C
-        #self.SM2 = 0x9D
-        #self.SM1 = 0x9E
-        #self.SM0 = 0x9F
+        #bits addressing
+        self.B_RI  = 0x98
+        self.B_TI  = 0x99
+        self.B_RB8 = 0x9A
+        self.B_TB8 = 0x9B
+        self.B_REN = 0x9C
+        self.B_SM2 = 0x9D
+        self.B_SM1 = 0x9E
+        self.B_SM0 = 0x9F
         
         self.sbuf_list = []
         self.mem = [0] * 4096
         self.ext_mem = [0] * 64 * 1024
         self.code_space = [0] * 64 * 1024
         self.reg = [0] * 32
+        
+        self.t0_enabled = False
+        self.t1_enabled = False
+        self.t0_count = 0
+        self.t1_count = 0
+        self.t0_mode = 0
+        self.t1_mdoe = 0
         
         self.reg_table = {
             'pc':0, 'dptr':0, 'sp':0, 
@@ -369,6 +359,8 @@ class Sim():
             # Access SFR
             if addr == self.PSW:
                 self.set_psw(v, bit, b)
+            elif addr == self.TCON:
+                self.set_tcon(bit, b)
         
     #-------------------------------------------------------------------
     def get_code_space(self, addr):
@@ -422,9 +414,14 @@ class Sim():
                 self.a = v
             elif addr == self.PSW:
                 self.psw = v
-
+            elif addr == self.TL0 or addr == self.TH0:
+                self.set_timer_count(0)
+            elif addr == self.TL1 or addr == self.TH1:
+                self.set_timer_count(1)
+                
         return v
         
+    
     #-------------------------------------------------------------------
     # indirect addressing always access memory, not SFR
     def get_mem_r(self, i):
@@ -452,7 +449,7 @@ class Sim():
                 self.a = v
         
         return v
-    
+            
     #-------------------------------------------------------------------
     def set_psw(self, psw, bit, v):
         #/* PSW */
@@ -475,6 +472,112 @@ class Sim():
         elif bit == 2:
             self.ov = v
             
+    #-------------------------------------------------------------------
+    def set_ie(self, bit, v):
+        #IE: Interrupt Enable Register (bit addressable)
+       
+        #If the bit is 0, the corresponding interrupt is disabled. If the bit is 1, the corresponding interrupt is enabled.
+        
+        #(msb) |EA|-|ET2|ES|ET1|EX1|ET0|EX0| (lsb)
+        
+        #Symbol	Position	Name & Significance
+        #EA	IE.7	Disables all interrupts. If EA = 0, no interrupt will be acknowledged. If EA = 1, each interrupt source is individually enabled or disabled by setting or clearing its enable bit.
+        #-	IE.6	Not implemented.
+        #ET2	IE.5	Enable/disable Timer 2 overflow or capture interrupt. (8052 only).
+        #ES	IE.4	Enable/disable serial port interrupt.
+        #ET1	IE.3	Enable/disable Timer 1 overflow interrupt.
+        #EX1	IE.2	Enable/disable external interrupt 1.
+        #ET0	IE.1	Enable/disable Timer 0 overflow interrupt.
+        #EX0	IE.0	Enable/disable external interrupt 0.
+        #INTERRUPT SOURCE	VECTOR ADDRESS
+        #IE0	0003H
+        #TF0	000BH
+        #IE1	0013H
+        #TF1	001BH
+        #RI & TI	0023H
+        #TF2 & EXF2 (8052 only)	002BH
+        self.log("     set IE bit " + str(bit) + " = "+hex(v))
+        pass
+    
+    #-------------------------------------------------------------------
+    def set_ip(self, bit, v):
+        #IP: Interrupt Priority Register (bit addressable)
+       
+        #If the bit is 0, the corresponding interrupt has a lower priority and if the bit is 1, the corresponding interrupt has a higher priority.
+       
+        #(msb) |-|-|PT2|PS|PT1|PX1|PT0|PX0| (lsb)
+       
+        #Symbol	Position	Name & Significance
+        #-	IP.7	Not implemented.
+        #-	IP.6	Not implemented.
+        #PT2	IP.5	Defines the Timer 2 interrupt priority level (8052 only).
+        #PS	IP.4	Defines the serial port interrupt priority level.
+        #PT1	IP.3	Defines Timer 1 interrupt priority level.
+        #PX1	IP.2	Defines External interrupt 1 priority level.
+        #PT0	IP.1	Defines Timer 0 interrupt priority level.
+        #PX0	IP.0	Defines External interrupt 0 priority level.
+        
+        pass
+    
+    #-------------------------------------------------------------------
+    def set_timer_count(self, index):
+        if index == 0:
+            tmod = self.mem[self.TMOD]
+            th = self.mem[self.TH0]
+            tl = self.mem[self.TL0]
+            # Mode select : bit 0, bit 1
+            self.t0_mode = mode = tmod & 3
+            if mode == 0:  # 13 bits, max 8192
+                self.t0_count = (th << 5) | (tl & 0x1f)
+            elif mode == 1: # 16 bits, max 65536
+                self.t0_count = (th << 8) | tl
+            elif mode == 2: # 8 bits, max 256
+                self.t0_count = tl
+            elif mode == 3: # 8 bits, max 256
+                self.t0_count = tl
+        elif index == 1:
+            tmod = self.mem[self.TMOD]
+            th = self.mem[self.TH1]
+            tl = self.mem[self.TL1]
+            # Mode select : bit 0, bit 1
+            self.t1_mode = mode = tmod & 3
+            if mode == 0:  # 13 bits, max 8192
+                self.t1_count = (th << 5) | (tl & 0x1f)
+            elif mode == 1: # 16 bits, max 65536
+                self.t1_count = (th << 8) | tl
+            elif mode == 2: # 8 bits, max 256
+                self.t1_count = tl
+                
+    #-------------------------------------------------------------------
+    def set_tmod(self, bit, v):
+        #GATE	When TRx (in TCON) is set and GATE = 1, TIMER/COUNTERx will run only while INTx pin is high (hardware control). When GATE = 0, TIMER/COUNTERx will run only while TRx = 1 (software control).
+        #C/T	Timer or Counter selector. Cleared for Timer operation (input from internal system clock). Set for counter operation (input from Tx input pin).
+        #M1	Mode selector bit. (see note)
+        #M0	Mode selector bit. (see note)      
+        self.log("     set TMOD bit " + str(bit) + " = "+hex(v))
+        pass
+    
+    #-------------------------------------------------------------------
+    def set_tcon(self, bit, v):
+        #TF1	TCON.7	Timer 1 overflow flag. Set by hardware when Timer/Counter 1 overflows. Cleared by hardware as processor vectors to the interrupt service routine.
+        #TR1	TCON.6	Timer 1 run control bit. Set/cleared by software to turn Timer/Counter 1 On/Off.
+        #TF0	TCON.5	Timer 0 overflow flag. Set by hardware when Timer/Counter 0 overflows. Cleared by hardware as processor vectors to the interrupt service routine.
+        #TR0	TCON.4	Timer 0 run control bit. Set/cleared by software to turn Timer/Counter 0 On/Off.
+        #IE1	TCON.3	External Interrupt 1 edge flag. Set by hardware when external interrupt edge is detected. Cleared by hardware when interrupt is processed.
+        #IT0	TCON.2	Interrupt 1 type control bit. Set/cleared by software to specify falling edge/low level triggered external interrupts.
+        #IE0	TCON.1	External Interrupt 0 edge flag. Set by hardware when external interrupt edge is detected. Cleared by hardware when interrupt is processed.
+        #IT0	TCON.0	Interrupt 0 type control bit. Set/cleared by software to specify falling edge/low level triggered external interrupts.        
+        self.log("     set TCON bit " + str(bit) + " = "+hex(v))
+        if bit == 6: # TR1
+            self.set_timer_count(0)
+                
+            self.t1_enabled = True
+        elif bit == 4: # TR0 - trigger timer 0
+            self.set_timer_count(1)
+                
+            self.t0_enabled = True
+            
+        
     #-------------------------------------------------------------------
     def get_a(self):
         return self.mem[0xE0]
@@ -764,9 +867,30 @@ class Sim():
     
             #print(s)
             #j = j + 8
-
+    #-------------------------------------------------------------------
+    def timer_tick(self):
+        # do the timer work
+        tcon = self.mem[self.TCON]
+        if self.t0_enabled and self.t0_count > 0:
+            self.t0_count -= 1
+            if self.t0_count <= 0:
+                # set bit TF0 = 1
+                tcon = setbit(tcon, 5)
+                self.mem[self.TCON] = tcon
+                if self.t0_mode == 2:
+                    # copy value from TH0 to TL0
+                    self.mem[self.TL0] = self.mem[self.TH0]
+                
+        if self.t1_enabled :
+            self.t0_count -= 1
+            if self.t0_count == 0:
+                # set bit TF0 = 1
+                tcon = setbit(tcon, 7)
+                self.mem[self.TCON] = tcon
+                
     #-------------------------------------------------------------------
     def load_and_debug_inst(self):
+        self.timer_tick()
         # get current program counter 
         addr = self.pc   
         self.inst_addr = self.pc
@@ -822,6 +946,7 @@ class Sim():
             
     #-------------------------------------------------------------------
     def load_inst(self):
+        self.timer_tick()
         # get current program counter 
         addr = self.pc   
         self.inst_addr = self.pc
