@@ -61,7 +61,10 @@ class Sim():
         self.c = 0
         self.ac = 0
         self.ov = 0
-        
+        self.psw = 0
+        self.bank = 0
+        self.bank_addr = 0
+
         #self.SP = 0x81
         #self.DPL  = 0x82
         #self.DPH  = 0x83
@@ -74,6 +77,34 @@ class Sim():
         #self.TH1 =  0x8D
         #self.SCON = 0x98
         #self.SBUF = 0x99
+        self.P0    = 0x80
+        self.SP    = 0x81
+        self.DPL   = 0x82
+        self.DPH   = 0x83
+        self.PCON  = 0x87
+        self.TCON  = 0x88
+        self.TMOD  = 0x89
+        self.TL0   = 0x8A
+        self.TL1   = 0x8B
+        self.TH0   = 0x8C
+        self.TH1   = 0x8D
+        self.P1    = 0x90
+        self.SCON  = 0x98
+        self.SBUF  = 0x99
+        self.P2    = 0xA0
+        self.IE    = 0xA8
+        self.P3    = 0xB0
+        self.IP    = 0xB8
+        self.T2CON = 0xC8
+        self.T2MOD = 0xC9
+        self.RCAP2L= 0xCA
+        self.RCAP2H= 0xCB
+        self.TL2   = 0xCC
+        self.TH2   = 0xCD
+        self.PSW   = 0xD0
+        self.ACC   = 0xE0
+        self.A     = 0xE0
+        self.B     = 0xF0
         
         #self.RI  = 0x98
         #self.TI  = 0x99
@@ -88,6 +119,7 @@ class Sim():
         self.mem = [0] * 4096
         self.ext_mem = [0] * 64 * 1024
         self.code_space = [0] * 64 * 1024
+        self.reg = [0] * 32
         
         self.reg_table = {
             'pc':0, 'dptr':0, 'sp':0, 
@@ -136,6 +168,10 @@ class Sim():
         self.RI  = self.sfr_map['ri']
         self.TI  = self.sfr_map['ti']
         
+        self.addr_sfr = {}
+        for k, v in self.sfr_map.items():
+            self.addr_sfr[v] = k
+            
         self.inst_handler = [
             [I_ACALL, inst_acall],
             [I_ADD,   inst_add],
@@ -306,6 +342,10 @@ class Sim():
             v = clearbit(v, bit)
             
         self.set_mem(addr, v)
+        
+        if addr == self.PSW:
+            self.set_psw(v, bit, b)
+        
     #-------------------------------------------------------------------
     def get_code_space(self, addr):
         v = self.code_space[addr]
@@ -351,19 +391,53 @@ class Sim():
             v = bits_and(v, 0xff)
     
         self.mem[addr] = v
+        
+        # check if set sfr region
+        if addr >= 0x80 and addr < 0xFF:
+            if addr == self.ACC:
+                self.a = v
+        
         return v
     
+    #-------------------------------------------------------------------
+    def set_psw(self, psw, bit, v):
+        #/* PSW */
+        #__sbit __at 0xD0 P          ;
+        #__sbit __at 0xD1 FL         ;
+        #__sbit __at 0xD2 OV         ;
+        #__sbit __at 0xD3 RS0        ;
+        #__sbit __at 0xD4 RS1        ;
+        #__sbit __at 0xD5 F0         ;
+        #__sbit __at 0xD6 AC         ;
+        #__sbit __at 0xD7 CY         ;
+        self.psw = psw
+        if bit == 3 or bit == 4:
+            self.bank = (psw >> 3) & 3
+            self.bank_addr = self.bank * 8
+        elif bit == 7:
+            self.c = v
+        elif bit == 6:
+            self.ac = v
+        elif bit == 2:
+            self.ov = v
+            
+    #-------------------------------------------------------------------
+    def get_a(self):
+        return self.mem[0xE0]
+        
     #-------------------------------------------------------------------
     def set_a(self, v):
         self.log1("     set a = "+hex(v))
         self.a = (v)
-        self.set_sfr('acc', v)
+        #self.set_sfr('acc', v)
+        self.mem[0xE0] = v
         
     #-------------------------------------------------------------------
     def set_b(self, v):
         self.log1("     set b = "+hex(v))
         self.b = (v)
-        self.set_sfr('b', v)
+        #self.set_sfr('b', v)
+        self.mem[0xF0] = v
         
     #-------------------------------------------------------------------
     def set_c(self, v):
@@ -372,8 +446,13 @@ class Sim():
             self.c = 0
         else:
             self.c = 1
-        self.set_reg('c', v)
-        
+        #self.set_reg('c', v)
+        self.mem_set_bit(0xD7, v)
+
+    #-------------------------------------------------------------------
+    def get_c(self, v):
+        return self.mem_get_bit(0xD7)
+
     #-------------------------------------------------------------------
     def set_ov(self, v):
         self.log1("     set ov = "+hex(v))
@@ -391,7 +470,11 @@ class Sim():
         else:
             self.ac = 1
         self.set_reg('ac', v)
-        
+
+    #-------------------------------------------------------------------
+    def get_ac(self, v):
+        return self.mem_get_bit(0xD6)
+
     #-------------------------------------------------------------------
     def set_reg(self, k, v):
         self.reg_table[k] = v
