@@ -732,7 +732,7 @@ class Sim():
         #2 EXT1 0x0013
         #3 T1   0x001B
         #4 INTS 0x0023
-        vectors = [0x3, 0x13, 0x0B, 0x1B, 0x23]
+        vectors = [0x3, 0x0B, 0x13, 0x1B, 0x23]
         addr = vectors[i]
         #print 'int', addr
         self.call(addr)
@@ -744,7 +744,8 @@ class Sim():
     #-------------------------------------------------------------------
     def jump_rel(self, v):
         offset = val8(v)
-        self.log("     jump_rel  "+str(offset) )
+        if self.debug:
+            self.log("     jump_rel  "+str(offset) )
         self.set_pc(self.pc + offset)
         
     #-------------------------------------------------------------------
