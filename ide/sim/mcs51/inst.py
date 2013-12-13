@@ -951,7 +951,7 @@ def inst_reti(inst_bytes, inst, op1, op2, op3):
     #PC7-0 = (SP)
     #SP = SP - 1
     #]]
-    sim.ret()
+    sim.reti()
 
 def inst_nop(inst_bytes, inst, op1, op2, op3):
     pass

@@ -150,6 +150,10 @@ class PortTextCtrl():
 #---------------------------------------------------------------------------------------------------
 class PortTextCtrlList(wx.StaticBoxSizer):
     def __init__(self, parent, parent_sizer):
+        
+        self.sim = None
+        self.parent = parent
+        
         title = ''
         box = wx.StaticBox(parent, wx.ID_ANY, title)
         wx.StaticBoxSizer.__init__(self, box, wx.VERTICAL)
@@ -162,6 +166,15 @@ class PortTextCtrlList(wx.StaticBoxSizer):
         self.p1_text = PortTextCtrl(panel, sizer, 'P1 ', '', '00', size=(30, -1))
         self.p2_text = PortTextCtrl(panel, sizer, 'P2 ', '', '00', size=(30, -1))
         self.p3_text = PortTextCtrl(panel, sizer, 'P3 ', '', '00', size=(30, -1))
+        
+        bn_int0 = wx.Button(panel, 1, 'INT 0')
+        bn_int1 = wx.Button(panel, 2, 'INT 1')
+        sizer.Add(bn_int0, 1, wx.ALL, 2)
+        sizer.Add(bn_int1, 1, wx.ALL, 2)
+        
+        parent.frame.Bind(wx.EVT_BUTTON, parent.OnInt0, bn_int0)
+        parent.frame.Bind(wx.EVT_BUTTON, parent.OnInt1, bn_int1)
+        
         panel.SetSizer(sizer)
         panel.Layout()
          
@@ -349,17 +362,18 @@ class UartTextViewer(wx.Panel):
 class IoPortPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, -1)
-
+        
         box = wx.StaticBox(self, -1, "This is a wx.StaticBox")
         bsizer = wx.StaticBoxSizer(box, wx.VERTICAL)
 
         t = wx.StaticText(self, -1, "Controls placed \"inside\" the box are really its siblings")
         bsizer.Add(t, 0, wx.TOP|wx.LEFT, 5)
-
-
+        
         border = wx.BoxSizer()
         border.Add(bsizer, 1, wx.EXPAND|wx.ALL, 5)
         self.SetSizer(border)
+        
+   
     
 #---------------------------------------------------------------------------------------------------
 class WatchPanel (wx.Panel):
@@ -367,6 +381,8 @@ class WatchPanel (wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__ (self, parent, id = wx.ID_ANY, pos = wx.DefaultPosition, size = wx.Size(500,300), style = wx.TAB_TRAVERSAL)
         
+        self.sim = None
+        self.frame = parent.frame
         sizer = wx.BoxSizer(wx.VERTICAL)
         self.pc_dptr_viewer = PcDptrTextCtrlList(self, sizer)
         self.port_panel = PortTextCtrlList(self, sizer)
@@ -380,8 +396,24 @@ class WatchPanel (wx.Panel):
         self.SetSizer(sizer)
         self.Layout()
         
+    #--------------------------------------------------------------
+    def OnInt0(self, event):
+        if self.sim:
+            self.sim.set_input('int0', 1)
+    
+    #--------------------------------------------------------------
+    def OnInt1(self, event):
+        if self.sim:
+            self.sim.set_input('int1', 1)
+            
+    #------------------------------------------------------------------------
+    def get_sim(self):
+        return self.sim
+            
     #------------------------------------------------------------------------
     def update(self, sim):
+        if self.sim == None:
+            self.sim = sim
         self.pc_dptr_viewer.update(sim)
         self.port_panel.update(sim)
         self.sfr_watch.update(sim)

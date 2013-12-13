@@ -15,7 +15,6 @@ import rst
 class Obj():
     def __init__(self):
         pass
-    
        
         
 class Sim():
@@ -33,6 +32,14 @@ class Sim():
         self.step_mode = None
         self.step_over_mode = False
         self.stack_depth = 0
+        
+        self.int_enabled = False
+        self.int_queue = []
+        self.INT_EXT0 = 0
+        self.INT_T0 = 1
+        self.INT_EXT1 = 2
+        self.INT_T1 = 3
+        self.INT_UART = 4
         
         symbol_table.sort()
         self.symbol_table = symbol_table
@@ -418,7 +425,8 @@ class Sim():
                 self.set_timer_count(0)
             elif addr == self.TL1 or addr == self.TH1:
                 self.set_timer_count(1)
-                
+            elif addr == self.IE:
+                self.set_ie(-1, v)
         return v
         
     
@@ -473,6 +481,19 @@ class Sim():
             self.ov = v
             
     #-------------------------------------------------------------------
+    def set_input(self, k, v):
+        #EX1	IE.2	Enable/disable external interrupt 1.
+        #EX0	IE.0	Enable/disable external interrupt 0.
+        if k == 'int0':
+            ie = self.mem[self.IE]
+            if ie & BIT0:
+                self.int_queue.append(self.INT_EXT0)
+        elif k == 'int1':
+            ie = self.mem[self.IE]
+            if ie & BIT2:
+                self.int_queue.append(self.INT_EXT1)
+                
+    #-------------------------------------------------------------------
     def set_ie(self, bit, v):
         #IE: Interrupt Enable Register (bit addressable)
        
@@ -496,8 +517,21 @@ class Sim():
         #TF1	001BH
         #RI & TI	0023H
         #TF2 & EXF2 (8052 only)	002BH
+        if bit == -1:
+            if v & BIT7:
+                self.int_enabled = True
+            else:
+                self.int_enabled = False
+            return
+        
         self.log("     set IE bit " + str(bit) + " = "+hex(v))
-        pass
+        
+        if bit == 7:
+            if v == 1:
+                self.int_enabled = True
+            else:
+                self.int_enabled = False
+                
     
     #-------------------------------------------------------------------
     def set_ip(self, bit, v):
@@ -692,6 +726,18 @@ class Sim():
         self.set_reg('pc', v)
         
     #-------------------------------------------------------------------
+    def call_interrupt(self, i):
+        #0 EXT0 0x0003
+        #1 T0   0x000B
+        #2 EXT1 0x0013
+        #3 T1   0x001B
+        #4 INTS 0x0023
+        vectors = [0x3, 0x13, 0x0B, 0x1B, 0x23]
+        addr = vectors[i]
+        #print 'int', addr
+        self.call(addr)
+                
+    #-------------------------------------------------------------------
     def jump(self, addr):
         self.set_pc(addr)
         
@@ -712,6 +758,17 @@ class Sim():
         addr = self.pop()
         self.set_pc(addr)
         self.stack_depth -= 1
+        
+    #-------------------------------------------------------------------
+    def reti(self):
+        addr = self.pop()
+        self.set_pc(addr)
+        self.stack_depth -= 1
+        
+        if self.mem[self.IE] & BIT7:
+            self.int_enabled = True
+        else:
+            self.int_enabled = False
         
     #-------------------------------------------------------------------
     def code_space_fill(self, addr, sz, ddstr):
@@ -867,8 +924,9 @@ class Sim():
     
             #print(s)
             #j = j + 8
+            
     #-------------------------------------------------------------------
-    def timer_tick(self):
+    def timer_and_int(self):
         # do the timer work
         tcon = self.mem[self.TCON]
         if self.t0_enabled and self.t0_count > 0:
@@ -888,9 +946,16 @@ class Sim():
                 tcon = setbit(tcon, 7)
                 self.mem[self.TCON] = tcon
                 
+        #do the interrupt work
+        if self.int_enabled and len(self.int_queue) > 0:
+            self.int_enabled = False
+            t = self.int_queue.pop(0)
+            self.call_interrupt(t)
+            
+        
     #-------------------------------------------------------------------
     def load_and_debug_inst(self):
-        self.timer_tick()
+        self.timer_and_int()
         # get current program counter 
         addr = self.pc   
         self.inst_addr = self.pc
@@ -946,7 +1011,7 @@ class Sim():
             
     #-------------------------------------------------------------------
     def load_inst(self):
-        self.timer_tick()
+        self.timer_and_int()
         # get current program counter 
         addr = self.pc   
         self.inst_addr = self.pc

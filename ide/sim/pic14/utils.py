@@ -1,6 +1,15 @@
 import os
 import datetime
 
+BIT0 = 1
+BIT1 = 2
+BIT2 = 4
+BIT3 = 8
+BIT4 = 0x10
+BIT5 = 0x20
+BIT6 = 0x40
+BIT7 = 0x80
+
 def bits8(v):
     return v & 0xff
     

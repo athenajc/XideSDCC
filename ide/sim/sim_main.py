@@ -225,13 +225,13 @@ class DebugFrame (wx.Frame):
         #add debug information panel notebook
         nb2 = wx.aui.AuiNotebook(self, wx.ID_ANY, wx.DefaultPosition, wx.Size(300,-1), wx.aui.AUI_NB_DEFAULT_STYLE)
         nb2.SetMinSize(wx.Size(200,-1))
-        
+        nb2.frame = self
         if self.mcu_name == "mcs51":
             panel = self.reg_panel = mcs51.WatchPanel(nb2)
         elif self.mcu_name == "pic16":
             panel = self.reg_panel = pic16.WatchPanel(nb2, self.mcu_name, self.mcu_device)
         elif self.mcu_name == "pic14":
-            panel = self.reg_panel = pic14.WatchPanel(nb2, self.mcu_name, self.mcu_device)            
+            panel = self.reg_panel = pic14.WatchPanel(nb2, self.mcu_name, self.mcu_device)
         else:
             panel = self.reg_panel = mcs51.WatchPanel(nb2)
         nb2.AddPage(panel, u"Watches")
@@ -669,6 +669,7 @@ class SimFrame (wx.Frame):
         #add debug information panel notebook
         nb2 = wx.aui.AuiNotebook(self, wx.ID_ANY, wx.DefaultPosition, wx.Size(300,-1), wx.aui.AUI_NB_DEFAULT_STYLE)
         nb2.SetMinSize(wx.Size(200,-1))
+        nb2.frame = self
         
         if self.mcu_name == "mcs51":
             panel = self.reg_panel = mcs51.WatchPanel(nb2)

@@ -2,6 +2,15 @@ import datetime
 
 from table import *
 
+BIT0 = 1
+BIT1 = 2
+BIT2 = 4
+BIT3 = 8
+BIT4 = 0x10
+BIT5 = 0x20
+BIT6 = 0x40
+BIT7 = 0x80
+
 def tohex(value, n):
     if (value is None) :
         return "None"
