@@ -33,8 +33,10 @@ class Sim():
         self.step_over_mode = False
         self.stack_depth = 0
         
+        self.ie = 0
         self.int_enabled = False
         self.int_queue = []
+        self.cur_int = None
         self.INT_EXT0 = 0
         self.INT_T0 = 1
         self.INT_EXT1 = 2
@@ -426,7 +428,7 @@ class Sim():
             elif addr == self.TL1 or addr == self.TH1:
                 self.set_timer_count(1)
             elif addr == self.IE:
-                self.set_ie(-1, v)
+                self.set_ie(v)
         return v
         
     
@@ -494,7 +496,7 @@ class Sim():
                 self.int_queue.append(self.INT_EXT1)
                 
     #-------------------------------------------------------------------
-    def set_ie(self, bit, v):
+    def set_ie(self, v):
         #IE: Interrupt Enable Register (bit addressable)
        
         #If the bit is 0, the corresponding interrupt is disabled. If the bit is 1, the corresponding interrupt is enabled.
@@ -517,21 +519,12 @@ class Sim():
         #TF1	001BH
         #RI & TI	0023H
         #TF2 & EXF2 (8052 only)	002BH
-        if bit == -1:
-            if v & BIT7:
-                self.int_enabled = True
-            else:
-                self.int_enabled = False
-            return
-        
-        self.log("     set IE bit " + str(bit) + " = "+hex(v))
-        
-        if bit == 7:
-            if v == 1:
-                self.int_enabled = True
-            else:
-                self.int_enabled = False
-                
+        self.ie = v
+        if v & BIT7:
+            self.int_enabled = True
+        else:
+            self.int_enabled = False
+
     
     #-------------------------------------------------------------------
     def set_ip(self, bit, v):
@@ -733,8 +726,9 @@ class Sim():
         #3 T1   0x001B
         #4 INTS 0x0023
         vectors = [0x3, 0x0B, 0x13, 0x1B, 0x23]
+        self.cur_int = i
         addr = vectors[i]
-        #print 'int', addr
+        print 'int', addr
         self.call(addr)
                 
     #-------------------------------------------------------------------
@@ -762,14 +756,22 @@ class Sim():
         
     #-------------------------------------------------------------------
     def reti(self):
+        """ return function from interrupt """
         addr = self.pop()
         self.set_pc(addr)
         self.stack_depth -= 1
         
+        # if IE all still enabled, re-enable interrupt
         if self.mem[self.IE] & BIT7:
             self.int_enabled = True
         else:
             self.int_enabled = False
+            
+        # if timer0 interrupt, clear TCON bit5 TF0
+        if self.cur_int == self.INT_T0:
+            v = self.mem[self.TCON]
+            v &= ~BIT5
+            self.mem[self.TCON] = v
         
     #-------------------------------------------------------------------
     def code_space_fill(self, addr, sz, ddstr):
@@ -936,16 +938,25 @@ class Sim():
                 # set bit TF0 = 1
                 tcon = setbit(tcon, 5)
                 self.mem[self.TCON] = tcon
+                
+                # trigger timer0 interrupt
+                if self.ie & BIT1:
+                    self.int_queue.append(self.INT_T0)
+                
+                # if mode = 2, reset initial count
                 if self.t0_mode == 2:
                     # copy value from TH0 to TL0
                     self.mem[self.TL0] = self.mem[self.TH0]
                 
         if self.t1_enabled :
-            self.t0_count -= 1
-            if self.t0_count == 0:
+            self.t1_count -= 1
+            if self.t1_count == 0:
                 # set bit TF0 = 1
                 tcon = setbit(tcon, 7)
                 self.mem[self.TCON] = tcon
+                # trigger timer1 interrupt
+                if self.ie & BIT3:
+                    self.int_queue.append(self.INT_T1)
                 
         #do the interrupt work
         if self.int_enabled and len(self.int_queue) > 0:

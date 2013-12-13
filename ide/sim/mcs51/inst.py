@@ -904,10 +904,7 @@ def inst_pop(inst_bytes, inst, op1, op2, op3):
     #POP iram addr  0xD0  2  None
     #]]
     v = sim.pop()
-    if op1 <= 7:
-        sim.set_r(op1, v)
-    else:
-        sim.set_mem(op1, v)
+    sim.set_mem(op1, v)
 
 def inst_push(inst_bytes, inst, op1, op2, op3):
     #--[[
@@ -917,10 +914,7 @@ def inst_push(inst_bytes, inst, op1, op2, op3):
     #Instructions  OpCode  Bytes  Flags
     #PUSH iram addr  0xC0  2  None
     #]]
-    if op1 <= 7:
-        sim.push(sim.get_r(op1))
-    else:
-        sim.push(sim.get_mem(op1))
+    sim.push(sim.get_mem(op1))
 
 
 def inst_ret(inst_bytes, inst, op1, op2, op3):
