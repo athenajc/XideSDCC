@@ -246,16 +246,7 @@ class Sim():
         #print s
         self.frame.log(s)
         
-    #-------------------------------------------------------------------
-    def get_uart_put_ch(self):
-        sbuf = self.get_sfr('sbuf')
-        if sbuf != 0:    
-            self.set_sfr('sbuf', 0)
-            self.mem_set_bit(self.TI, 1)
-            
-        return sbuf
-    
-    #-------------------------------------------------------------------
+       #-------------------------------------------------------------------
     def check_overflow(self, v, v1, v2):
         self.c = 0
         self.ac = 0    
@@ -421,6 +412,8 @@ class Sim():
         if addr >= 0x80 and addr <= 0xFF:
             if addr == self.ACC:
                 self.a = v
+            elif addr == self.SBUF:
+                self.set_sbuf(v)
             elif addr == self.PSW:
                 self.psw = v
             elif addr == self.TL0 or addr == self.TH0:
@@ -486,14 +479,20 @@ class Sim():
     def set_input(self, k, v):
         #EX1	IE.2	Enable/disable external interrupt 1.
         #EX0	IE.0	Enable/disable external interrupt 0.
+        ie = self.mem[self.IE]
+        
         if k == 'int0':
-            ie = self.mem[self.IE]
-            if ie & BIT0:
+            if ie & BIT7 and ie & BIT0:
                 self.int_queue.append(self.INT_EXT0)
         elif k == 'int1':
-            ie = self.mem[self.IE]
-            if ie & BIT2:
+            if ie & BIT7 and ie & BIT2:
                 self.int_queue.append(self.INT_EXT1)
+        elif k == 'uart':
+            # set RI = 1
+            self.mem_set_bit(self.RI, 1)
+            self.mem[self.SBUF] = v
+            if ie & BIT7 and ie & BIT4:
+                self.int_queue.append(self.INT_UART)
                 
     #-------------------------------------------------------------------
     def set_ie(self, v):
@@ -728,7 +727,7 @@ class Sim():
         vectors = [0x3, 0x0B, 0x13, 0x1B, 0x23]
         self.cur_int = i
         addr = vectors[i]
-        print 'int', addr
+        #print 'int', addr
         self.call(addr)
                 
     #-------------------------------------------------------------------
@@ -929,7 +928,7 @@ class Sim():
             #j = j + 8
             
     #-------------------------------------------------------------------
-    def timer_and_int(self):
+    def timer_and_int(self):            
         # do the timer work
         tcon = self.mem[self.TCON]
         if self.t0_enabled and self.t0_count > 0:
@@ -946,7 +945,7 @@ class Sim():
                 # if mode = 2, reset initial count
                 if self.t0_mode == 2:
                     # copy value from TH0 to TL0
-                    self.mem[self.TL0] = self.mem[self.TH0]
+                    self.t0_count = self.mem[self.TL0] = self.mem[self.TH0]
                 
         if self.t1_enabled :
             self.t1_count -= 1
@@ -964,7 +963,15 @@ class Sim():
             t = self.int_queue.pop(0)
             self.call_interrupt(t)
             
-        
+    #-------------------------------------------------------------------
+    def set_sbuf(self, v):
+        #scon = self.mem[self.SCON]
+        # check if TI and RI both 0
+        #if (scon & 3) == 0 and sbuf != 0: 
+        self.mem_set_bit(self.TI, 1)
+        #self.mem[self.SBUF] = v
+        self.sbuf_list.append(v)
+                
     #-------------------------------------------------------------------
     def load_and_debug_inst(self):
         self.timer_and_int()
@@ -1017,9 +1024,6 @@ class Sim():
         f = self.inst_handler[inst_map_code]
         f(op_n, inst_code, dd1, dd2, dd3)
         
-        ch = self.get_uart_put_ch()
-        if ch != 0:
-            self.sbuf_list.append(ch)
             
     #-------------------------------------------------------------------
     def load_inst(self):
@@ -1042,9 +1046,6 @@ class Sim():
         f = self.inst_handler[inst_map_code]
         f(op_n, inst_code, dd1, dd2, dd3)
         
-        ch = self.get_uart_put_ch()
-        if ch != 0:
-            self.sbuf_list.append(ch)
             
     #-------------------------------------------------------------------
     def enable_debug(self, flag):

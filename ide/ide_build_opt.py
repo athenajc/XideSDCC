@@ -861,6 +861,7 @@ class McuHC08(Mcu):
               ]
         self.devices = ['mc68hc908apxx', 'mc68hc908gp32', 'mc68hc908jb8', 'mc68hc908jkjl', 'mc68hc908qy']
     
+    
 #---------------------------------------------------------------------------
 class PageMcuOptions(OptionPanel):
     def __init__(self, parent, option, option_callback):
@@ -904,8 +905,6 @@ class PageMcuOptions(OptionPanel):
             
         self.SetSizer( self.sizer )
         self.Layout()
-        
-        
         
     #-------------------------------------------------------------------
     def OnSelect(self, event):
@@ -1046,6 +1045,7 @@ class PageMajorOption(wx.Panel):
         mcu_name = event.GetString()
         self.option.select_mcu(mcu_name)
         self.option.dirty = True
+        
         
 #---------------------------------------------------------------------------
 class BuildOption():

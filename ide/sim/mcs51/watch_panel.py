@@ -56,7 +56,10 @@ class SfrTextCtrlList(wx.StaticBoxSizer):
             i = t[1]
             v = sim.get_reg(t[0].lower())
             text = t[2]
-            text.SetValue(tohex(v, 2))
+            if type(v) == type(u'a'):
+                text.SetValue(v)
+            else:
+                text.SetValue(tohex(v, 2))
             if v == 0:
                 text.SetBackgroundColour((185,185,185))
             else:
@@ -172,8 +175,13 @@ class PortTextCtrlList(wx.StaticBoxSizer):
         sizer.Add(bn_int0, 1, wx.ALL, 2)
         sizer.Add(bn_int1, 1, wx.ALL, 2)
         
+        parent.uart_input = wx.TextCtrl(panel, -1, "")
+        sizer.Add(parent.uart_input, 1, wx.ALL|wx.EXPAND|wx.GROW, 2)
+        
         parent.frame.Bind(wx.EVT_BUTTON, parent.OnInt0, bn_int0)
         parent.frame.Bind(wx.EVT_BUTTON, parent.OnInt1, bn_int1)
+        
+        parent.frame.Bind(wx.EVT_TEXT, parent.OnEvtText, parent.uart_input)
         
         panel.SetSizer(sizer)
         panel.Layout()
@@ -190,6 +198,7 @@ class PortTextCtrlList(wx.StaticBoxSizer):
         self.p1_text.set_value(sim.get_reg('p1'))
         self.p2_text.set_value(sim.get_reg('p2'))
         self.p3_text.set_value(sim.get_reg('p3'))
+        
         
 #---------------------------------------------------------------------------------------------------
 class RegTextCtrlList(wx.StaticBoxSizer):
@@ -406,6 +415,21 @@ class WatchPanel (wx.Panel):
         if self.sim:
             self.sim.set_input('int1', 1)
             
+    #--------------------------------------------------------------
+    def OnEvtText(self, event):
+        s = event.GetString()
+        if s == "":
+            return
+        
+        self.frame.log('EvtText: %s\n' % s)
+        if self.sim:
+            n = len(s)
+            c = s[n-1:n]
+            if c != '':
+                print c, hex(ord(c))
+                self.sim.set_input('uart', ord(c))
+
+                
     #------------------------------------------------------------------------
     def get_sim(self):
         return self.sim
