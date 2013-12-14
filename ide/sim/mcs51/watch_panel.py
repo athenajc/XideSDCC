@@ -409,11 +409,13 @@ class WatchPanel (wx.Panel):
     def OnInt0(self, event):
         if self.sim:
             self.sim.set_input('int0', 1)
+            self.sim.set_input('int0', 0)
     
     #--------------------------------------------------------------
     def OnInt1(self, event):
         if self.sim:
             self.sim.set_input('int1', 1)
+            self.sim.set_input('int1', 0)
             
     #--------------------------------------------------------------
     def OnEvtText(self, event):

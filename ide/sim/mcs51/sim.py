@@ -36,14 +36,15 @@ class Sim():
         self.ie = 0
         self.int_enabled = False
         self.int_flag = 0
-        self.int_ext0 = 0
-        self.int_ext1 = 0
+        self.t0_input = 0
+        self.t1_input = 0
         self.cur_int = None
         self.INT_EXT0 = 0
         self.INT_T0 = 1
         self.INT_EXT1 = 2
         self.INT_T1 = 3
         self.INT_UART = 4
+        self.pin = [0] * 40
         
         symbol_table.sort()
         self.symbol_table = symbol_table
@@ -265,7 +266,8 @@ class Sim():
             
     #-------------------------------------------------------------------
     def push(self, v):
-        self.log("     push "+hex(v))
+        if self.debug:
+            self.log("     push "+hex(v))
         self.stack.insert(0, v)
         self.sp = len(self.stack)
         self.set_sfr('sp', self.sp)
@@ -278,7 +280,8 @@ class Sim():
             self.stopped = True
             return 0
         v = self.stack.pop(0)
-        self.log("     pop "+hex(v))
+        if self.debug:
+            self.log("     pop "+hex(v))
         self.sp = len(self.stack)
         self.set_sfr('sp', self.sp)
         return v
@@ -296,21 +299,14 @@ class Sim():
             addr = bitaddr - bit
             
         v = self.get_mem(addr)
-        
-        ## print(bitaddr, bits_rshift(bitaddr, 3), bitaddr % 8) 
-        #if bitaddr == self.RI:
-            #self.log(' get  RI')
-            #return 1
-        #if bitaddr == self.TI:
-            #self.log(' get  TI sbuf = '+hex(self.mem[self.SBUF]))
-            ##self.sbuf_list.append(self.mem[self.SBUF])
-            ##return 1
 
         if v & (1 << bit):
-            self.log("     get bit "+tohex(bitaddr, 4), 1)
+            if self.debug:
+                self.log("     get bit "+tohex(bitaddr, 4), 1)
             return 1
         else:
-            self.log("     get bit "+tohex(bitaddr, 4), 0)
+            if self.debug:
+                self.log("     get bit "+tohex(bitaddr, 4), 0)
             return 0
         
     #-------------------------------------------------------------------
@@ -376,12 +372,14 @@ class Sim():
             v = self.mem[addr]
         else:
             v = self.ext_mem[addr]
-        self.log("     get ext mem "+tohex(addr,4)+" = "+tohex(v, 0))
+        if self.debug:
+            self.log("     get ext mem "+tohex(addr,4)+" = "+tohex(v, 0))
         return v
     
     #-------------------------------------------------------------------
     def set_ext_mem(self, addr, v):
-        self.log("     set ext mem "+tohex(addr, 4)+" = "+tohex(v, 0))
+        if self.debug:
+            self.log("     set ext mem "+tohex(addr, 4)+" = "+tohex(v, 0))
         if (v > 0xffff) :
             self.log(v, "> 0xffff")
             v = bits_and(v, 0xffff)
@@ -394,18 +392,21 @@ class Sim():
     #-------------------------------------------------------------------
     def get_mem(self, addr):
         v = self.mem[addr]
-        self.log("     get mem "+tohex(addr,4)+" = "+tohex(v, 0))
+        if self.debug:
+            self.log("     get mem "+tohex(addr,4)+" = "+tohex(v, 0))
         return v    
     
     #-------------------------------------------------------------------
     def set_mem(self, addr, v):
-        if addr == self.SBUF:
-            self.log("******* set sbuf = " + tohex(v, 0))
-        else:
-            self.log("     set mem "+tohex(addr, 4)+" = "+tohex(v, 0))
+        if self.debug:
+            if addr == self.SBUF:
+                self.log("******* set sbuf = " + tohex(v, 0))
+            else:
+                self.log("     set mem "+tohex(addr, 4)+" = "+tohex(v, 0))
         
         if (v > 0xff) :
-            self.log(v, "> 0xff")
+            if self.debug:
+                self.log(v, "> 0xff")
             v = bits_and(v, 0xff)
     
         self.mem[addr] = v
@@ -432,18 +433,20 @@ class Sim():
     def get_mem_r(self, i):
         addr = self.get_r(i)
         v = self.mem[addr]
-            
-        self.log("     get mem "+tohex(addr,4)+" = "+tohex(v, 0))
+        if self.debug:
+            self.log("     get mem "+tohex(addr,4)+" = "+tohex(v, 0))
         return v    
     
     #-------------------------------------------------------------------
     # indirect addressing always access memory, not SFR
     def set_mem_r(self, i, v):
         addr = self.get_r(i)
-        self.log("     set mem "+tohex(addr, 4)+" = "+tohex(v, 0))
+        if self.debug:
+            self.log("     set mem "+tohex(addr, 4)+" = "+tohex(v, 0))
         
         if (v > 0xff) :
-            self.log(v, "> 0xff")
+            if self.debug:
+                self.log(v, "> 0xff")
             v = bits_and(v, 0xff)
     
         self.mem[addr] = v
@@ -485,7 +488,23 @@ class Sim():
         self.mem_set_bit(self.TI, 1)
         #self.mem[self.SBUF] = v
         self.sbuf_list.append(v)
-                
+        
+    #-------------------------------------------------------------------
+    def check_if_trigger_timer0(self):
+        # TMOD : 3:GATE   2:C/T   1:M1   0:M0
+        tmod = self.mem[self.TMOD]
+        tcon = self.mem[self.TCON]
+        if tmod & BIT3 and tcon & BIT4:
+            self.trigger_timer(0)
+            
+    #-------------------------------------------------------------------
+    def check_if_trigger_timer1(self):
+        # TMOD : 7:GATE   6:C/T   5:M1   4:M0
+        tmod = self.mem[self.TMOD]
+        tcon = self.mem[self.TCON]
+        if tmod & BIT7 and tcon & BIT6:
+            self.trigger_timer(1)
+            
     #-------------------------------------------------------------------
     def set_input(self, k, v):
         #EX1	IE.2	Enable/disable external interrupt 1.
@@ -495,30 +514,36 @@ class Sim():
         if k == 'int0':
             if ie & BIT7 and ie & BIT0:
                 tcon = self.mem[self.TCON]
-                if v == 0 and (tcon & BIT0) == 0:
+                if v == 1 and (tcon & BIT0) == 0:
                     # TCON bit0 is 0 means low level trigger 
-                    self.int_flag |= BIT0
-                    self.mem[self.TCON] |= BIT1
-                elif v == 0 and (tcon & BIT0) == 1:
-                    # TCON bit0 is 1 means falling edge trigger 
-                    if self.int_ext0 == 1:
+                    if self.pin[12] == 0:
                         self.int_flag |= BIT0
                         self.mem[self.TCON] |= BIT1
-                self.int_ext0 = v
+                        self.check_if_trigger_timer0()
+                elif v == 0 and (tcon & BIT0) == 1:
+                    # TCON bit0 is 1 means falling edge trigger 
+                    if self.pin[12] == 1:
+                        self.int_flag |= BIT0
+                        self.mem[self.TCON] |= BIT1
+                        self.check_if_trigger_timer0()
+                self.pin[12] = v
                 
         elif k == 'int1':
             if ie & BIT7 and ie & BIT2:
                 tcon = self.mem[self.TCON]
-                if v == 0 and (tcon & BIT2) == 0:
+                if v == 1 and (tcon & BIT2) == 0:
                     # TCON bit2 is 0 means low level trigger timer1 int
-                    self.int_flag |= BIT2
-                    self.mem[self.TCON] |= BIT3
-                elif v == 0 and (tcon & BIT2) == 1:
-                    # TCON bit0 is 1 means falling edge trigger 
-                    if self.int_ext1 == 1:
+                    if self.pin[13] == 0:
                         self.int_flag |= BIT2
                         self.mem[self.TCON] |= BIT3
-                self.int_ext1 = v
+                        self.check_if_trigger_timer1()
+                elif v == 0 and (tcon & BIT2) == 1:
+                    # TCON bit0 is 1 means falling edge trigger 
+                    if self.pin[13] == 1:
+                        self.int_flag |= BIT2
+                        self.mem[self.TCON] |= BIT3
+                        self.check_if_trigger_timer1()
+                self.pin[13] = v
                 
         elif k == 'uart':
             # set RI = 1
@@ -528,6 +553,15 @@ class Sim():
                 self.int_flag |= BIT4
                 self.mem[self.TCON] |= BIT1
                 
+        elif k == 't0':
+            if self.pin[14] == 1 and v == 0:
+                self.t0_input += 1
+            self.pin[14] = v
+        elif k == 't1':
+            if self.pin[15] == 1 and v == 0:
+                self.t1_input += 1
+            self.pin[15] = v
+            
     #-------------------------------------------------------------------
     def set_ie(self, v):
         #IE: Interrupt Enable Register (bit addressable)
@@ -576,7 +610,16 @@ class Sim():
         #PX1	IP.2	Defines External interrupt 1 priority level.
         #PT0	IP.1	Defines Timer 0 interrupt priority level.
         #PX0	IP.0	Defines External interrupt 0 priority level.
-        
+        pass
+
+    #-------------------------------------------------------------------
+    def set_tmod(self, bit, v):
+        #GATE	When TRx (in TCON) is set and GATE = 1, TIMER/COUNTERx will run only while INTx pin is high (hardware control). When GATE = 0, TIMER/COUNTERx will run only while TRx = 1 (software control).
+        #C/T	Timer or Counter selector. Cleared for Timer operation (input from internal system clock). Set for counter operation (input from Tx input pin).
+        #M1	Mode selector bit. (see note)
+        #M0	Mode selector bit. (see note)      
+        if self.debug:
+            self.log("     set TMOD bit " + str(bit) + " = "+hex(v))
         pass
     
     #-------------------------------------------------------------------
@@ -596,7 +639,7 @@ class Sim():
             elif mode == 3: # 8 bits, max 256
                 self.t0_count = tl
         elif index == 1:
-            tmod = self.mem[self.TMOD]
+            tmod = self.mem[self.TMOD] >> 4
             th = self.mem[self.TH1]
             tl = self.mem[self.TL1]
             # Mode select : bit 0, bit 1
@@ -609,14 +652,14 @@ class Sim():
                 self.t1_count = tl
                 
     #-------------------------------------------------------------------
-    def set_tmod(self, bit, v):
-        #GATE	When TRx (in TCON) is set and GATE = 1, TIMER/COUNTERx will run only while INTx pin is high (hardware control). When GATE = 0, TIMER/COUNTERx will run only while TRx = 1 (software control).
-        #C/T	Timer or Counter selector. Cleared for Timer operation (input from internal system clock). Set for counter operation (input from Tx input pin).
-        #M1	Mode selector bit. (see note)
-        #M0	Mode selector bit. (see note)      
-        self.log("     set TMOD bit " + str(bit) + " = "+hex(v))
-        pass
-    
+    def trigger_timer(self, i):
+        if i == 0:
+            self.set_timer_count(0)
+            self.t0_enabled = True
+        elif i == 1:
+            self.set_timer_count(1)
+            self.t1_enabled = True
+            
     #-------------------------------------------------------------------
     def set_tcon(self, bit, v):
         #TF1	TCON.7	Timer 1 overflow flag. Set by hardware when Timer/Counter 1 overflows. Cleared by hardware as processor vectors to the interrupt service routine.
@@ -627,16 +670,17 @@ class Sim():
         #IT0	TCON.2	Interrupt 1 type control bit. Set/cleared by software to specify falling edge/low level triggered external interrupts.
         #IE0	TCON.1	External Interrupt 0 edge flag. Set by hardware when external interrupt edge is detected. Cleared by hardware when interrupt is processed.
         #IT0	TCON.0	Interrupt 0 type control bit. Set/cleared by software to specify falling edge/low level triggered external interrupts.        
-        self.log("     set TCON bit " + str(bit) + " = "+hex(v))
-        if bit == 6: # TR1
-            self.set_timer_count(0)
-                
-            self.t1_enabled = True
-        elif bit == 4: # TR0 - trigger timer 0
-            self.set_timer_count(1)
-                
-            self.t0_enabled = True
+        if self.debug:
+            self.log("     set TCON bit " + str(bit) + " = "+hex(v))
             
+        if bit == 6: # TR1
+            # if not Gate set, trigger at once
+            if self.mem[self.TMOD] & BIT7 == 0:
+                self.trigger_timer(1)
+        elif bit == 4: # TR0 - trigger timer 0
+            # if not Gate set, trigger at once
+            if self.mem[self.TMOD] & BIT3 == 0:
+                self.trigger_timer(0)
         
     #-------------------------------------------------------------------
     def get_a(self):
@@ -644,21 +688,21 @@ class Sim():
         
     #-------------------------------------------------------------------
     def set_a(self, v):
-        self.log1("     set a = "+hex(v))
+        #self.log1("     set a = "+hex(v))
         self.a = (v)
         #self.set_sfr('acc', v)
         self.mem[0xE0] = v
         
     #-------------------------------------------------------------------
     def set_b(self, v):
-        self.log1("     set b = "+hex(v))
+        #self.log1("     set b = "+hex(v))
         self.b = (v)
         #self.set_sfr('b', v)
         self.mem[0xF0] = v
         
     #-------------------------------------------------------------------
     def set_c(self, v):
-        self.log1("     set c = "+hex(v))
+        #self.log1("     set c = "+hex(v))
         if (v == 0) :
             self.c = 0
         else:
@@ -672,7 +716,7 @@ class Sim():
 
     #-------------------------------------------------------------------
     def set_ov(self, v):
-        self.log1("     set ov = "+hex(v))
+        #self.log1("     set ov = "+hex(v))
         if (v == 0) :
             self.ov = 0
         else:
@@ -681,7 +725,7 @@ class Sim():
         
     #-------------------------------------------------------------------
     def set_ac(self, v):
-        self.log1("     set ac = "+hex(v))
+        #self.log1("     set ac = "+hex(v))
         if (v == 0) :
             self.ac = 0
         else:
@@ -729,7 +773,8 @@ class Sim():
     
     #-------------------------------------------------------------------
     def set_dptr(self, v):
-        self.log("     set dptr = "+hex(v))
+        if self.debug:
+            self.log("     set dptr = "+hex(v))
         self.dptr = (v)
         
         self.set_sfr('dpl', v & 0xff)
@@ -747,7 +792,8 @@ class Sim():
         
     #-------------------------------------------------------------------
     def set_pc(self, v):
-        self.log("     set pc = "+tohex(v, 4))
+        if self.debug:
+            self.log("     set pc = "+tohex(v, 4))
         self.pc = v
         self.set_reg('pc', v)
         
@@ -994,6 +1040,7 @@ class Sim():
     #-------------------------------------------------------------------
     def proc_timer(self):
         # do the timer work
+        tmod = self.mem[self.TMOD]
         tcon = self.mem[self.TCON]
         # IE   bits  -  7:EA   6: -   5:ET2  4:ES   3:ET1  2:EX1  1:ET0  0:EX0
         # TCON bits  -  7:TR1  6:TR1  5:TF0  4:TR0  3:IE1  2:IT1  1:IE0  0:IT0
@@ -1001,7 +1048,13 @@ class Sim():
         # TR1 = tcon & BIT6
         # set TF0 tcon |= BIT5
         if tcon & BIT4 and self.t0_enabled and self.t0_count > 0:
-            self.t0_count -= 1
+            # check C/T counter/Timer
+            if tmod & BIT2 == 0:
+                self.t0_count -= 1
+            elif self.t0_input > 0:
+                self.t0_count -= 1
+                self.t0_input = 0
+                
             if self.t0_count <= 0:
                 # set bit TF0 = 1
                 self.mem[self.TCON] |= BIT5
@@ -1016,7 +1069,13 @@ class Sim():
                     self.t0_count = self.mem[self.TL0] = self.mem[self.TH0]
                 
         if tcon & BIT6 and self.t1_enabled :
-            self.t1_count -= 1
+            # check C/T counter/Timer
+            if tmod & BIT6 == 0:
+                self.t1_count -= 1
+            elif self.t1_input > 0:
+                self.t1_count -= 1
+                self.t1_input = 0
+                
             if self.t1_count == 0:
                 # set bit TF1 = 1
                 self.mem[self.TCON] |= BIT7
