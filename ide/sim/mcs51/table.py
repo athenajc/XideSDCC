@@ -128,6 +128,7 @@ op_str =  {
     OP_PC: "pc",
     OP_CODE: "op",
     OP_ADDR: "op",
+    OP_PAGE: "op",
 }
 
 symbol_map = [I_NOP, 
@@ -154,14 +155,14 @@ I_MOVX,  I_ACALL, I_MOVX,  I_MOVX,  I_CPL,   I_MOV,   I_MOV,   I_MOV,   I_MOV,  
 
 symbol_table = [
     # ACALL
-    [0x11, 2, I_ACALL, [0], FLAG_NONE, "ACALL page0 0x11 2 None"],
-    [0x31, 2, I_ACALL, [1], FLAG_NONE, "ACALL page1 0x31 2 None"],
-    [0x51, 2, I_ACALL, [2], FLAG_NONE, "ACALL page2 0x51 2 None"],
-    [0x71, 2, I_ACALL, [3], FLAG_NONE, "ACALL page3 0x71 2 None"],
-    [0x91, 2, I_ACALL, [4], FLAG_NONE, "ACALL page4 0x91 2 None"],
-    [0xB1, 2, I_ACALL, [5], FLAG_NONE, "ACALL page5 0xB1 2 None"],
-    [0xD1, 2, I_ACALL, [6], FLAG_NONE, "ACALL page6 0xD1 2 None"],
-    [0xF1, 2, I_ACALL, [7], FLAG_NONE, "ACALL page7 0xF1 2 None"],
+    [0x11, 2, I_ACALL, [OP_PAGE], FLAG_NONE, "ACALL page0 0x11 2 None"],
+    [0x31, 2, I_ACALL, [OP_PAGE], FLAG_NONE, "ACALL page1 0x31 2 None"],
+    [0x51, 2, I_ACALL, [OP_PAGE], FLAG_NONE, "ACALL page2 0x51 2 None"],
+    [0x71, 2, I_ACALL, [OP_PAGE], FLAG_NONE, "ACALL page3 0x71 2 None"],
+    [0x91, 2, I_ACALL, [OP_PAGE], FLAG_NONE, "ACALL page4 0x91 2 None"],
+    [0xB1, 2, I_ACALL, [OP_PAGE], FLAG_NONE, "ACALL page5 0xB1 2 None"],
+    [0xD1, 2, I_ACALL, [OP_PAGE], FLAG_NONE, "ACALL page6 0xD1 2 None"],
+    [0xF1, 2, I_ACALL, [OP_PAGE], FLAG_NONE, "ACALL page7 0xF1 2 None"],
 
     # ADD, ADD A,operand
     [0x24, 2, I_ADD, [OP_A, OP_DATA], FLAG_C_AC_OV, "ADD A,#data 0x24 2 C, AC, OV"],
@@ -192,14 +193,14 @@ symbol_table = [
     [0x3F, 1, I_ADDC, [OP_A, OP_R7],   FLAG_C_AC_OV, "ADDC A,R7 0x3F 1 C, AC, OV"],
 
     # AJMP, AJMP code address
-    [0x01, 2, I_AJMP, [0], FLAG_NONE, "AJMP page0 0x01 2 None"],
-    [0x21, 2, I_AJMP, [1], FLAG_NONE, "AJMP page1 0x21 2 None"],
-    [0x41, 2, I_AJMP, [2], FLAG_NONE, "AJMP page2 0x41 2 None"],
-    [0x61, 2, I_AJMP, [3], FLAG_NONE, "AJMP page3 0x61 2 None"],
-    [0x81, 2, I_AJMP, [4], FLAG_NONE, "AJMP page4 0x81 2 None"],
-    [0xA1, 2, I_AJMP, [5], FLAG_NONE, "AJMP page5 0xA1 2 None"],
-    [0xC1, 2, I_AJMP, [6], FLAG_NONE, "AJMP page6 0xC1 2 None"],
-    [0xE1, 2, I_AJMP, [7], FLAG_NONE, "AJMP page7 0xE1 2 None"],
+    [0x01, 2, I_AJMP, [OP_PAGE], FLAG_NONE, "AJMP page0 0x01 2 None"],
+    [0x21, 2, I_AJMP, [OP_PAGE], FLAG_NONE, "AJMP page1 0x21 2 None"],
+    [0x41, 2, I_AJMP, [OP_PAGE], FLAG_NONE, "AJMP page2 0x41 2 None"],
+    [0x61, 2, I_AJMP, [OP_PAGE], FLAG_NONE, "AJMP page3 0x61 2 None"],
+    [0x81, 2, I_AJMP, [OP_PAGE], FLAG_NONE, "AJMP page4 0x81 2 None"],
+    [0xA1, 2, I_AJMP, [OP_PAGE], FLAG_NONE, "AJMP page5 0xA1 2 None"],
+    [0xC1, 2, I_AJMP, [OP_PAGE], FLAG_NONE, "AJMP page6 0xC1 2 None"],
+    [0xE1, 2, I_AJMP, [OP_PAGE], FLAG_NONE, "AJMP page7 0xE1 2 None"],
 
     # ANL, Bitwise AND, ANL operand1, operand2
     [0x52, 2, I_ANL, [OP_A,    OP_IRAM], FLAG_NONE, "ANL iram_addr,A 0x52 2 None"],

@@ -35,7 +35,9 @@ class Sim():
         
         self.ie = 0
         self.int_enabled = False
-        self.int_queue = []
+        self.int_flag = 0
+        self.int_ext0 = 0
+        self.int_ext1 = 0
         self.cur_int = None
         self.INT_EXT0 = 0
         self.INT_T0 = 1
@@ -109,7 +111,7 @@ class Sim():
         self.B_SM0 = 0x9F
         
         self.sbuf_list = []
-        self.mem = [0] * 4096
+        self.mem = [0] * 256
         self.ext_mem = [0] * 64 * 1024
         self.code_space = [0] * 64 * 1024
         self.reg = [0] * 32
@@ -476,6 +478,15 @@ class Sim():
             self.ov = v
             
     #-------------------------------------------------------------------
+    def set_sbuf(self, v):
+        #scon = self.mem[self.SCON]
+        # check if TI and RI both 0
+        #if (scon & 3) == 0 and sbuf != 0: 
+        self.mem_set_bit(self.TI, 1)
+        #self.mem[self.SBUF] = v
+        self.sbuf_list.append(v)
+                
+    #-------------------------------------------------------------------
     def set_input(self, k, v):
         #EX1	IE.2	Enable/disable external interrupt 1.
         #EX0	IE.0	Enable/disable external interrupt 0.
@@ -483,16 +494,39 @@ class Sim():
         
         if k == 'int0':
             if ie & BIT7 and ie & BIT0:
-                self.int_queue.append(self.INT_EXT0)
+                tcon = self.mem[self.TCON]
+                if v == 0 and (tcon & BIT0) == 0:
+                    # TCON bit0 is 0 means low level trigger 
+                    self.int_flag |= BIT0
+                    self.mem[self.TCON] |= BIT1
+                elif v == 0 and (tcon & BIT0) == 1:
+                    # TCON bit0 is 1 means falling edge trigger 
+                    if self.int_ext0 == 1:
+                        self.int_flag |= BIT0
+                        self.mem[self.TCON] |= BIT1
+                self.int_ext0 = v
+                
         elif k == 'int1':
             if ie & BIT7 and ie & BIT2:
-                self.int_queue.append(self.INT_EXT1)
+                tcon = self.mem[self.TCON]
+                if v == 0 and (tcon & BIT2) == 0:
+                    # TCON bit2 is 0 means low level trigger timer1 int
+                    self.int_flag |= BIT2
+                    self.mem[self.TCON] |= BIT3
+                elif v == 0 and (tcon & BIT2) == 1:
+                    # TCON bit0 is 1 means falling edge trigger 
+                    if self.int_ext1 == 1:
+                        self.int_flag |= BIT2
+                        self.mem[self.TCON] |= BIT3
+                self.int_ext1 = v
+                
         elif k == 'uart':
             # set RI = 1
             self.mem_set_bit(self.RI, 1)
             self.mem[self.SBUF] = v
             if ie & BIT7 and ie & BIT4:
-                self.int_queue.append(self.INT_UART)
+                self.int_flag |= BIT4
+                self.mem[self.TCON] |= BIT1
                 
     #-------------------------------------------------------------------
     def set_ie(self, v):
@@ -768,10 +802,12 @@ class Sim():
             
         # if timer0 interrupt, clear TCON bit5 TF0
         if self.cur_int == self.INT_T0:
-            v = self.mem[self.TCON]
-            v &= ~BIT5
-            self.mem[self.TCON] = v
-        
+            self.mem[self.TCON] &= ~BIT5
+        elif self.cur_int == self.INT_EXT0:
+            self.mem[self.TCON] &= ~BIT1
+        elif self.cur_int == self.INT_EXT1:
+            self.mem[self.TCON] &= ~BIT3
+            
     #-------------------------------------------------------------------
     def code_space_fill(self, addr, sz, ddstr):
         i1 = 0
@@ -928,53 +964,71 @@ class Sim():
             #j = j + 8
             
     #-------------------------------------------------------------------
-    def timer_and_int(self):            
+    def proc_int(self):
+        if not self.int_enabled:
+            return
+        if self.int_flag == 0:
+            return
+        
+        #do the interrupt work
+        ip = self.mem[self.IP]
+        flag = self.int_flag
+        if ip != 0:
+            # process high ip at first
+            for i in range(0, 6):
+                bit = 1 << i
+                if flag & bit and ip & bit:
+                    self.int_enabled = False
+                    self.int_flag &= ~bit
+                    self.call_interrupt(i)
+                    return
+            
+        for i in range(0, 6):
+            bit = 1 << i
+            if flag & bit:
+                self.int_enabled = False
+                self.int_flag &= ~bit
+                self.call_interrupt(i)
+                return
+        
+    #-------------------------------------------------------------------
+    def proc_timer(self):
         # do the timer work
         tcon = self.mem[self.TCON]
-        if self.t0_enabled and self.t0_count > 0:
+        # IE   bits  -  7:EA   6: -   5:ET2  4:ES   3:ET1  2:EX1  1:ET0  0:EX0
+        # TCON bits  -  7:TR1  6:TR1  5:TF0  4:TR0  3:IE1  2:IT1  1:IE0  0:IT0
+        # TR0 = tcon & BIT4
+        # TR1 = tcon & BIT6
+        # set TF0 tcon |= BIT5
+        if tcon & BIT4 and self.t0_enabled and self.t0_count > 0:
             self.t0_count -= 1
             if self.t0_count <= 0:
                 # set bit TF0 = 1
-                tcon = setbit(tcon, 5)
-                self.mem[self.TCON] = tcon
+                self.mem[self.TCON] |= BIT5
                 
-                # trigger timer0 interrupt
+                # trigger timer0 interrupt ET0 - BIT1
                 if self.ie & BIT1:
-                    self.int_queue.append(self.INT_T0)
+                    self.int_flag |= BIT1
                 
                 # if mode = 2, reset initial count
                 if self.t0_mode == 2:
                     # copy value from TH0 to TL0
                     self.t0_count = self.mem[self.TL0] = self.mem[self.TH0]
                 
-        if self.t1_enabled :
+        if tcon & BIT6 and self.t1_enabled :
             self.t1_count -= 1
             if self.t1_count == 0:
-                # set bit TF0 = 1
-                tcon = setbit(tcon, 7)
-                self.mem[self.TCON] = tcon
+                # set bit TF1 = 1
+                self.mem[self.TCON] |= BIT7
                 # trigger timer1 interrupt
                 if self.ie & BIT3:
-                    self.int_queue.append(self.INT_T1)
-                
-        #do the interrupt work
-        if self.int_enabled and len(self.int_queue) > 0:
-            self.int_enabled = False
-            t = self.int_queue.pop(0)
-            self.call_interrupt(t)
-            
-    #-------------------------------------------------------------------
-    def set_sbuf(self, v):
-        #scon = self.mem[self.SCON]
-        # check if TI and RI both 0
-        #if (scon & 3) == 0 and sbuf != 0: 
-        self.mem_set_bit(self.TI, 1)
-        #self.mem[self.SBUF] = v
-        self.sbuf_list.append(v)
-                
+                    self.int_flag |= BIT3
+                    
+
     #-------------------------------------------------------------------
     def load_and_debug_inst(self):
-        self.timer_and_int()
+        self.proc_timer()
+        self.proc_int()
         # get current program counter 
         addr = self.pc   
         self.inst_addr = self.pc
@@ -1027,7 +1081,9 @@ class Sim():
             
     #-------------------------------------------------------------------
     def load_inst(self):
-        self.timer_and_int()
+        self.proc_timer()
+        self.proc_int()
+        
         # get current program counter 
         addr = self.pc   
         self.inst_addr = self.pc
