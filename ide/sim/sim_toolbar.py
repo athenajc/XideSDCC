@@ -19,7 +19,11 @@ class Toolbar():
         
     #-------------------------------------------------------------------
     def toolbar(self, frame):
-        tb = wx.ToolBar(frame, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.TB_HORIZONTAL)
+        if wx.Platform == '__WXMSW__' :
+            h = 28            
+        else:
+            h = -1        
+        tb = wx.ToolBar(frame, wx.ID_ANY, wx.DefaultPosition, wx.Size(-1, h), wx.TB_HORIZONTAL)
         tb.SetToolBitmapSize(wx.Size(16,16))
         return tb
     
