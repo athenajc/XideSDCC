@@ -10,7 +10,11 @@ def __init__(frame, aui_mgr):
 #---------------------------------------------------------------------------------------------------
 class ToolBar(wx.ToolBar):
     def __init__(self, parent, frame, aui_mgr, name, lst):
-        wx.ToolBar.__init__(self, frame, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.TB_HORIZONTAL)
+        if wx.Platform == '__WXMSW__' :
+            h = 28            
+        else:
+            h = -1
+        wx.ToolBar.__init__(self, frame, wx.ID_ANY, wx.DefaultPosition, wx.Size(-1, h), wx.TB_HORIZONTAL)
         self.SetToolBitmapSize(wx.Size(16,16))
         self.app = frame.app
         self.parent = parent
