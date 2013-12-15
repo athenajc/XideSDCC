@@ -86,7 +86,7 @@ class LabelTextCtrl(wx.TextCtrl):
         if v == 0:
             self.SetBackgroundColour((185,185,185))
         else:
-            self.SetBackgroundColour((235,235,235))        
+            self.SetBackgroundColour((235,235,235))
 
 #---------------------------------------------------------------------------------------------------
 class PcDptrTextCtrlList(wx.StaticBoxSizer):
@@ -321,10 +321,11 @@ class UartTextViewer(wx.Panel):
     #------------------------------------------------------------------------
     def update_inst(self, sim, sbuf): 
         self.inst_text.SetValue('')
-        s = "file = " + sim.c_file + "\n"
-        s += "line = " + str(sim.c_line) + "\n\n"
+        s = ""
+        #s = "file = " + sim.c_file + "\n"
+        #s += "line = " + str(sim.c_line) + "\n\n"
         
-        s += str(sbuf) + '\n'
+        #s += str(sbuf) + '\n'
         s1 = ''.join(chr(i) for i in sbuf)
         s += s1 
         #s += 'sbuf list = ' + str(sim.sbuf_list) + '\n'

@@ -163,7 +163,7 @@ class CheckBoxWithHelp():
         stext.Wrap(-1)
         box.Add(stext, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 0)
         
-        sizer.Add(box, 1, wx.EXPAND, 5)    
+        sizer.Add(box, 0, wx.EXPAND, 5)    
         self.cbox.Bind(wx.EVT_CHECKBOX, self.OnCheckBox, self.cbox)
     
     #-------------------------------------------------------------------
@@ -228,10 +228,6 @@ class CheckBoxList(wx.StaticBoxSizer):
                 c = CheckBoxWithHelp(panel1, sizer1, t[0], t[1], checkbox_click, t[2])
             h = c.cbox.GetSize().GetHeight() + 5
             self.cboxes.append([c, t[0], t[1]])
-
-        h = len(lst) * h
-        if h > 280:
-            h = 280            
         
         panel1.SetInitialSize((-1, h))
             
@@ -239,9 +235,9 @@ class CheckBoxList(wx.StaticBoxSizer):
         panel1.Layout()
          
         box_sizer.Add(panel1, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5)
-        parent_sizer.Add(box_sizer, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5)
+        parent_sizer.Add(box_sizer, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5)
         
-        
+    
 #---------------------------------------------------------------------------
 class Dialog(wx.Dialog):
     
