@@ -11,6 +11,93 @@ BIT5 = 0x20
 BIT6 = 0x40
 BIT7 = 0x80
 
+global sim
+
+def set_sim(s):
+    global sim
+    sim = s
+
+def bits8(v):
+    return v & 0xff
+    
+def bit(b):
+    return 1 << b  # 1-based indexing
+
+# Typical call:  if hasbit(x, bit(3)) : ...
+def hasbit(x, bit):
+    if x & (1 << bit):
+        return 1
+    else:
+        return 0
+
+def testbit(x, bit):
+    return hasbit(x, bit)
+
+def getbit(x, bit):
+    # print("getbit", x, p, bit(p))
+    return x & (1 << bit)
+
+def setbit(x, bit):
+    return x | (1 << bit)
+
+def clearbit(v1, bit):
+    v2 = ~(1 << bit)
+    return v1 & v2
+
+def bits_test(v1, v2):
+    if v1 & v2:
+        return 1
+    else:
+        return 0
+
+def bits_and(v1, v2):
+    return v1 & v2
+
+def bits_or(v1, v2):
+    return v1 | v2
+
+def bits_xor(v1, v2):
+    return v1 ^ v2
+
+def bits_not(v):
+    return ~v & 0xffff
+
+def bits_lshift(v, n):  # <<
+    return v << n
+
+def bits_rshift(v, n):  # >>
+    return v >> n
+
+def int_to_byte(v):   
+    if (v < 0) :
+        v = 0x100 + v;        
+    return v
+
+def tonumber(s, d):
+    if s is None or s == "" :
+        return 0    
+    return int("0x" + s, d)
+
+def tostring(v):
+    return str(v)
+
+def int_to_word(v):    
+    if (v < 0) :
+        v = 0x10000 + v;        
+    return v
+
+def byte_to_int(v):
+    if (bits_test(v, 0x80)) :
+        #print(v, bits_and(v, 0x7f), bits_and(v, 0x7f) - 128)
+        v = (v & 0x7f) - 128
+        #print(v)    
+    return v
+
+def word_to_int(v):
+    if (v > 0x7fff) :
+        v = (v & 0x7fff) - 0x10000;
+    return v
+
 def tohex(value, n):
     if (value is None) :
         return "None"

@@ -176,54 +176,7 @@ class Sim():
         for k, v in self.sfr_map.items():
             self.addr_sfr[v] = k
             
-        self.inst_handler = [
-            [I_ACALL, inst_acall],
-            [I_ADD,   inst_add],
-            [I_ADDC,  inst_addc],
-            [I_AJMP,  inst_ajmp],
-            [I_ANL,   inst_anl],
-            [I_CJNE,  inst_cjne],
-            [I_CLR,   inst_clr],
-            [I_CPL,   inst_cpl],
-            [I_DA,    inst_da],
-            [I_DEC,   inst_dec],
-            [I_DIV,   inst_div],
-            [I_DJNZ,  inst_djnz],
-            [I_INC,   inst_inc],
-            [I_JB,    inst_jb],
-            [I_JBC,   inst_jbc],
-            [I_JC,    inst_jc],
-            [I_JMP,   inst_jmp],
-            [I_JNB,   inst_jnb],
-            [I_JNC,   inst_jnc],
-            [I_JNZ,   inst_jnz],
-            [I_JZ,    inst_jz],
-            [I_LCALL, inst_lcall],
-            [I_LJMP,  inst_ljmp],
-            [I_MOV,   inst_mov],
-            [I_MOVC,  inst_movc],
-            [I_MOVX,  inst_movx],
-            [I_MUL,   inst_mul],
-            [I_NOP,   inst_nop],
-            [I_ORL,   inst_orl],
-            [I_POP,   inst_pop],
-            [I_PUSH,  inst_push],
-            [I_RET,   inst_ret],
-            [I_RETI,  inst_reti],
-            [I_RL,    inst_rl],
-            [I_RLC,   inst_rlc],
-            [I_RR,    inst_rr],
-            [I_RRC,   inst_rrc],
-            [I_SETB,  inst_setb],
-            [I_SJMP,  inst_sjmp],
-            [I_SUBB,  inst_subb],
-            [I_SWAP,  inst_swap],
-            [I_XCH,   inst_xch],
-            [I_XCHD,  inst_xchd],
-            [I_XRL,   inst_xrl],
-            [I_UNDEF, inst_undef],
-        ]        
-        self.inst_handler = array_list(self.inst_handler, 256)
+        #self.inst_handler = array_list(self.inst_handler, 256)
         
         text = read_whole_file(self.file_path)
         self.log(self.file_path + "\n")
@@ -689,9 +642,27 @@ class Sim():
     #-------------------------------------------------------------------
     def set_a(self, v):
         #self.log1("     set a = "+hex(v))
-        self.a = (v)
+        self.a = v & 0xff
         #self.set_sfr('acc', v)
         self.mem[0xE0] = v
+        
+    #-------------------------------------------------------------------
+    def add_a(self, v, c):
+        #self.log1("     set a = "+hex(v))
+        self.ac = 0
+        self.ov = 0
+        self.c = 0
+        
+        a = self.a
+        if (a & 0xf) + ((v + c) & 0xf)  > 0xf:
+            self.ac = 1
+        if a + v + c > 0xff:
+            self.ov = 1
+            self.c = 1
+            
+        self.a = (a + v + c) & 0xff
+        
+        self.mem[0xE0] = self.a
         
     #-------------------------------------------------------------------
     def set_b(self, v):
@@ -1134,8 +1105,8 @@ class Sim():
         # self.set_pc(self.pc + blen)
         self.pc = self.pc + op_n
     
-        f = self.inst_handler[inst_map_code]
-        f(op_n, inst_code, dd1, dd2, dd3)
+        f = inst_handler[inst_code]
+        f(self, inst_code, dd1, dd2, dd3)
         
             
     #-------------------------------------------------------------------
@@ -1152,14 +1123,13 @@ class Sim():
         dd3 = self.code_space[addr + 3]
         sym = self.symbol_table[inst_code]
         op_n = sym[1]
-        inst_map_code = sym[2]
             
         # move the program counter to the next instruction
         # self.set_pc(self.pc + blen)
         self.pc = self.pc + op_n
     
-        f = self.inst_handler[inst_map_code]
-        f(op_n, inst_code, dd1, dd2, dd3)
+        f = inst_handler[inst_code]
+        f(self, inst_code, dd1, dd2, dd3)
         
             
     #-------------------------------------------------------------------
