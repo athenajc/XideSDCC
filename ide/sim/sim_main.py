@@ -26,22 +26,27 @@ class AsmView(StyledText):
         StyledText.__init__(self, parent)
         
     #-------------------------------------------------------------------
+    def get_addr_text(self, s):
+        s = s.strip()[0:6]
+        if s == '':
+            return None
+        for c in s:
+            if c not in '0123456789abcdefABCDEF' :
+                return None
+        return s
+    
+    #-------------------------------------------------------------------
     def set_text(self, text):
         self.addr_lst = [0]
                 
         for line in text.split('\n'):
             addr = 0
-            if line[0:2] == "  " and line[2:3] == "0":
-                # mcs51 
-                s = line[2:9]
+            s = self.get_addr_text(line)
+            if s != None:
                 addr = int('0x' + s, 16)
-            else:
-                s = line[0:6].strip()
-                
-                if s != "" and s[0:1] == '0':
-                    addr = int('0x' + s, 16)
-            self.addr_lst.append(addr)
             
+            self.addr_lst.append(addr)
+        print self.addr_lst
         self.SetText(text)
         
     #-------------------------------------------------------------------
@@ -813,10 +818,11 @@ class SimFrame (wx.Frame):
             return
         
         #uart sbuf
-        for ch in sim.sbuf_list:
-            self.sbuf.append(ch)
-            
-        sim.sbuf_list = []
+        if sim.sbuf_list != []:
+            for ch in sim.sbuf_list:
+                self.sbuf.append(ch)
+                
+            sim.sbuf_list = []
             
         self.reg_panel.update_inst(sim, self.sbuf)
         self.reg_panel.update(sim)
@@ -828,7 +834,7 @@ class SimFrame (wx.Frame):
     
     #-------------------------------------------------------------------
     def OnReset(self, event):
-        self.sim_stop()        
+        self.sim_stop()
         self.log_view.Clear()
         self.log("Press Continue or Step functions to start simulation.\n")
         self.sim = None

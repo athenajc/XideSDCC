@@ -320,54 +320,10 @@ class UartTextViewer(wx.Panel):
         
     #------------------------------------------------------------------------
     def update_inst(self, sim, sbuf): 
-        self.inst_text.SetValue('')
-        s = ""
-        #s = "file = " + sim.c_file + "\n"
-        #s += "line = " + str(sim.c_line) + "\n\n"
-        
         #s += str(sbuf) + '\n'
-        s1 = ''.join(chr(i) for i in sbuf)
-        s += s1 
-        #s += 'sbuf list = ' + str(sim.sbuf_list) + '\n'
-            
-        self.inst_text.WriteText(s)
+        s = ''.join(chr(i) for i in sbuf)
+        self.inst_text.SetValue(s)
         
-#class WatchPanel (wx.Panel):
-    
-    #def __init__(self, parent):
-        #wx.Panel.__init__ (self, parent, id = wx.ID_ANY, pos = wx.DefaultPosition, size = wx.Size(500,300), style = wx.TAB_TRAVERSAL)
-        
-        #sizer = wx.BoxSizer(wx.HORIZONTAL)
-        
-        #self.splitter = wx.SplitterWindow(self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.SP_3D)
-        #self.splitter.Bind(wx.EVT_IDLE, self.OnIdle)
-        
-        #p1 = self.sfr_watch = SfrWatchPanel(self.splitter)
-        #p2 = self.sfr_text_view = SfrTextViewer(self.splitter)
-
-        #self.splitter.SplitHorizontally(p1, p2, 0)
-            
-        #sizer.Add(self.splitter, 1, wx.EXPAND, 5)
-                
-        #self.SetSizer(sizer)
-        #self.Layout()
-        
-    ##------------------------------------------------------------------------
-    #def update(self, sim):
-        #self.sfr_watch.update(sim)
-        
-    ##------------------------------------------------------------------------
-    #def update_inst(self, sim, sbuf): 
-        #self.sfr_text_view.update_inst(sim, sbuf)
-        
-    ##------------------------------------------------------------------------
-    #def OnIdle(self, event):
-        #self.splitter.SetSashPosition(0)
-        #self.splitter.Unbind(wx.EVT_IDLE)
-        
-    ##------------------------------------------------------------------------
-    #def __del__(self):
-        #pass
         
 class IoPortPanel(wx.Panel):
     def __init__(self, parent):

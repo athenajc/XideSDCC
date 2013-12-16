@@ -36,6 +36,7 @@ class Sim():
         self.step_over_mode = False
         self.stack_depth = 0
         
+        self.int_vectors = [0x3, 0x0B, 0x13, 0x1B, 0x23]
         self.ie = 0
         self.int_enabled = False
         self.int_flag = 0
@@ -67,7 +68,6 @@ class Sim():
         #self.sfr = SfrDefine()
         self.a = 0
         self.b = 0
-        self.dptr = 0
         self.pc = 0
         self.sp = 0
         self.mem = []
@@ -144,6 +144,7 @@ class Sim():
         }
         
         self.sfr_map = {
+                'r0':0,'r1':1,'r2':2,'r3':3,'r4':4,'r5':5,'r6':6,'r7':7,
                 'p0':   0x80,
                 'p1':   0x90,
                 'p2':   0xa0,
@@ -165,20 +166,11 @@ class Sim():
                 'psw':  0xd0,
                 'acc':  0xe0,
                 'b':    0xf0,
-                'ri':   0x98,
-                'ti':  0x99,
-                'rb8': 0x9A,
-                'tb8': 0x9B,
-                'ren': 0x9C,
-                'sm2': 0x9D,
-                'sm1': 0x9E,
-                'sm0': 0x9F,
-                'r0':0,'r1':1,'r2':2,'r3':3,'r4':4,'r5':5,'r6':6,'r7':7,
             }
         
-        self.SBUF = self.sfr_map['sbuf']
-        self.RI  = self.sfr_map['ri']
-        self.TI  = self.sfr_map['ti']
+        self.SBUF = 0x99
+        self.RI  = 0x98
+        self.TI  = 0x99
         
         self.addr_sfr = {}
         for k, v in self.sfr_map.items():
@@ -230,7 +222,7 @@ class Sim():
         if self.debug:
             self.log("     push "+hex(v))
         self.stack.insert(0, v)
-        self.sp = len(self.stack)
+        self.mem[0x81] = self.sp = len(self.stack)
         # print("     #stack = "+tostring(#self.stack))
         
     #-------------------------------------------------------------------
@@ -242,7 +234,8 @@ class Sim():
         v = self.stack.pop(0)
         if self.debug:
             self.log("     pop "+hex(v))
-        self.sp = len(self.stack)
+        self.mem[0x81] = self.sp = len(self.stack)
+        
         return v
 
     #-------------------------------------------------------------------
@@ -260,12 +253,8 @@ class Sim():
         v = self.mem[addr]
 
         if v & (1 << bit):
-            if self.debug:
-                self.log("     get bit "+tohex(bitaddr, 4), 1)
             return 1
         else:
-            if self.debug:
-                self.log("     get bit "+tohex(bitaddr, 4), 0)
             return 0
         
     #-------------------------------------------------------------------
@@ -322,7 +311,8 @@ class Sim():
     #-------------------------------------------------------------------
     def get_code_space(self, addr):
         v = self.code_space[addr]
-        self.log("     get code_space "+tohex(addr,4)+" = "+tohex(v, 0))
+        if self.debug:
+            self.log("     get code_space "+tohex(addr,4)+" = "+tohex(v, 0))
         return v
     
     #-------------------------------------------------------------------
@@ -360,8 +350,7 @@ class Sim():
         if self.debug:
             self.log("     set mem "+tohex(addr, 4)+" = "+tohex(v, 0))
         
-        v &= 0xff
-    
+        v &= 0xff    
         self.mem[addr] = v
         
         # check if set sfr region
@@ -440,7 +429,6 @@ class Sim():
         # check if TI and RI both 0
         #if (scon & 3) == 0 and sbuf != 0: 
         self.mem_set_bit(self.TI, 1)
-        #self.mem[self.SBUF] = v
         self.sbuf_list.append(v)
         
     #-------------------------------------------------------------------
@@ -592,6 +580,7 @@ class Sim():
                 self.t0_count = tl
             elif mode == 3: # 8 bits, max 256
                 self.t0_count = tl
+                
         elif index == 1:
             tmod = self.mem[0x89] >> 4
             th = self.mem[self.TH1]
@@ -651,27 +640,30 @@ class Sim():
     #-------------------------------------------------------------------
     def add_a(self, v, c):
         #self.log1("     set a = "+hex(v))
-        self.ac = 0
-        self.ov = 0
-        self.c = 0
+        v += c
+        self.ac = self.ov = self.c = 0
         
-        a = self.mem[0xE0]
-        if (a & 0xf) + ((v + c) & 0xf)  > 0xf:
-            self.ac = 1
-        if a + v + c > 0xff:
-            self.ov = 1
-            self.c = 1
-            
-        v = (a + v + c) & 0xff
         #/* PSW */
         #__sbit __at 0xD2 OV         ;
         #__sbit __at 0xD6 AC         ;
         #__sbit __at 0xD7 CY         ;
-        psw = self.mem[0xD0] & 0xC4
-        psw |= (self.c << 7) | (self.ac << 6) | (self.ov << 2) 
-        self.mem[0xD0] = self.psw = psw
-        self.mem[0xE0] = self.a = a
+        psw = self.mem[0xD0] & 0xC4  # clear bit2, 6, 7 at first
         
+        a = self.mem[0xE0]
+        if (a & 0xf) + (v & 0xf) > 0xf:
+            self.ac = 1
+            psw |= BIT6
+            
+        v += a
+        if v > 0xff:
+            self.ov = 1
+            self.c = 1
+            v &= 0xff
+            psw |= BIT7 | BIT2
+            
+        self.mem[0xD0] = self.psw = psw
+        self.mem[0xE0] = self.a = v
+
     #-------------------------------------------------------------------
     def set_b(self, v):
         #self.log1("     set b = "+hex(v))
@@ -716,58 +708,51 @@ class Sim():
     #-------------------------------------------------------------------
     def get_ac(self, v):
         return (self.mem[0xD0] >> 6) & 1
-
-    #-------------------------------------------------------------------
-    def set_reg(self, k, v):
-        self.reg_table[k] = v
         
     #-------------------------------------------------------------------
     def get_reg(self, k):
         return self.reg_table[k]
-    
-    #-------------------------------------------------------------------
-    # Set sfr will set reg table at same time
-    def set_sfr(self, k, v):
-        self.reg_table[k] = v
-        addr = self.sfr_map[k]
-        self.mem[addr] = v
-        
-    #-------------------------------------------------------------------
-    def get_sfr(self, k):
-        addr = self.sfr_map[k]
-        return self.mem[addr]
         
     #-------------------------------------------------------------------
     def update_sfr(self):
-        self.inst_addr = self.pc
+        self.reg_table['dptr'] = (self.mem[self.DPH] << 8) + self.mem[self.DPL]
+        self.reg_table['pc'] = self.pc
         for k, v in self.sfr_map.items():
             self.reg_table[k] = self.mem[v]
 
     #-------------------------------------------------------------------
-    def set_r(self, i, v):        
+    def set_r(self, i, v):
+        i &= 0x7
         self.mem[self.bank_addr + i] = v
         return v
     
     #-------------------------------------------------------------------
     def get_r(self, i):
+        i &= 0x7
         return self.mem[self.bank_addr + i]
     
     #-------------------------------------------------------------------
-    def set_dptr(self, v):
-        if self.debug:
-            self.log("     set dptr = "+hex(v))
-        self.dptr = v 
-        
-        self.mem[0x82] = v & 0xff
-        self.mem[0x83] = (v >> 8) & 0xff
+    # DPH 0x83  
+    # DPL 0x82
+    def inc_dptr(self):
+        dph = self.DPH
+        dpl = self.DPL
+        l = self.mem[dpl] + 1
+        if l > 0xff:
+            l &= 0xff
+            h = (self.mem[dph] + 1) & 0xff
+            self.mem[dph] = h
+            
+        self.mem[dpl] = l
+                
+    #-------------------------------------------------------------------
+    def set_dptr(self, h, l):
+        self.mem[0x83] = h
+        self.mem[0x82] = l
         
     #-------------------------------------------------------------------
     def get_dptr(self):
-        dpl = self.mem[0x82]
-        dph = self.mem[0x83]
-        v = (dph << 8) | dpl
-        self.dptr = v
-        return v
+        return (self.mem[0x83] << 8) | self.mem[0x82]
         
     #-------------------------------------------------------------------
     def set_pc(self, v):
@@ -782,9 +767,8 @@ class Sim():
         #2 EXT1 0x0013
         #3 T1   0x001B
         #4 INTS 0x0023
-        vectors = [0x3, 0x0B, 0x13, 0x1B, 0x23]
         self.cur_int = i
-        addr = vectors[i]
+        addr = self.int_vectors[i]
         #print 'int', addr
         self.call(addr)
                 
@@ -1072,8 +1056,8 @@ class Sim():
         if self.int_enabled:
             self.proc_int()
         # get current program counter 
-        addr = self.pc   
-        self.inst_addr = self.pc
+        self.inst_addr = addr = self.pc
+        
         if addr < len(self.addr_map_lst):
             t = self.addr_map_lst[addr]
             if t != 0:
@@ -1133,7 +1117,7 @@ class Sim():
             self.proc_int()
         
         # get current program counter 
-        addr = self.pc
+        self.inst_addr = addr = self.pc
         
         rom = self.code_space
         inst_code = rom[addr]

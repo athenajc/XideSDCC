@@ -50,7 +50,7 @@ def inst_add_27(sim, inst, op1, op2, op3):
 #----------------------------------------------------------------
 def inst_add_28_2F(sim, inst, op1, op2, op3):
     #ADD A,R0  0x28  1  1  C, AC, OV
-    v2 = sim.get_r(inst - 0x28)
+    v2 = sim.get_r(inst)
     sim.add_a(v2, 0)
 
 #--------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ def inst_addc_37(sim, inst, op1, op2, op3):
     
 def inst_addc_38_3F(sim, inst, op1, op2, op3):
     #ADDC A,R0  0x38  1  1  C, AC, OV
-    v2 = sim.get_r(inst - 0x38)
+    v2 = sim.get_r(inst)
     sim.add_a(v2, sim.c)
     
 #--------------------------------------------------------------------------------
@@ -120,7 +120,7 @@ def inst_anl_57(sim, inst, op1, op2, op3):
     sim.set_a(bits_and(sim.a, sim.get_mem_r(1))) # ANL A,@R1  0x57  1  None
     
 def inst_anl_58_5F(sim, inst, op1, op2, op3):
-    sim.set_a(bits_and(sim.a, sim.get_r(inst - 0x58)))  # ANL A,R0  0x58  1  None    
+    sim.set_a(bits_and(sim.a, sim.get_r(inst)))  # ANL A,R0  0x58  1  None    
     
 def inst_anl_82(sim, inst, op1, op2, op3):
     sim.set_c(bits_and(sim.c, sim.mem_get_bit(op1)))  # ANL C,bit addr  0x82  2  C
@@ -191,7 +191,7 @@ def inst_cjne_B7(sim, inst, op1, op2, op3):
         
 def inst_cjne_B8_BF(sim, inst, op1, op2, op3):
     # CJNE R0,#data,reladdr  0xB8  3  C
-    v1 = sim.get_r(inst - 0xB8)
+    v1 = sim.get_r(inst)
     v2 = op1
 
     if (v1 < v2) : 
@@ -285,7 +285,7 @@ def inst_dec_17(sim, inst, op1, op2, op3):
     sim.set_mem_r(1, dec(sim.get_mem_r(1)))
     
 def inst_dec_18_1F(sim, inst, op1, op2, op3):
-    sim.set_r(inst - 0x18, dec(sim.get_r(0)))
+    sim.set_r(inst, dec(sim.get_r(inst)))
     
 
 #--------------------------------------------------------------------------------
@@ -342,8 +342,7 @@ def inst_djnz_D5(sim, inst, op1, op2, op3):
  
             
 def inst_djnz_D8_DF(sim, inst, op1, op2, op3):
-    i = inst - 0xD8
-    v = sim.set_r(i, dec(sim.get_r(i)))
+    v = sim.set_r(inst, dec(sim.get_r(inst)))
 
     if (v != 0) :
         sim.jump_rel(op1)
@@ -376,16 +375,10 @@ def inst_inc_07(sim, inst, op1, op2, op3):
     sim.set_mem_r(1, inc(sim.get_mem_r(1)))
     
 def inst_inc_08_0F(sim, inst, op1, op2, op3):
-    i = inst - 0x08
-    sim.set_r(i, inc(sim.get_r(i)))
+    sim.set_r(inst, inc(sim.get_r(inst)))
     
 def inst_inc_A3(sim, inst, op1, op2, op3):
-    v = sim.get_dptr()
-    if v == 0xffff:
-        v = 0
-    else:
-        v += 1
-    sim.set_dptr(v)
+    sim.inc_dptr()
     
     
 #--------------------------------------------------------------------------------
@@ -476,7 +469,7 @@ def inst_jnc(sim, inst, op1, op2, op3):
     #Instructions  OpCode  Bytes  Flags
     #JNC reladdr  0x50  2  None
     #]]
-    if (sim.c == 0) :        
+    if (sim.c == 0) :
         sim.jump_rel(op1)
 
 #--------------------------------------------------------------------------------
@@ -488,7 +481,7 @@ def inst_jnz(sim, inst, op1, op2, op3):
     #Instructions  OpCode  Bytes  Flags
     #JNZ reladdr  0x70  2  None
     #]]
-    if (sim.a != 0) :        
+    if (sim.a != 0) :
         sim.jump_rel(op1)
 
 #--------------------------------------------------------------------------------
@@ -581,14 +574,14 @@ def inst_mov_E7(sim, inst, op1, op2, op3):
     sim.set_a(sim.get_mem_r(1)) # MOV A,@R1  0xE7  1  None
     
 def inst_mov_E8_EF(sim, inst, op1, op2, op3):
-    sim.set_a(sim.get_r(inst - 0xE8)) # MOV A,R0  0xE8  1  None
+    sim.set_a(sim.get_r(inst)) # MOV A,R0  0xE8  1  None
     
     
 def inst_mov_E5(sim, inst, op1, op2, op3):
     sim.set_a(sim.get_mem(op1)) # MOV A,iram addr  0xE5  2  None
 
 def inst_mov_90(sim, inst, op1, op2, op3):
-    sim.set_dptr((op1 * 256) + op2) # MOV DPTR,#data16  0x90  3  None
+    sim.set_dptr(op1, op2) # MOV DPTR,#data16  0x90  3  None
 
 def inst_mov_78_7F(sim, inst, op1, op2, op3):
     sim.set_r(inst - 0x78, op1) # MOV R0,#data  0x78  2  None
@@ -600,7 +593,7 @@ def inst_mov_A8_AF(sim, inst, op1, op2, op3):
     sim.set_r(inst - 0xA8, sim.get_mem(op1)) # MOV R0,iram addr  0xA8  2  None
     
 def inst_mov_88_8F(sim, inst, op1, op2, op3):
-    sim.set_mem(op1, sim.get_r(inst - 0x88)) # MOV iram addr,R0  0x88  2  None
+    sim.set_mem(op1, sim.get_r(inst)) # MOV iram addr,R0  0x88  2  None
     
 def inst_mov_75(sim, inst, op1, op2, op3):
     sim.set_mem(op1, op2) # MOV iram addr,#data  0x75  3  None
@@ -745,7 +738,7 @@ def inst_orl_47(sim, inst, op1, op2, op3):
     
 def inst_orl_48_4F(sim, inst, op1, op2, op3):
     #ORL A,R0  0x48  1  None
-    sim.set_a(sim.a | sim.get_r(inst - 0x48))
+    sim.set_a(sim.a | sim.get_r(inst))
 
 def inst_orl_72(sim, inst, op1, op2, op3):
     sim.set_c(sim.c | sim.mem_get_bit(op1))
@@ -1008,7 +1001,7 @@ def inst_subb_97(sim, inst, op1, op2, op3):
 
 def inst_subb_98_9F(sim, inst, op1, op2, op3):
     #SUBB A,R0  0x98  1  C, AC, OV
-    subb(sim, sim.get_r(inst - 0x98))
+    subb(sim, sim.get_r(inst))
 
         
 #--------------------------------------------------------------------------------
@@ -1073,10 +1066,9 @@ def inst_xch_C7(sim, inst, op1, op2, op3):
     
 def inst_xch_C8_CF(sim, inst, op1, op2, op3):
     #XCH A,R0  0xC8  1  None
-    i = inst - 0xC8
     v1 = sim.a
-    v2 = sim.get_r(i)
-    sim.set_r(i, v1)
+    v2 = sim.get_r(inst)
+    sim.set_r(inst, v1)
     sim.set_a(v2)
     
         

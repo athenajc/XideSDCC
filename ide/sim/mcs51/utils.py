@@ -220,7 +220,7 @@ def hex8(v):
     if v >= 0:
         return hex(v)
     else:
-        return hex(comp8(-v) + 1)
+        return hex(0xFF - (-v) + 1)
 
 def val8(v):
     if v & 0x80:

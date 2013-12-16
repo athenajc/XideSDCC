@@ -118,7 +118,7 @@ def map_scan(fn):
     return map_lst
 
 def rst_scan_file(fn, fn_index):
-    print fn
+    #print fn
     path, ext = fn.split('.')
     rst_file = path + ".rst"
     
@@ -140,7 +140,7 @@ def rst_scan(source_list):
         addr_map_lst = rst_scan_file(fn, fn_index)
         
         for a in addr_map_lst:
-            print a[0], a[1]
+            #print a[0], a[1]
             while a[0] >= len(lst):
                 lst.append(0)
             lst[a[0]] = [a[1], a[2], a[3], a[4]]
