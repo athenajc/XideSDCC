@@ -29,11 +29,8 @@ def inst_add_24(sim, inst, op1, op2, op3):
 #----------------------------------------------------------------
 def inst_add_25(sim, inst, op1, op2, op3):
     #ADD A,iram_addr  0x25  2  1  C, AC, OV
-    v1 = sim.a 
     v2 = sim.get_mem(op1)
-    v = v1 + v2
-    sim.set_a(v)
-    sim.check_overflow(v, v1, v2)
+    sim.add_a(v2, 0)
     
 #----------------------------------------------------------------
 def inst_add_26(sim, inst, op1, op2, op3):

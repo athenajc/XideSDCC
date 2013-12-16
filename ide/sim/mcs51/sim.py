@@ -69,16 +69,13 @@ class Sim():
         self.a = 0
         self.b = 0
         self.pc = 0
-        self.sp = 0
-        self.mem = []
-        self.stack = []
         self.c = 0
         self.ac = 0
         self.ov = 0
         self.psw = 0
         self.bank = 0
         self.bank_addr = 0
-
+                
         self.P0    = 0x80
         self.SP    = 0x81
         self.DPL   = 0x82
@@ -109,6 +106,9 @@ class Sim():
         self.B     = 0xF0
         
         #bits addressing
+        self.RI  = 0x98
+        self.TI  = 0x99
+                
         self.B_RI  = 0x98
         self.B_TI  = 0x99
         self.B_RB8 = 0x9A
@@ -122,7 +122,12 @@ class Sim():
         self.mem = [0] * 256
         self.ext_mem = [0] * 64 * 1024
         self.code_space = [0] * 4 * 1024
-        self.reg = [0] * 32
+        self.reg = [0] * 256
+        
+        # initial stack
+        self.reg[self.SP] = 0x07
+        self.stack = []
+        self.sp_addr = 0x60
         
         self.t0_enabled = False
         self.t1_enabled = False
@@ -167,11 +172,7 @@ class Sim():
                 'acc':  0xe0,
                 'b':    0xf0,
             }
-        
-        self.SBUF = 0x99
-        self.RI  = 0x98
-        self.TI  = 0x99
-        
+
         self.addr_sfr = {}
         for k, v in self.sfr_map.items():
             self.addr_sfr[v] = k
@@ -203,39 +204,27 @@ class Sim():
         self.frame.log(s)
         
     #-------------------------------------------------------------------
-    def check_overflow(self, v, v1, v2):
-        self.c = 0
-        self.ac = 0    
-        self.ov = 0
-    
-        if (v > 0xff) :
-            self.c = 1
-
-        if (v > 0xf) :
-            self.ac = 1
-
-        if (v < -127 or v > 128) :  # check ov behavior
-            self.ov = 1
-            
-    #-------------------------------------------------------------------
     def push(self, v):
         if self.debug:
             self.log("     push "+hex(v))
-        self.stack.insert(0, v)
-        self.mem[0x81] = self.sp = len(self.stack)
+        #self.stack.insert(0, v)
+        sp_addr = self.reg[self.SP]
+        sp_addr += 1
+        self.reg[sp_addr] = v
+        self.reg[self.SP] = sp_addr
+        print 'push', hex(sp_addr), v
         # print("     #stack = "+tostring(#self.stack))
         
     #-------------------------------------------------------------------
     def pop(self):
-        if len(self.stack) == 0:
-            self.log("     pop empty")
-            self.stopped = True
-            return 0
-        v = self.stack.pop(0)
+        #v1 = self.stack.pop(0)
+        sp_addr = self.reg[self.SP]
+        v = self.reg[sp_addr]
+        sp_addr -= 1
+        self.reg[self.SP] = sp_addr
+        print 'pop', hex(sp_addr), v
         if self.debug:
             self.log("     pop "+hex(v))
-        self.mem[0x81] = self.sp = len(self.stack)
-        
         return v
 
     #-------------------------------------------------------------------
@@ -245,12 +234,12 @@ class Sim():
             # 0x20 - 0x2F
             bit = bitaddr & 7
             addr = (bitaddr >> 3) + 0x20
+            v = self.mem[addr]
         else:
             # access SFR's bits
             bit = bitaddr & 7
             addr = bitaddr - bit
-            
-        v = self.mem[addr]
+            v = self.reg[addr]
 
         if v & (1 << bit):
             return 1
@@ -283,16 +272,17 @@ class Sim():
             # 0x20 - 0x2F
             bit = bitaddr & 7
             addr = (bitaddr >> 3) + 0x20
+            v = self.mem[addr]
         else:
             # access SFR's bits
             bit = bitaddr & 7
             addr = bitaddr - bit
+            v = self.reg[addr]
         
         #if bitaddr == self.TI or bitaddr == self.RI:
             ##self.log('@---------------- set TI addr = ' + hex(addr))
             #addr = self.SCON
             
-        v = self.mem[addr]
         
         if b == 1:
             v |= (1 << bit)
@@ -340,7 +330,10 @@ class Sim():
     
     #-------------------------------------------------------------------
     def get_mem(self, addr):
-        v = self.mem[addr]
+        if addr < 0x80:
+            v = self.mem[addr]
+        else:
+            v = self.reg[addr]
         if self.debug:
             self.log("     get mem "+tohex(addr,4)+" = "+tohex(v, 0))
         return v    
@@ -350,11 +343,13 @@ class Sim():
         if self.debug:
             self.log("     set mem "+tohex(addr, 4)+" = "+tohex(v, 0))
         
-        v &= 0xff    
-        self.mem[addr] = v
+        v &= 0xff        
         
         # check if set sfr region
-        if addr > 0x87:
+        if addr >= 0x80:
+            self.reg[addr] = v
+            if addr == self.SP:
+                print addr, v
             if addr == 0x8A or addr == 0x8C:
                 self.set_timer_count(0)
             elif addr == 0x8B or addr == 0x8D:
@@ -367,7 +362,9 @@ class Sim():
                 self.a = v
             elif addr == 0xD0:
                 self.psw = v
-                
+        else:
+            self.mem[addr] = v
+            
         return v
         
     
@@ -384,6 +381,7 @@ class Sim():
     # indirect addressing always access memory, not SFR
     def set_mem_r(self, i, v):
         addr = self.get_r(i)
+
         if self.debug:
             self.log("     set mem "+tohex(addr, 4)+" = "+tohex(v, 0))
         
@@ -434,16 +432,16 @@ class Sim():
     #-------------------------------------------------------------------
     def check_if_trigger_timer0(self):
         # TMOD : 3:GATE   2:C/T   1:M1   0:M0
-        tmod = self.mem[0x89]
-        tcon = self.mem[0x88]
+        tmod = self.reg[0x89]
+        tcon = self.reg[0x88]
         if tmod & BIT3 and tcon & BIT4:
             self.trigger_timer(0)
             
     #-------------------------------------------------------------------
     def check_if_trigger_timer1(self):
         # TMOD : 7:GATE   6:C/T   5:M1   4:M0
-        tmod = self.mem[0x89]
-        tcon = self.mem[0x88]
+        tmod = self.reg[0x89]
+        tcon = self.reg[0x88]
         if tmod & BIT7 and tcon & BIT6:
             self.trigger_timer(1)
             
@@ -451,49 +449,49 @@ class Sim():
     def set_input(self, k, v):
         #EX1	IE.2	Enable/disable external interrupt 1.
         #EX0	IE.0	Enable/disable external interrupt 0.
-        ie = self.mem[0xA8]
+        ie = self.reg[0xA8]
         
         if k == 'int0':
             if ie & BIT7 and ie & BIT0:
-                tcon = self.mem[0x88]
+                tcon = self.reg[0x88]
                 if v == 1 and (tcon & BIT0) == 0:
                     # TCON bit0 is 0 means low level trigger 
                     if self.pin[12] == 0:
                         self.int_flag |= BIT0
-                        self.mem[0x88] |= BIT1
+                        self.reg[0x88] |= BIT1
                         self.check_if_trigger_timer0()
                 elif v == 0 and (tcon & BIT0) == 1:
                     # TCON bit0 is 1 means falling edge trigger 
                     if self.pin[12] == 1:
                         self.int_flag |= BIT0
-                        self.mem[0x88] |= BIT1
+                        self.reg[0x88] |= BIT1
                         self.check_if_trigger_timer0()
                 self.pin[12] = v
                 
         elif k == 'int1':
             if ie & BIT7 and ie & BIT2:
-                tcon = self.mem[0x88]
+                tcon = self.reg[0x88]
                 if v == 1 and (tcon & BIT2) == 0:
                     # TCON bit2 is 0 means low level trigger timer1 int
                     if self.pin[13] == 0:
                         self.int_flag |= BIT2
-                        self.mem[0x88] |= BIT3
+                        self.reg[0x88] |= BIT3
                         self.check_if_trigger_timer1()
                 elif v == 0 and (tcon & BIT2) == 1:
                     # TCON bit0 is 1 means falling edge trigger 
                     if self.pin[13] == 1:
                         self.int_flag |= BIT2
-                        self.mem[0x88] |= BIT3
+                        self.reg[0x88] |= BIT3
                         self.check_if_trigger_timer1()
                 self.pin[13] = v
                 
         elif k == 'uart':
             # set RI = 1
             self.mem_set_bit(self.RI, 1)
-            self.mem[self.SBUF] = v
+            self.reg[self.SBUF] = v
             if ie & BIT7 and ie & BIT4:
                 self.int_flag |= BIT4
-                self.mem[0x88] |= BIT1
+                self.reg[0x88] |= BIT1
                 
         elif k == 't0':
             if self.pin[14] == 1 and v == 0:
@@ -567,9 +565,9 @@ class Sim():
     #-------------------------------------------------------------------
     def set_timer_count(self, index):
         if index == 0:
-            tmod = self.mem[0x89]
-            th = self.mem[self.TH0]
-            tl = self.mem[self.TL0]
+            tmod = self.reg[0x89]
+            th = self.reg[self.TH0]
+            tl = self.reg[self.TL0]
             # Mode select : bit 0, bit 1
             self.t0_mode = mode = tmod & 3
             if mode == 0:  # 13 bits, max 8192
@@ -582,9 +580,9 @@ class Sim():
                 self.t0_count = tl
                 
         elif index == 1:
-            tmod = self.mem[0x89] >> 4
-            th = self.mem[self.TH1]
-            tl = self.mem[self.TL1]
+            tmod = self.reg[0x89] >> 4
+            th = self.reg[self.TH1]
+            tl = self.reg[self.TL1]
             # Mode select : bit 0, bit 1
             self.t1_mode = mode = tmod & 3
             if mode == 0:  # 13 bits, max 8192
@@ -618,16 +616,16 @@ class Sim():
             
         if bit == 6: # TR1
             # if not Gate set, trigger at once
-            if self.mem[0x89] & BIT7 == 0:
+            if self.reg[0x89] & BIT7 == 0:
                 self.trigger_timer(1)
         elif bit == 4: # TR0 - trigger timer 0
             # if not Gate set, trigger at once
-            if self.mem[0x89] & BIT3 == 0:
+            if self.reg[0x89] & BIT3 == 0:
                 self.trigger_timer(0)
         
     #-------------------------------------------------------------------
     def get_a(self):
-        return self.mem[0xE0]
+        return self.reg[0xE0]
         
     #-------------------------------------------------------------------
     def set_a(self, v):
@@ -635,7 +633,7 @@ class Sim():
         v &= 0xff
         self.a = v
         #self.set_sfr('acc', v)
-        self.mem[0xE0] = v
+        self.reg[0xE0] = v
         
     #-------------------------------------------------------------------
     def add_a(self, v, c):
@@ -647,9 +645,9 @@ class Sim():
         #__sbit __at 0xD2 OV         ;
         #__sbit __at 0xD6 AC         ;
         #__sbit __at 0xD7 CY         ;
-        psw = self.mem[0xD0] & 0xC4  # clear bit2, 6, 7 at first
+        psw = self.reg[0xD0] & 0xC4  # clear bit2, 6, 7 at first
         
-        a = self.mem[0xE0]
+        a = self.reg[0xE0]
         if (a & 0xf) + (v & 0xf) > 0xf:
             self.ac = 1
             psw |= BIT6
@@ -661,53 +659,53 @@ class Sim():
             v &= 0xff
             psw |= BIT7 | BIT2
             
-        self.mem[0xD0] = self.psw = psw
-        self.mem[0xE0] = self.a = v
+        self.reg[0xD0] = self.psw = psw
+        self.reg[0xE0] = self.a = v
 
     #-------------------------------------------------------------------
     def set_b(self, v):
         #self.log1("     set b = "+hex(v))
         self.b = v
         #self.set_sfr('b', v)
-        self.mem[0xF0] = v
+        self.reg[0xF0] = v
         
     #-------------------------------------------------------------------
     def set_c(self, v):
         #self.log1("     set c = "+hex(v))
         if v == 0 :
             self.c = 0
-            self.mem[0xD0] &= BIT7
+            self.reg[0xD0] &= BIT7
         else:
             self.c = 1
-            self.mem[0xD0] |= BIT7
+            self.reg[0xD0] |= BIT7
             
     #-------------------------------------------------------------------
     def get_c(self, v):
-        return (self.mem[0xD0] >> 7) & 1
+        return (self.reg[0xD0] >> 7) & 1
 
     #-------------------------------------------------------------------
     def set_ov(self, v):
         #self.log1("     set ov = "+hex(v))
         if (v == 0) :
             self.ov = 0
-            self.mem[0xD0] &= BIT2
+            self.reg[0xD0] &= BIT2
         else:
             self.ov = 1
-            self.mem[0xD0] |= BIT2
+            self.reg[0xD0] |= BIT2
         
     #-------------------------------------------------------------------
     def set_ac(self, v):
         #self.log1("     set ac = "+hex(v))
         if (v == 0) :
             self.ac = 0
-            self.mem[0xD0] &= BIT6
+            self.reg[0xD0] &= BIT6
         else:
             self.ac = 1
-            self.mem[0xD0] |= BIT6
+            self.reg[0xD0] |= BIT6
 
     #-------------------------------------------------------------------
     def get_ac(self, v):
-        return (self.mem[0xD0] >> 6) & 1
+        return (self.reg[0xD0] >> 6) & 1
         
     #-------------------------------------------------------------------
     def get_reg(self, k):
@@ -715,10 +713,13 @@ class Sim():
         
     #-------------------------------------------------------------------
     def update_sfr(self):
-        self.reg_table['dptr'] = (self.mem[self.DPH] << 8) + self.mem[self.DPL]
+        self.reg_table['dptr'] = (self.reg[self.DPH] << 8) + self.reg[self.DPL]
         self.reg_table['pc'] = self.pc
         for k, v in self.sfr_map.items():
-            self.reg_table[k] = self.mem[v]
+            if v < 0x80:
+                self.reg_table[k] = self.mem[v]
+            else:
+                self.reg_table[k] = self.reg[v]
 
     #-------------------------------------------------------------------
     def set_r(self, i, v):
@@ -737,22 +738,22 @@ class Sim():
     def inc_dptr(self):
         dph = self.DPH
         dpl = self.DPL
-        l = self.mem[dpl] + 1
+        l = self.reg[dpl] + 1
         if l > 0xff:
             l &= 0xff
-            h = (self.mem[dph] + 1) & 0xff
-            self.mem[dph] = h
+            h = (self.reg[dph] + 1) & 0xff
+            self.reg[dph] = h
             
-        self.mem[dpl] = l
+        self.reg[dpl] = l
                 
     #-------------------------------------------------------------------
     def set_dptr(self, h, l):
-        self.mem[0x83] = h
-        self.mem[0x82] = l
+        self.reg[0x83] = h
+        self.reg[0x82] = l
         
     #-------------------------------------------------------------------
     def get_dptr(self):
-        return (self.mem[0x83] << 8) | self.mem[0x82]
+        return (self.reg[0x83] << 8) | self.reg[0x82]
         
     #-------------------------------------------------------------------
     def set_pc(self, v):
@@ -787,36 +788,43 @@ class Sim():
         
     #-------------------------------------------------------------------
     def call(self, addr):
-        self.push(self.pc)
+        pc = self.pc
+        pcl = pc & 0xff
+        pch = (pc >> 8) & 0xff
+        self.push(pcl)
+        self.push(pch)
+        
         self.set_pc(addr)
         self.stack_depth += 1
         
     #-------------------------------------------------------------------
     def ret(self):
-        addr = self.pop()
+        #if self.stack_depth == 0:
+        #    err = True
+        pch = self.pop()
+        pcl = self.pop()
+        addr = (pch << 8) | pcl
         self.set_pc(addr)
         self.stack_depth -= 1
         
     #-------------------------------------------------------------------
     def reti(self):
         """ return function from interrupt """
-        addr = self.pop()
-        self.set_pc(addr)
-        self.stack_depth -= 1
+        self.ret()
         
         # if IE all still enabled, re-enable interrupt
-        if self.mem[0xA8] & BIT7:
+        if self.reg[0xA8] & BIT7:
             self.int_enabled = True
         else:
             self.int_enabled = False
             
         # if timer0 interrupt, clear TCON bit5 TF0
         if self.cur_int == self.INT_T0:
-            self.mem[0x88] &= ~BIT5
+            self.reg[0x88] &= ~BIT5
         elif self.cur_int == self.INT_EXT0:
-            self.mem[0x88] &= ~BIT1
+            self.reg[0x88] &= ~BIT1
         elif self.cur_int == self.INT_EXT1:
-            self.mem[0x88] &= ~BIT3
+            self.reg[0x88] &= ~BIT3
             
     #-------------------------------------------------------------------
     def code_space_fill(self, addr, sz, ddstr):
@@ -827,7 +835,7 @@ class Sim():
             dd = ddstr[i1:i2]
             #self.log(hex(addr+i), dd)
             self.code_space[addr + i] = int("0x" + dd, 16)
-            #self.log(tohex(addr + i, 4), dd, tohex(self.mem[addr + i], 2))
+            #self.log(tohex(addr + i, 4), dd, tohex(self.reg[addr + i], 2))
             i1 += 2
             i2 += 2
             
@@ -976,7 +984,7 @@ class Sim():
     #-------------------------------------------------------------------
     def proc_int(self):
         #do the interrupt work
-        ip = self.mem[self.IP]
+        ip = self.reg[self.IP]
         flag = self.int_flag
         
         if ip != 0:
@@ -1005,9 +1013,9 @@ class Sim():
         # TR0 = tcon & BIT4
         # TR1 = tcon & BIT6
         # set TF0 tcon |= BIT5
-        if self.mem[0x88] & BIT4 and self.t0_count > 0:
+        if self.reg[0x88] & BIT4 and self.t0_count > 0:
             # check C/T counter/Timer
-            if self.mem[0x89] & BIT2 == 0:
+            if self.reg[0x89] & BIT2 == 0:
                 self.t0_count -= 1
             elif self.t0_input > 0:
                 self.t0_count -= 1
@@ -1015,7 +1023,7 @@ class Sim():
                 
             if self.t0_count <= 0:
                 # set bit TF0 = 1
-                self.mem[0x88] |= BIT5
+                self.reg[0x88] |= BIT5
                 
                 # trigger timer0 interrupt ET0 - BIT1
                 if self.ie & BIT1:
@@ -1024,14 +1032,14 @@ class Sim():
                 # if mode = 2, reset initial count
                 if self.t0_mode == 2:
                     # copy value from TH0 to TL0
-                    self.t0_count = self.mem[self.TL0] = self.mem[self.TH0]
+                    self.t0_count = self.reg[self.TL0] = self.reg[self.TH0]
                     
     #-------------------------------------------------------------------
     def proc_timer1(self):
         # do the timer work
-        if self.mem[0x88] & BIT6 :
+        if self.reg[0x88] & BIT6 :
             # check C/T counter/Timer
-            if self.mem[0x89] & BIT6 == 0:
+            if self.reg[0x89] & BIT6 == 0:
                 self.t1_count -= 1
             elif self.t1_input > 0:
                 self.t1_count -= 1
@@ -1039,7 +1047,7 @@ class Sim():
                 
             if self.t1_count == 0:
                 # set bit TF1 = 1
-                self.mem[0x88] |= BIT7
+                self.reg[0x88] |= BIT7
                 # trigger timer1 interrupt
                 if self.ie & BIT3:
                     self.int_flag |= BIT3
@@ -1118,7 +1126,7 @@ class Sim():
         
         # get current program counter 
         self.inst_addr = addr = self.pc
-        
+        #print hex(addr), 'sp', self.reg[self.SP]
         rom = self.code_space
         inst_code = rom[addr]
         
