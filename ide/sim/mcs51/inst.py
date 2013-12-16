@@ -948,17 +948,17 @@ def inst_setb_D3(sim, inst, op1, op2, op3):
     sim.set_c(1)
         
 #--------------------------------------------------------------------------------
-def inst_sjmp(sim, inst, op1, op2, op3):
-    #--[[
-    #Operation:  SJMP
-    #Function:  Short Jump
-    #Syntax:  SJMP reladdr
-    #Instructions  OpCode  Bytes  Flags
-    #SJMP reladdr  0x80  2  None
+#--[[
+#Operation:  SJMP
+#Function:  Short Jump
+#Syntax:  SJMP reladdr
+#Instructions  OpCode  Bytes  Flags
+#SJMP reladdr  0x80  2  None
 
-    #PC = PC + 2
-    #PC = PC + offset
-    #]]
+#PC = PC + 2
+#PC = PC + offset
+#]]
+def inst_sjmp(sim, inst, op1, op2, op3):
     sim.jump_rel(op1)
 
 #--------------------------------------------------------------------------------

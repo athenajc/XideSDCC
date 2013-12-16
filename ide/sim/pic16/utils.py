@@ -92,13 +92,7 @@ def word_to_int(v):
     return v
 
 def comp8(v):
-    v1 = 0
-    for i in range(8):
-        b = (v >> i) & 1
-        if b == 0:
-            v1 |= 1 << i
-    #print v, v1, hex(v), hex(v1), bin(v), bin(v1)
-    return v1
+    return 0xFF - v
 
 def hex8(v):
     if v >= 0:

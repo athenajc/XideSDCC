@@ -734,31 +734,35 @@ class SimFrame (wx.Frame):
         self.sim_update()
         self.toolbar.btn_run()
 
-        self.cpu_clock = 5*1024*1024
+        self.cpu_clock = 1*1024*1024
         self.interval = 1.0 / self.cpu_clock
-        self.tick_count = (self.cpu_clock >> 10)
+        self.tick_count = (self.cpu_clock >> 10) *10
         self.t0 = time.time()
         self.in_tick = False
-        
+        self.ticks = 0
    
     #-------------------------------------------------------------------
+    # about 10 times per second
     def OnStepTimerTick(self, event):
         if self.pause :
             return
 
         self.in_tick = True
+        self.ticks += 1
         sim = self.sim
 
         if sim and not sim.stopped :
             self.step_timer.Stop() 
             sim.step(self.tick_count)
-
-        self.sim_update()
- 
+            self.sim_update()
+            
+        if (self.ticks % 10) == 0:
+            self.SetStatusText(time.asctime())
+                        
         if self.sim.stopped:
             self.sim_stop()
         else:
-            self.step_timer.Start(1) 
+            self.step_timer.Start(10) 
         
     #-------------------------------------------------------------------
     def OnTimer1Timer(self, event):  
