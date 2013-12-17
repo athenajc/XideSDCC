@@ -325,8 +325,8 @@ class DebugFrame (wx.Frame):
                 if sim.c_line in doc.breakpoints:
                     doc.goto_line(self.sim.c_line)
                     doc.Update()
-                    self.log(str(sim.c_line))
-                    self.log(str(doc.breakpoints))
+                    self.log("Break at " + str(sim.c_line) + "\n")
+                    #self.log(str(doc.breakpoints))
                     self.pause = True
                     sim.step_mode = None
                     self.toolbar.btn_pause()
