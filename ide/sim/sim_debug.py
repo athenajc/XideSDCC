@@ -319,8 +319,7 @@ class DebugFrame (wx.Frame):
                 sim.step_tick()
             else :
                 sim.step()
-                
-            
+
             doc = self.get_doc(sim.c_file)
             if doc:
                 if sim.c_line in doc.breakpoints:
@@ -329,6 +328,7 @@ class DebugFrame (wx.Frame):
                     self.log(str(sim.c_line))
                     self.log(str(doc.breakpoints))
                     self.pause = True
+                    sim.step_mode = None
                     self.toolbar.btn_pause()
                     
         if self.sim.stopped:
