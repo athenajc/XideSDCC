@@ -167,9 +167,27 @@ class PanelSplitter (wx.Panel):
         self.splitter.SetSashPosition(0)
         self.splitter.Unbind(wx.EVT_IDLE)
 
-
+        
 #---------------------------------------------------------------------------------------------------
-class SimFrame (wx.Frame):
+class MemViewer(wx.StaticBoxSizer):
+    def __init__(self, parent):
+        wx.StaticBoxSizer.__init__(self, wx.StaticBox(self, wx.ID_ANY, u"Memory"), wx.VERTICAL)
+        self.mem_text = wx.TextCtrl(self, -1, style = wx.TE_MULTILINE|wx.HSCROLL)
+        self.Add(self.mem_text, 1, wx.EXPAND, 5)
+        
+    #------------------------------------------------------------------------
+    def update(self, sim):       
+        s = ""
+        for i in range(256):
+            s = s + tohex(sim.mem[i], 2) + " "
+            if i % 16 == 15:
+                s += "\n"
+                        
+        self.mem_text.SetValue(s)
+        
+    
+#---------------------------------------------------------------------------------------------------
+class DebugFrame (wx.Frame):
 
     def __init__(self, app, parent, file_list, config_file):
         wx.Frame.__init__ (self, parent, id = wx.ID_ANY, title = file_list[0], 
@@ -177,7 +195,8 @@ class SimFrame (wx.Frame):
                             style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL)
         self.app = app
         self.parent = parent
-        icon = wx.Icon(self.app.dirname + 'sim/images/sim_frame.ico', wx.BITMAP_TYPE_ICO)
+        
+        icon = wx.Icon(self.app.dirname + 'sim/images/dbg_frame.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(icon)
         
         self.sim = None
@@ -199,7 +218,7 @@ class SimFrame (wx.Frame):
         self.statusbar = self.CreateStatusBar()
 
         #add tool bar
-        self.toolbar = SimToolbar(self, self.mgr)
+        self.toolbar = DebugToolbar(self, self.mgr)
         
         #add doc notebook for source code review
         self.doc_book = DocBook(app, self)
@@ -212,13 +231,12 @@ class SimFrame (wx.Frame):
         nb2 = wx.aui.AuiNotebook(self, wx.ID_ANY, wx.DefaultPosition, wx.Size(300,-1), wx.aui.AUI_NB_DEFAULT_STYLE)
         nb2.SetMinSize(wx.Size(200,-1))
         nb2.frame = self
-        
         if self.mcu_name == "mcs51":
             panel = self.reg_panel = mcs51.WatchPanel(nb2)
         elif self.mcu_name == "pic16":
             panel = self.reg_panel = pic16.WatchPanel(nb2, self.mcu_name, self.mcu_device)
         elif self.mcu_name == "pic14":
-            panel = self.reg_panel = pic14.WatchPanel(nb2, self.mcu_name, self.mcu_device)            
+            panel = self.reg_panel = pic14.WatchPanel(nb2, self.mcu_name, self.mcu_device)
         else:
             panel = self.reg_panel = mcs51.WatchPanel(nb2)
         nb2.AddPage(panel, u"Watches")
@@ -239,97 +257,117 @@ class SimFrame (wx.Frame):
         # Connect Events
         self.Bind(wx.EVT_CLOSE, self.OnClose)
         self.Bind(wx.EVT_TOOL, self.OnReset,   id=ID_DBG_RESET)
-        self.Bind(wx.EVT_TOOL, self.OnRun,     id=ID_RUN)
+        #self.Bind(wx.EVT_TOOL, self.OnRun,     id=ID_RUN)
         self.Bind(wx.EVT_TOOL, self.OnContinue, id=ID_DBG_CONTINUE)
         self.Bind(wx.EVT_TOOL, self.OnPause,   id=ID_DBG_PAUSE)
         self.Bind(wx.EVT_TOOL, self.OnStop,    id=ID_DBG_STOP)
+        self.Bind(wx.EVT_TOOL, self.OnPause,   id=ID_DBG_PAUSE)
+        self.Bind(wx.EVT_TOOL, self.OnStep,    id=ID_DBG_STEP)
+        self.Bind(wx.EVT_TOOL, self.OnStepOver, id=ID_DBG_STEP_OVER)
+        self.Bind(wx.EVT_TOOL, self.OnStepOut,  id=ID_DBG_STEP_OUT)
                 
         file_list = self.find_included_source(file_list)
         self.file_list = file_list
         self.file_path = file_list[0]
-        for f in file_list:
-            f1 = f.replace('.c', '.ihx')
-            f2 = f.replace('.c', '.hex')
-            if os.path.exists(f1):
-                self.ihx_path = f1
-                break
-            elif os.path.exists(f2):
-                self.ihx_path = f2
-                break
+        self.doc_list = []
+        for file_path in file_list:
+            self.open_file(file_path)
             
-        self.command = 'run' 
-
-        self.debug_mode = False
-        self.toolbar.btn_run()
-        
-        # timer1 to launch simulateion later 800 millisecond
+        self.command = 'debug' #command
+        if self.command == 'debug':
+            self.debug_mode = True
+            self.toolbar.btn_reset()
+        else:
+            self.debug_mode = False
+            self.toolbar.btn_run()
+            
         self.sim = None
         self.timer1 = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.OnTimer1Timer, self.timer1)
         self.timer1.Start(800)
-        self.pause = False
-        
+        self.pause = True
         
         self.step_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.OnStepTimerTick, self.step_timer)
-        #self.step_timer.Start(1)  # 1 milliseconds, 1 second = 1000 millisecond
-        self.sim_update()
-        self.toolbar.btn_run()
-
+        #event = wx.CommandEvent(wx.wxEVT_COMMAND_BUTTON_CLICKED, ID_RUN)
+        #wx.PostEvent(self.toolbar, event)    
+        self.ticks = 0
         self.cpu_clock = 1*1024*1024
         self.interval = 1.0 / self.cpu_clock
-        self.tick_count = (self.cpu_clock >> 10) *10
-        self.t0 = time.time()
-        self.in_tick = False
-        self.ticks = 0
-   
-    #-------------------------------------------------------------------
-    # about 10 times per second
-    def OnStepTimerTick(self, event):
-        if self.pause :
-            return
-
-        self.in_tick = True
-        self.ticks += 1
-        sim = self.sim
-
-        if sim and not sim.stopped :
-            self.step_timer.Stop() 
-            sim.step(self.tick_count)
-            self.sim_update()
-            
-        if (self.ticks % 10) == 0:
-            self.SetStatusText(time.asctime())
-                        
-        if self.sim.stopped:
-            self.sim_stop()
-        else:
-            self.step_timer.Start(10) 
+        self.tick_count = (self.cpu_clock >> 10)
         
     #-------------------------------------------------------------------
     def OnTimer1Timer(self, event):  
         self.SetStatusText(time.asctime())
-        if self.command == 'run':
-            self.timer1.Stop()
-            self.sim_run(self.command)
-            self.pause = False
-            self.running = True
-            self.command = None
+        self.timer1.Stop()
+        self.sim_run('debug')
+        self.command = None
+        
+    #-------------------------------------------------------------------
+    def OnStepTimerTick(self, event):
+        sim = self.sim
+        self.ticks += 1
+        self.step_timer.Stop()
+        
+        if self.pause and not sim.step_mode:
+            return
+
+        if sim and not sim.stopped :
+            self.log_view.set_next_style()
+
+            if sim.step_mode:
+                sim.step_tick()
+            else :
+                sim.step()
                 
+            
+            doc = self.get_doc(sim.c_file)
+            if doc:
+                if sim.c_line in doc.breakpoints:
+                    doc.goto_line(self.sim.c_line)
+                    doc.Update()
+                    self.log(str(sim.c_line))
+                    self.log(str(doc.breakpoints))
+                    self.pause = True
+                    self.toolbar.btn_pause()
+                    
+        if self.sim.stopped:
+            self.sim_stop()
+            return
+            
+        if self.pause and not sim.step_mode:
+            return
+        self.sim_update()
+        self.step_timer.Start(1)
+
     #-------------------------------------------------------------------
     def sim_run(self, command):
         
         if self.mcu_name == "mcs51":
             self.sim = mcs51.Sim(self, self.ihx_path, self.file_list, command)
+            s = self.sim.disassembly()
         elif self.mcu_name == 'pic16':
             self.sim = pic16.Sim(self, self.ihx_path, self.file_list, self.mcu_name, self.mcu_device)
+            s = self.sim.disassembly()
         elif self.mcu_name == 'pic14':
             self.sim = pic14.Sim(self, self.ihx_path, self.file_list, self.mcu_name, self.mcu_device)
-
+            s = self.sim.disassembly()
+            
+        self.asm_view.set_text(s)
         self.sim.start()
-        self.sim.enable_debug(False)
+        self.sim.enable_debug(True)
+        
         self.running = True
-        self.step_timer.Start(10) 
+        if self.debug_mode:
+            self.pause = True
+            self.toolbar.btn_pause()
+            #return
+            
+        #if not self.debug_mode:
+
+        #self.step_timer.Start(1)
+        self.sim_update()
+        #self.toolbar.btn_run()
         
     #-------------------------------------------------------------------
     def sim_stop(self):
@@ -351,15 +389,25 @@ class SimFrame (wx.Frame):
     #-------------------------------------------------------------------
     def sim_update(self):
         sim = self.sim
-        if not sim:
-            return
         
+        self.asm_view.goto_addr(sim.inst_addr)
+        
+        s = '%06x' % sim.pc
+        for t in self.doc_book.docs:
+            if t[1].file_path.endswith('st'):
+                t[1].search_addr(s)
+            
         #uart sbuf
-        if sim.sbuf_list != []:
-            for ch in sim.sbuf_list:
-                self.sbuf.append(ch)
-                
-            sim.sbuf_list = []
+        for ch in sim.sbuf_list:
+            self.sbuf.append(ch)
+            
+        sim.sbuf_list = []
+            
+        doc = self.get_doc(sim.c_file)
+        if doc:
+            doc.goto_line(sim.c_line)
+            doc.Update()
+            #self.doc_book.SetSelection(doc.page_index)
             
         self.reg_panel.update_inst(sim, self.sbuf)
         self.reg_panel.update(sim)
@@ -371,31 +419,59 @@ class SimFrame (wx.Frame):
     
     #-------------------------------------------------------------------
     def OnReset(self, event):
-        self.sim_stop()
+        self.sim_stop()        
         self.log_view.Clear()
         self.log("Press Continue or Step functions to start simulation.\n")
         self.sim = None
         self.sim_run('debug')
+        for t in self.doc_book.docs:
+            t[1].goto_line(0)
         self.toolbar.btn_reset()
-        
-    #-------------------------------------------------------------------
-    def OnRun(self, event):
-        self.pause = False
-        self.command = None
-        self.sim_run('run')
         
     #-------------------------------------------------------------------
     def OnPause(self, event):
         self.pause = True
+        self.step_timer.Stop()
         
     #-------------------------------------------------------------------
     def OnContinue(self, event):
         self.pause = False
-                    
+        self.sim.step_mode = 'run'
+        self.step_timer.Start(1)
+        
+    #-------------------------------------------------------------------
+    def OnStep(self, event):
+        if self.sim and not self.sim.stopped :
+            #self.sim.step_c_line()
+            self.log_view.set_style(None)
+            self.sim.step()
+            self.sim_update()
+            
+    #-------------------------------------------------------------------
+    def OnStepOver(self, event):
+        if self.sim and not self.sim.stopped :
+            self.log_view.set_style(None)
+            result = self.sim.step_over()
+            if result == 'not finished':
+                pass
+            
+            self.sim_update()
+            self.step_timer.Start(1)
+            
+    #-------------------------------------------------------------------
+    def OnStepOut(self, event):
+        if self.sim and not self.sim.stopped :
+            self.log_view.set_style(None)
+            self.sim.step_out()
+            self.step_timer.Start(1)
+            self.sim_update()
+            
     #-------------------------------------------------------------------
     def OnStop(self, event):
         if self.sim is not None:
+            self.log_view.set_next_style()
             self.log("Simulation aborted!\n")
+            
             self.sim.stop()
             
     #-------------------------------------------------------------------
@@ -408,8 +484,13 @@ class SimFrame (wx.Frame):
         
     #-------------------------------------------------------------------
     def log(self, s):
-        pass
-        #self.log_view.WriteText(s)
+        #import inspect
+        #s1 = inspect.stack()[1][3] + " "
+        #if self.sim.step_mode:
+        #    return
+        if s.find('------') >= 0:
+            self.log_view.set_next_style()
+        self.log_view.log(s)
         
     #-------------------------------------------------------------------
     def show_debug(self):
@@ -451,7 +532,50 @@ class SimFrame (wx.Frame):
             for t in lst:
                 new_list.append(t)
         return new_list
-                    
+            
+    #-------------------------------------------------------------------
+    def open_file(self, file_path):
+        print(file_path)
+        path = os.path.dirname(file_path)
+        if path != '':
+            os.chdir(path)
+            
+        path, ext = file_path.split('.')
+        
+        if os.path.exists(path + '.c'):
+            doc = self.doc_book.open_file(path + '.c')
+            #doc.add_breakpoints(self.breakpoints)
+            self.doc_list.append(doc)
+        
+        #self.doc_asm = self.doc_book.open_file(path + '.asm')
+        if self.mcu_name == 'pic16' or self.mcu_name == 'pic14':
+            if os.path.exists(path + '.lst'):
+                self.doc_book.open_file(path + '.lst')
+            elif os.path.exists(path + '.asm'):
+                self.doc_book.open_file(path + '.asm')
+                
+            if os.path.exists(path + '.hex'):
+                self.doc_book.open_file(path + '.hex')
+                self.ihx_path = path + '.hex'
+                self.doc_c = doc            
+        else:
+            if os.path.exists(path + '.rst'):
+                self.doc_book.open_file(path + '.rst')
+            elif os.path.exists(path + '.lst'):
+                self.doc_book.open_file(path + '.lst')
+            elif os.path.exists(path + '.asm'):
+                self.doc_book.open_file(path + '.asm')
+                
+            if os.path.exists(path + '.ihx'):
+                self.doc_book.open_file(path + '.ihx')
+                self.ihx_path = path + '.ihx'
+                self.doc_c = doc
+            elif os.path.exists(path + '.hex'):
+                self.doc_book.open_file(path + '.hex')
+                self.ihx_path = path + '.hex'
+                self.doc_c = doc
+        self.doc_book.SetSelection(0)
+        
     #-------------------------------------------------------------------
     def load_config(self):
         print("load config - " + self.config_file)
@@ -505,28 +629,3 @@ class SimFrame (wx.Frame):
         self.stop()
         event.Skip()
         
-        
-
-#---- for testing -------------------------------------------------------------
-if __name__ == '__main__':    
-    app = wx.PySimpleApp()    
-    
-    #lst = ["/home/athena/src/8051/BlinkLEDs/main.c"]    
-    #lst = ["/home/athena/src/8051/blink_c/blink1.c","/home/athena/src/8051/blink_c/delay_ms.c","/home/athena/src/8051/blink_c/paulmon2.c"]
-    if wx.Platform == '__WXMSW__' :
-        lst = ["c:/src/8051/t0/t0.c"]
-    else:
-        #lst = ["/home/athena/src/8051/t0/t0.c"]
-        test = 2
-        if test == 1:
-            lst = ["/home/athena/src/8051/BlinkLEDs/main.c"]
-            config_file = "/home/athena/src/8051/BlinkLEDs/main.sdcfg"
-        else:
-            lst = ["/home/athena/src/pic/test1/test.c"]
-            config_file = "/home/athena/src/pic/test1/test.sdcfg"
-    frame = SimFrame(app, None, lst, config_file, 'debug')
-    
-    app.SetTopWindow(frame)
-    frame.Show(True)    
-    
-    app.MainLoop()

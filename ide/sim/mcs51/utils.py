@@ -31,9 +31,16 @@ comp_lst = [0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, 0xf7, 0xf6, 0xf5, 0x
 
 global sim
 
+
 def set_sim(s):
     global sim
     sim = s
+
+
+
+class Obj():
+    def __init__(self):
+        pass
 
 def bits8(v):
     return v & 0xff

@@ -95,14 +95,14 @@ class MapList():
                     self.addr_lst.append(addr)
                     self.symbol_lst.append(symbol)
                     lst.append([addr, symbol])
-        print self.addr_lst
+        #print self.addr_lst
         self.lst = lst
         
     def get_symbol(self, addr):
-        print hex(addr)
+        #print hex(addr)
         if addr in self.addr_lst:
             i = self.addr_lst.index(addr)
-            print self.symbol_lst[i]
+            #print self.symbol_lst[i]
             return self.symbol_lst[i]
 
         return None
@@ -117,7 +117,7 @@ def map_scan(fn):
 
     return map_lst
 
-def rst_scan_file(fn, fn_index):
+def rst_scan_file(fn, fn_index, only_one_file):
     #print fn
     path, ext = fn.split('.')
     rst_file = path + ".rst"
@@ -136,13 +136,19 @@ def rst_scan_file(fn, fn_index):
 def rst_scan(source_list):
     fn_index = 0
     lst = [0] * 4096
+    if len(source_list) == 1:
+        only_one_file = True
+    else:
+        only_one_file = False
     for fn in source_list:
-        addr_map_lst = rst_scan_file(fn, fn_index)
+        addr_map_lst = rst_scan_file(fn, fn_index, only_one_file)
         
         for a in addr_map_lst:
             #print a[0], a[1]
             while a[0] >= len(lst):
                 lst.append(0)
+            if only_one_file:
+                a[1] = ''
             lst[a[0]] = [a[1], a[2], a[3], a[4]]
         
         fn_index += 1

@@ -10,20 +10,19 @@ from define import *
 from table import *
 from inst import *
 from utils import *
+from hex_scan import hex_scan, hex_scan_to_map
 import rst
 
 bits = [1,2,4,8,0x10,0x20,0x40,0x80]
 
-class Obj():
-    def __init__(self):
-        pass
        
         
 class Sim():
     def __init__(self, frame, file_path, source_list, command):
         
         self.frame = frame
-        self.file_path = file_path
+        self.hex_path = file_path
+        self.file_path = file_path.replace('.ihx', '.c')
         self.source_list = source_list
         self.mode = command
         self.inst_addr = 0
@@ -177,15 +176,16 @@ class Sim():
         for k, v in self.sfr_map.items():
             self.addr_sfr[v] = k
             
-        #self.inst_handler = array_list(self.inst_handler, 256)
-        
-        text = read_whole_file(self.file_path)
-        self.log(self.file_path + "\n")
-        #frame.log(text + "\n")
-        
-        self.records = self.get_record_table(text, False)
+        text = read_whole_file(self.hex_path)
+        self.log(self.hex_path + "\n")
+
+        self.code_map = hex_scan_to_map(self.hex_path, text, self.mcu_name)
         self.load_code(text)
         
+    #-------------------------------------------------------------------
+    def disassembly(self):
+        return hex_scan(self.hex_path, self.mcu_name)
+    
     #-------------------------------------------------------------------
     def log1(self, *args):
         pass
@@ -212,7 +212,7 @@ class Sim():
         sp_addr += 1
         self.reg[sp_addr] = v
         self.reg[self.SP] = sp_addr
-        print 'push', hex(sp_addr), v
+        #print 'push', hex(sp_addr), v
         # print("     #stack = "+tostring(#self.stack))
         
     #-------------------------------------------------------------------
@@ -222,7 +222,7 @@ class Sim():
         v = self.reg[sp_addr]
         sp_addr -= 1
         self.reg[self.SP] = sp_addr
-        print 'pop', hex(sp_addr), v
+        #print 'pop', hex(sp_addr), v
         if self.debug:
             self.log("     pop "+hex(v))
         return v
@@ -278,12 +278,7 @@ class Sim():
             bit = bitaddr & 7
             addr = bitaddr - bit
             v = self.reg[addr]
-        
-        #if bitaddr == self.TI or bitaddr == self.RI:
-            ##self.log('@---------------- set TI addr = ' + hex(addr))
-            #addr = self.SCON
-            
-        
+                   
         if b == 1:
             v |= (1 << bit)
         else:
@@ -827,6 +822,15 @@ class Sim():
             self.reg[0x88] &= ~BIT3
             
     #-------------------------------------------------------------------
+    def array_list(self, table, n):
+        lst = []
+        for i in range(n):
+            lst.append(0)
+        for t in table:
+            lst[t[0]] = t[1]
+        return lst   
+    
+    #-------------------------------------------------------------------
     def code_space_fill(self, addr, sz, ddstr):
         i1 = 0
         i2 = 2
@@ -838,121 +842,7 @@ class Sim():
             #self.log(tohex(addr + i, 4), dd, tohex(self.reg[addr + i], 2))
             i1 += 2
             i2 += 2
-            
-    #-------------------------------------------------------------------
-    def array_list(self, table, n):
-        lst = []
-        for i in range(n):
-            lst.append(0)
-        for t in table:
-            lst[t[0]] = t[1]
-        return lst    
-    
-    #-------------------------------------------------------------------
-    def get_op_str(self, optype, dd):
-        op = ""
-        
-        optype_str = self.op_str[optype]
-        
-        if optype == OP_IRAM:
-            v = int('0x'+dd, 16)
-            for key, val in self.sfr_map.items():
-                if val == v:
-                    return key
-            #op = self.sfr.get_str(v)
-            #if op:
-                #return op
-            
-        if dd != "" and type(dd) == "number" :
-            dd = tohex(dd, 2)
-    
-        if (optype_str == "#op") :
-            op = "#"+dd
-        elif (optype_str == "op") :
-            
-            op = dd
-        else:        
-            op = optype_str
-
-        return op
-    
-    #-------------------------------------------------------------------
-    def get_inst_code(self, dd):
-        inst_code = dd
-        if (type(dd) is str) :
-            inst_code = int("0x"+dd, 16)
-        return inst_code
-    
-    #-------------------------------------------------------------------
-    def get_inst_blen(self, dd):
-        inst_code = self.get_inst_code(dd)
-            
-        sym = self.symbol_table[inst_code]
-        #--print(i, dd, r.data[i])
-        #--print(dd, string.format("%02X", r.data[i]))
-        
-        blen = sym[1]
-        return blen
-    
-    #-------------------------------------------------------------------
-    def parse_dddd(self, dd):
-
-        inst_code = self.get_inst_code(dd[0])
-
-        sym = self.symbol_table[inst_code]
-        #--print(i, dd, r.data[i])
-        #--print(dd, string.format("%02X", r.data[i]))
-        
-        blen = sym[1]
-        inst = self.symbol_str[sym[2]]
-        op_types = sym[3]
-        op_n = len(op_types)
-
-        op = ["", "", ""]
-        
-         #--print(dd, tohex(op_types[1]), tohex(op_types[2]), op_str[op_types[1]], op_str[op_types[2]])
-        dd_i = 1
-        for op_i in range(op_n):
-            if op_types[op_i] > OP_ADDR:
-                op[op_i] = self.get_op_str(op_types[op_i], "")
-            else:
-                op[op_i] = self.get_op_str(op_types[op_i], dd[dd_i])
-                dd_i += 1
-        op1 = op[0]
-        op2 = op[1]
-        op3 = op[2]
-    
-        if op_n > 0:
-            if op_types[0] == OP_CODE and op_types[1] == OP_ADDR :
-                op1 = self.get_op_str(op_types[0], dd[1])+op2
-                op2 = ""
-            if inst_code == 0x90:
-                op1 = op1+op2
-                op2 = ""
-            
-        #--print(tohex(sim.pc, 4), tohex(inst_code, 2), inst, op1+op2+op3) # , sym[5]
-        inst_str = inst+"  "+str(op1)+","+str(op2)+","+str(op3)
-        inst_lst = Inst(inst_code, op1, op2, op3)
-        if blen == 1:
-            dd1 = dd2 = dd3 = "  "
-            dd0 = dd[0]
-        elif blen == 2:
-            dd0 = dd[0]
-            dd1 = dd[1]
-            dd2 = dd3 = "  "
-        elif blen == 3:
-            dd0 = dd[0]
-            dd1 = dd[1]
-            dd2 = dd[2]
-            dd3 = "  "
-        inst_lst.dd0 = dd0
-        inst_lst.dd1 = dd1
-        inst_lst.dd2 = dd2
-        inst_lst.dd3 = dd3
-        inst_lst.inst_str = inst
-        inst_lst.op_n = op_n
-        return blen, inst_str, inst_lst    
-    
+                    
     #-------------------------------------------------------------------
     def load_code(self, text):    
         # for each line, :llaaaatt
@@ -1069,7 +959,10 @@ class Sim():
         if addr < len(self.addr_map_lst):
             t = self.addr_map_lst[addr]
             if t != 0:
-                self.c_file = t[0]
+                if t[0] == "":
+                    self.c_file = self.file_path
+                else:
+                    self.c_file = t[0]
                 self.c_line = t[1]
                 self.asm_code = t[2]
         else:
@@ -1077,33 +970,23 @@ class Sim():
             self.c_line = 0
             self.asm_code = ""
         self.log('------------', self.c_file, self.c_line)
-        inst_code = self.code_space[addr]
-        dd1 = self.code_space[addr + 1]
-        dd2 = self.code_space[addr + 2]
-        dd3 = self.code_space[addr + 3]
-        #self.log(inst_code, dd1, dd2, dd3)
+        rom = self.code_space
+        inst_code = rom[addr]
         
-        sym = self.symbol_table[inst_code]
-        op_n = sym[1]
-        inst_map_code = sym[2]
-        inst = self.symbol_str[inst_map_code]
-        op_types = sym[3]
-        s = tohex(inst_code, 2)+"    "+inst
-        
-        #if op_n > 0:
-            #if op_types[0] == OP_CODE and op_types[1] == OP_ADDR :
-                #op1 = self.get_op_str(op_types[0], dd1)+op2
-                #op2 = ""            
-                
-        if (op_n == 1) :
-            self.log("\n     -- ", op_n, s  ) 
-        elif (op_n == 2) :
-            self.log("\n     -- ", op_n, s, tohex(dd1, 2)) 
-        elif (op_n == 3) :
-            self.log("\n     -- ", op_n, s, tohex(dd1, 2), tohex(dd2, 2)) 
-        elif (op_n == 4) :
-            self.log("\n     -- ", op_n, s, tohex(dd1, 2), tohex(dd2, 2), tohex(dd3, 2)) 
+        op_n = self.op_n_lst[inst_code]
+        if op_n > 1:
+            dd1 = rom[addr + 1]
+            if op_n > 2:
+                dd2 = rom[addr + 2]
+                dd3 = rom[addr + 3]
+            else:
+                dd2 = dd3 = 0
+        else:
+            dd1 = dd2 = dd3 = 0
 
+        s = self.code_map.get(addr, "")
+        if s != "":
+            self.log(s)
             
         # move the program counter to the next instruction
         # self.set_pc(self.pc + blen)
@@ -1270,227 +1153,6 @@ class Sim():
     def stop(self):
         self.stopped = True
     
-    #-------------------------------------------------------------------
-    def pre_process_ihx_text(self, text):
-        lst = []
-        index = 0
-        prev_r = None
-        for line in text.split('\n'):
-            if line == "":
-                continue
-            
-            n = len(line)
-            ll   = line[1:3]
-            aaaa  = line[3:7]
-            tt = line[7:9]
-            #dd = line[9:n-2]
-    
-            record_bytes = int("0x" + ll, 16)
-            record_addr = int("0x" + aaaa, 16)
-            record_type = int("0x" + tt, 16)
-            #if prev_r :
-            #    print tohex(prev_r.addr, 4), tohex(prev_r.bytes, 2), tohex(prev_r.addr + prev_r.bytes, 4), aaaa
-            if record_type == 0 and prev_r and prev_r.addr + prev_r.bytes == record_addr and prev_r.type == 0 :
-                prev_r.bytes += record_bytes
-                r = prev_r
-                append_to_prev = True
-            else:
-                r = Obj()
-                r.bytes = record_bytes
-                r.addr = record_addr
-                r.type = record_type
-                r.dd = []
-                append_to_prev = False
-            
-            j = 9
-            for i in range(record_bytes):
-                r.dd.append(line[j:j+2])
-                j += 2
-            
-            if append_to_prev == False:
-                lst.append(r)
-                prev_r = lst[index]
-                index += 1
-            
-        #for r in lst:
-            #print tohex(r.addr,4), tohex(r.bytes,2), tohex(r.type,2), ':',
-            #for d in r.dd:
-                #print d,
-            #print ""        
-        return lst
-    
-    #-------------------------------------------------------------------
-    def get_record_table(self, text, printout):
-        lst = self.pre_process_ihx_text(text)
-        
-        records = []
-        line_index = 1
-        
-        prev_half_inst = []
-        # for each line
-        for item in lst:
-            r = Obj()
-    
-            r.ll = item.bytes
-            r.aaaa = item.addr
-            r.tt = item.type
-            r.insts = []
-    
-            #--print(index, r.ll, r.aaaa, r.tt, line) 
-            if (printout) :
-                print(aaaa, "; "+line)
-
-            # dd start from position 10th
-            i1 = 9
-            
-            # get all instruction data 
-            i = 0
-            j = 1
-
-            while (i < r.ll) : 
-                blen = self.get_inst_blen(item.dd[i])
-                dd_lst = []
-                for j in range(blen):
-                    dd_lst.append(item.dd[i+j])
-                    
-                blen, dddd, inst = self.parse_dddd(dd_lst)
-                
-                if (printout) :
-                    print("      "+dddd)
-                
-                r.insts.append(inst)
-
-                line_index = line_index + 1
-                i = i + blen
-                i1 = i1 + 2*blen
-    
-            # add to records table
-            records.append(r)
-            
-        return records
-    
-    #-------------------------------------------------------------------
-    def get_records_string(self):
-        count = len(self.records)
-        s = ""
-        map_list = rst.map_scan(self.file_path)
-
-        lst = []
-        for r in self.records:
-            lst.append('%04X' % (r.aaaa))
-        #print lst
-        
-        i = 0
-        for r in self.records:
-            addr = r.aaaa
-            label = map_list.get_symbol(addr)
-            if not label:
-                s += '\nL' + str(i) + ': \n'
-                i += 1
-            
-            #s += "     %04X-%04X %2d\n" % (r.aaaa, r.aaaa + r.ll - 1, len(r.insts))
-            for dd in r.insts :
-                label = map_list.get_symbol(addr)
-                if label:         
-                    s += '\n' + label + ': \n'
-                    
-                sym = self.symbol_table[dd.inst]
-                inst = dd.inst_str #self.symbol_str[sym[2]]
-                dd_str = "%2s %2s %2s %2s " % (dd.dd0, dd.dd1, dd.dd2, dd.dd3)
-                if inst == 'lcall' or inst == 'ljmp ':
-                    #idx = -1
-                    #if dd.op1 in lst:
-                        #idx = lst.index(dd.op1) 
-                    label = map_list.get_symbol(int('0x' + dd.op1, 16))
-                    if label:
-                        s += "   %06X   %s  %s %s, (%s)\n" % (addr, dd_str, label, dd.inst_str, dd.op1)
-                    else:
-                        s += "   %06X   %s  %s, %s\n" % (addr, dd_str, dd.inst_str, dd.op1)
-                elif inst == 'jb   ' or inst == 'jnb  ' :
-                    offset = int('0x' + dd.op2, 16)
-                    s += "   %06X   %s  %s, %s, %s  =%x\n" % (addr, dd_str, dd.inst_str, dd.op1, dd.op2, addr + sym[1] + offset)
-                else:
-                    
-                    if dd.op_n == 3:
-                        s += "   %06X   %s  %s %s, %s, %s\n" % (addr, dd_str, dd.inst_str, dd.op1, dd.op2, dd.op3)
-                    elif dd.op_n == 2:
-                        s += "   %06X   %s  %s %s, %s\n" % (addr, dd_str, dd.inst_str, dd.op1, dd.op2)
-                    elif dd.op_n == 1:
-                        s += "   %06X   %s  %s %s\n" % (addr, dd_str, dd.inst_str, dd.op1)
-                    else:
-                        s += "   %06X   %s  %s\n" % (addr, dd_str, dd.inst_str)
-                addr += sym[1]
-
-                    
-        return s
-    
-#-------------------------------------------------------------------
-def get_inst_blen(dd):
-    inst_code = dd
-    if (type(dd) is str) :
-        inst_code = int("0x"+dd, 16)
-        
-    sym = self.symbol_table[inst_code]
-    #--print(i, dd, r.data[i])
-    #--print(dd, string.format("%02X", r.data[i]))
-    
-    blen = sym[1]
-    return blen
-
-#-------------------------------------------------------------------
-def ihx_scan(frame, fn):
-    #sim = Sim(frame)
-    
-    text = read_whole_file(fn)
-    
-    lst = []
-    index = 0
-    prev_r = None
-    for line in text.split('\n'):
-        if line == "":
-            continue
-        
-        n = len(line)
-        ll   = line[1:3]
-        aaaa  = line[3:7]
-        tt = line[7:9]
-        #dd = line[9:n-2]
-
-        record_bytes = int("0x" + ll, 16)
-        record_addr = int("0x" + aaaa, 16)
-        record_type = int("0x" + tt, 16)
-        #if prev_r :
-        #    print tohex(prev_r.addr, 4), tohex(prev_r.bytes, 2), tohex(prev_r.addr + prev_r.bytes, 4), aaaa
-        if record_type == 0 and prev_r and prev_r.addr + prev_r.bytes == record_addr and prev_r.type == 0 :
-            prev_r.bytes += record_bytes
-            r = prev_r
-            append_to_prev = True
-        else:
-            r = Obj()
-            r.bytes = record_bytes
-            r.addr = record_addr
-            r.type = record_type
-            r.dd = []
-            append_to_prev = False
-        
-        j = 9
-        for i in range(record_bytes):
-            r.dd.append(line[j:j+2])
-            j += 2
-        
-        if append_to_prev == False:
-            lst.append(r)
-            prev_r = lst[index]
-            index += 1
-        
-    for r in lst:
-        print tohex(r.addr,4), tohex(r.bytes,2), tohex(r.type,2), ':',
-        for d in r.dd:
-            print d,
-        print ""
-        
-    #records = sim.get_record_table(text, True)
-
 
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    
