@@ -72,7 +72,10 @@ class SimPic():
         self.tmr0_enabled = False
         self.tmr1_enabled = False
         self.tmr2_enabled = False
-
+        self.tmr0_rate = 0
+        self.wdt_rate = 0
+        self.ticks = 0
+        
     #-------------------------------------------------------------------
     def log(self, *args):
         #if self.c_line == 0:
@@ -252,6 +255,8 @@ class SimPic():
         
     #-------------------------------------------------------------------
     def get_sfr(self, k):
+        if k == 'pc':
+            return self.pc
         addr = self.sfr_addr[k]
         v = self.mem[addr]
         #v = self.get_mem(addr)
@@ -281,7 +286,7 @@ class SimPic():
         return v
     
     #-------------------------------------------------------------------
-    def set_freg1(self, addr, v):
+    def set_freg(self, addr, v):
         if not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
         
@@ -301,7 +306,7 @@ class SimPic():
             self.update_pc_from_PCL()
             
     #-------------------------------------------------------------------
-    def set_freg(self, addr, v):
+    def set_freg0(self, addr, v):
         if not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
         key = self.mem_sfr_map.get(addr, "")
@@ -328,13 +333,14 @@ class SimPic():
             
         v = self.freg[addr]
         if b == 0:
-            v &= ~(1 << b)
+            v &= ~(1 << bit)
         else:
-            v |= 1 << b
-            
+            v |= 1 << bit
+        self.freg[addr] = v
+        
         if not addr in self.mem_access_list:
             self.mem_access_list.append(addr)
-        self.freg[addr] = v
+        
         if addr == 3:
             self.status_reg = v
         elif addr == 0xB:
@@ -426,7 +432,19 @@ class SimPic():
                 self.tmr0_enabled = True
             else:
                 self.tmr0_enabled = False
-        
+        elif bit < 3:
+            psa = v & BIT3
+            i = v & 7
+            if psa == 0: # TMR0
+                self.tmr0_rate = 1 << (i + 1) 
+                self.wdt_rate = 0
+            else:
+                # WDT rate
+                if i == 7:
+                    i = 6
+                self.wdt_rate = 1 << i
+                self.tmr0_rate = 0
+                
         
     #-------------------------------------------------------------------
     def set_bsr(self, v):
@@ -649,8 +667,9 @@ class SimPic():
         #     1 = Enables all un-masked interrupts
         #     0 = Disables all interrupts
         
-        if self.freg[0xB] & BIT7:
-            self.int_enable = True
+        #if self.freg[self.INTCON] & BIT7:
+        self.freg[self.INTCON] |= BIT7
+        self.int_enabled = True
         
     #-------------------------------------------------------------------
     def skip_next_inst(self):
@@ -691,8 +710,6 @@ class SimPic():
                 
     #-------------------------------------------------------------------
     def proc_int(self):
-        return
-    
         intcon = self.freg[0xB]
         if intcon & BIT7 == 0:
             return
@@ -713,19 +730,24 @@ class SimPic():
             
     #-------------------------------------------------------------------
     def proc_tmr0(self):
-        return
-    
+        if self.tmr0_rate > 0:
+            if self.ticks < self.tmr0_rate:
+                return
+        self.ticks = 0
+        #if self.freg[0xB] & BIT2:
+        #    return
         tmr0 = self.freg[0x01]
-        if tmr0 > 0:
-            tmr0 -= 1
-            self.freg[0x01] = tmr0
-            if tmr0 == 0:
-                # set T0IF : bit2 of INTCON 0xB
-                self.freg[0xB] |= BIT2
-        
+        if tmr0 < 0xff:
+            tmr0 += 1
+        elif tmr0 == 0xff:
+            tmr0 = 0
+            # set T0IF : bit2 of INTCON 0xB
+            self.freg[0xB] |= BIT2
+        self.freg[0x01] = tmr0
             
     #-------------------------------------------------------------------
     def load_inst(self):
+        self.ticks += 1
         if self.tmr0_enabled :
             self.proc_tmr0()
             
@@ -737,7 +759,6 @@ class SimPic():
             
         # get current program counter 
         addr = self.pc
-        self.set_reg('PC', self.pc)
         self.inst_addr = self.pc
         if self.debug:
             if addr < len(self.addr_map_lst):
@@ -814,6 +835,7 @@ class SimPic():
             self.update_sfr()
         else:
             for i in range(count):
+                self.ticks += 1
                 if self.tmr0_enabled :
                     self.proc_tmr0()
                                     
