@@ -424,7 +424,7 @@ class SimPic():
         #  100        1 : 32        1 : 16
         #  101        1 : 64        1 : 32
         #  110        1 : 128       1 : 64
-        #  111        1 : 256
+        #  111        1 : 256       1 : 128
         
         if bit == 5:
             #T0CS
@@ -440,8 +440,6 @@ class SimPic():
                 self.wdt_rate = 0
             else:
                 # WDT rate
-                if i == 7:
-                    i = 6
                 self.wdt_rate = 1 << i
                 self.tmr0_rate = 0
                 
