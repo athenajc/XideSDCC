@@ -57,7 +57,8 @@ def inst_retfie(sim, msb, lsb):
 def inst_option(sim, msb, lsb):
     #0062 : 0000 0000 0110 0010 : OPTION   Copy W to OPTION register
     w = sim.get_wreg()
-    sim.set_option_reg(w)
+    sim.freg[0x81] = w
+    sim.freg[0x181] = w
 
 #----------------------------------------------------------------------------
 def inst_sleep(sim, msb, lsb):
@@ -480,9 +481,7 @@ def inst_bcf(sim, msb, lsb):
     if f == 3:
         sim.set_status_reg(bit, 0)
     else:
-        v = sim.get_freg(f)
-        v = utils.clear_bit(v, bit)
-        sim.set_freg(f, v)
+        sim.set_freg_bit(f, bit, 0)
 
 #----------------------------------------------------------------------------
 def inst_bsf(sim, msb, lsb):
@@ -492,9 +491,7 @@ def inst_bsf(sim, msb, lsb):
     if f == 3:
         sim.set_status_reg(bit, 1)
     else:    
-        v = sim.get_freg(f)
-        v = utils.set_bit(v, bit)
-        sim.set_freg(f, v)
+        sim.set_freg_bit(f, bit, 1)
 
 #----------------------------------------------------------------------------
 def inst_btfsc(sim, msb, lsb):
@@ -502,7 +499,7 @@ def inst_btfsc(sim, msb, lsb):
     bit = get_bits((msb << 8) | lsb, 7, 9)
     f = lsb & 0x7f
     v = sim.get_freg(f)
-    b = get_bit(v, bit)
+    b = (v >> bit) & 1
     #print 'inst_btfsc', b
     if b == 0:
         sim.skip_next_inst()
@@ -513,8 +510,8 @@ def inst_btfss(sim, msb, lsb):
     bit = get_bits((msb << 8) | lsb, 7, 9)
     f = lsb & 0x7f
     v = sim.get_freg(f)
-    b = get_bit(v, bit)
-    sim.log('inst_btfss ', f, bit, v, b)
+    b = (v >> bit) & 1
+    #sim.log('inst_btfss ', f, bit, v, b)
     if b != 0:
         sim.skip_next_inst()
 

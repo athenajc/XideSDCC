@@ -265,14 +265,18 @@ def pic_hex_scan(frame, fn, mcu, addr_map_lst):
         
     fn = fn.replace('.hex', '.hex2asm')
     f = open(fn, 'w+')
-    
+    print addr_map_lst
     for r in lst:
         addr = r.addr/2
         #print >>f, tohex(r.addr, 6), tohex(addr,6), tohex(r.bytes,2), tohex(r.type,2) + ':'
         #print >>f, r.line
         for inst in r.insts:
             s = get_inst(inst)
-            m = addr_map_lst[addr]
+            if addr < len(addr_map_lst):
+                m = addr_map_lst[addr]  
+            else:
+                m = 0
+                
             if m != 0:
                 inst = m[2]
                 s1 = str(m[1]) + ":" + m[0]

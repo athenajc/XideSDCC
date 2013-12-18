@@ -1467,3 +1467,101 @@ def pic14_test_inst(sim):
 
     test_subwf(sim, full_test)    
     #test_val8()
+
+
+
+def convert_inc(fn, dst):
+    text = utils.read_file(fn)
+    lst = []
+    for line in text.split('\n'):
+        if line.startswith(';'):
+            continue
+        if line.find('  EQU ') > 0:
+            line = line.replace('  EQU ', ';')
+            t = line.split(';')
+            t[0] = t[0].strip()
+            t[1] = t[1].strip()
+            lst.append([t[0], t[1]])
+            
+    f = open(dst, 'w+')
+    #print >>f, 'defines = {'
+    for t in lst:
+        name = t[0]
+        value = t[1]
+        if value.find('H') >= 0: #"H'0F8C'"
+            value = value.replace('H', '')
+            value = value.replace('\'', '')
+            value = '0x' + value
+        else:
+            value = hex(int(value))
+        #name = '\'' + name + '\''
+        print >>f, '%s:%s' % (name, value)
+    #print >>f, '}'
+    f.close()
+    
+def check_reg(fn):
+    print fn
+    text = utils.read_file(fn)
+    for line in text.split('\n'):
+        if line.startswith(';'):
+            continue
+        if line.find('WREG') >= 0:
+            print line
+        if line.find('STATUS') >= 0:
+            print line
+            
+def convert_header_files():
+    src_path = '/usr/local/share/gputils/header' + os.sep
+    dst_path = os.path.dirname(os.path.realpath(__file__)) + os.sep + 'defines' + os.sep
+    lst = os.listdir(src_path)
+    #f = path + 'p' + dev_name + '.inc'
+    #print f, os.path.exists(f)
+    for f in lst:
+        for d in pic14_devices:
+            if f.find(d) >= 0:
+                f1 = f.replace('.inc', '.sfr')
+                convert_inc(src_path + f, dst_path + f1)
+
+
+from pic14_sim import *
+        
+            
+def test_sim():
+    #fn = "/home/athena/src/pic14/0004/uart_tx.hex"
+    #fn = "/home/athena/src/pic14/0001/test.hex"
+    fn = "/home/athena/src/pic14/0001/t0001.c"
+    hex_fn = fn.replace('.c', '.hex')
+    #frame, hex_file, source_list, mcu_name, mcu_device
+    sim = SimPic(None, hex_fn, [fn], 'pic14', '16f628a')
+    sim.start()
+    pic14_test_inst(sim)
+            
+    #for i in range(10):
+    #    sim.step()    
+
+#-------------------------------------------------------------------
+def get_dev_name(fn):
+    from pic14_devices import pic14_devices
+    
+    text = read_file(fn)
+    inc_lines = ""
+    for line in text.split('\n'):
+        if line.find("#include") >= 0:
+            inc_lines += line + '\n'
+            
+    text = inc_lines
+    for d in pic14_devices:
+        if text.find(d) >= 0:
+            return d
+            
+    return None    
+    
+def test_import():
+    fn = "/home/athena/src/pic14/0001/t0001.c"
+    
+#---- for testing -------------------------------------------------------------
+if __name__ == '__main__':    
+    #test_sim()
+    convert_header_files()
+    #set_pic14_inst_table()
+    #test_import()

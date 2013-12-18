@@ -255,10 +255,16 @@ def get_sfr_addr(dev_name):
         print path
         text = read_file(path)
         for line in text.split('\n'):
-            if line == '':
+            if line == '' :
                 continue
             k, v = line.split(':')
-            sfr_addr[k] = int(v, 16) & 0xff
+            if k == 'W' or k == 'F':
+                continue
+            if k == 'C':
+                break
+            v = int(v, 16) & 0xff
+            sfr_addr[k] = v
+            
                     
     return sfr_addr
 
