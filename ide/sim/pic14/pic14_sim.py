@@ -71,6 +71,7 @@ class SimPic():
         
         self.int_enabled = False
         self.int_p_enabled = False
+        self.tmr0_mode  = 1 # T0CS = 1:counter, 0:timer
         self.tmr0_enabled = False
         self.tmr1_enabled = False
         self.tmr2_enabled = False
@@ -247,16 +248,14 @@ class SimPic():
         self.freg[addr] = v
         if addr == 3:
             self.status_reg = v
-        elif addr == 1 or addr == 0x101:
-            pass
+        elif addr == self.TMR0 or addr == 0x101:
+            self.tmr0_value = v
         elif addr == 0x81 or addr == 0x181:
             self.set_option_reg(v)
         elif addr == self.PCL:
             #self.log('     set_reg ', key, v)
             self.update_pc_from_PCL()
-        elif addr == self.TMR0:
-            self.tmr0_value = v
-            
+                       
     #-------------------------------------------------------------------
     def set_freg_bit(self, addr, bit, b):
         if not addr in [2, 3, 4, 0xA, 0xB]:
@@ -369,8 +368,10 @@ class SimPic():
             #T0CS
             if b == 0:
                 self.tmr0_enabled = True
+                self.tmr0_mode = 0
             else:
                 self.tmr0_enabled = False
+                self.tmr0_mode  = 1
         elif bit < 3:
             psa = v & BIT3
             i = v & 7
@@ -507,8 +508,11 @@ class SimPic():
             bit = int(k[2:3])
             if v:
                 self.freg[self.PORTA] |= 1 << bit
+                if bit == 4 and self.tmr0_mode == 1:
+                    self.inc_tmr0()
             else:
                 self.freg[self.PORTA] &= ~(1 << bit)
+            
         elif k2 == 'RB':
             bit = int(k[2:3])
             if v:
@@ -553,8 +557,6 @@ class SimPic():
         if self.debug:
             self.log("     set pc = %04x" % (v))
         
-        if v >= 0x1000:
-            self.err = True
         self.pc = v
         
         self.freg[self.PCL] = v & 0xff
@@ -667,20 +669,22 @@ class SimPic():
                 return
             
     #-------------------------------------------------------------------
+    def inc_tmr0(self):
+        tmr0 = self.tmr0_value
+        if tmr0 < 0xff:
+            self.tmr0_value = tmr0 + 1
+        elif tmr0 == 0xff:
+            self.tmr0_value = self.freg[self.TMR0]
+            # set T0IF : bit2 of INTCON 0xB
+            self.freg[0xB] |= BIT2
+        
+    #-------------------------------------------------------------------
     def proc_tmr0(self):
         if self.tmr0_rate > 0:
             if self.ticks < self.tmr0_rate:
                 return
         self.ticks = 0
-
-        tmr0 = self.tmr0_value
-        if tmr0 < 0xff:
-            tmr0 += 1
-        elif tmr0 == 0xff:
-            tmr0 = self.freg[self.TMR0]
-            # set T0IF : bit2 of INTCON 0xB
-            self.freg[0xB] |= BIT2
-        self.tmr0_value = tmr0
+        self.inc_tmr0()
         
     #-------------------------------------------------------------------
     def update_c_line(self):
@@ -726,7 +730,7 @@ class SimPic():
             
         addr = self.inst_addr = self.pc
         addr += addr
-        if addr >= 0x1000:
+        if addr >= 0x8000:
             self.err = True
             return
         lsb = self.code_space[addr]

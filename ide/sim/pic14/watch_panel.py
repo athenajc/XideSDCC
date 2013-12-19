@@ -176,8 +176,8 @@ class PortTextCtrlList(wx.StaticBoxSizer):
         pins = ['RA0','RA1','RA2','RA3','RA4','RA5','RA6','RA7',
                 'RB0','RB1','RB2','RB3','RB4','RB5','RB6','RB7',
                 'RC0','RC1','RC2','RC3','RC4','RC5','RC6','RC7',]
-        parent.cb_int0 = cb_int0 = wx.ComboBox(panel, -1, value='RB0', pos=(-1,-1), size=(100, -1), choices=pins, style=wx.CB_DROPDOWN)
-        parent.bn_int0 = bn_int0 = wx.Button(panel, 1, 'RB0')
+        parent.cb_int0 = cb_int0 = wx.ComboBox(panel, -1, value='RA4', pos=(-1,-1), size=(100, -1), choices=pins, style=wx.CB_DROPDOWN)
+        parent.bn_int0 = bn_int0 = wx.Button(panel, 1, 'RA4')
         b_sizer1.Add(cb_int0, 1, wx.ALL, 0)
         b_sizer1.Add(bn_int0, 1, wx.ALL, 0)
         
