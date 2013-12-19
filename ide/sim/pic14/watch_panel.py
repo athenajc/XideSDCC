@@ -172,18 +172,29 @@ class PortTextCtrlList(wx.StaticBoxSizer):
         self.t1_text = PortTextCtrl(panel, sizer, 'TRISB ', '', '00', size=(30, -1))
         self.t2_text = PortTextCtrl(panel, sizer, 'TRISC ', '', '00', size=(30, -1))     
 
-        bn_int0 = wx.Button(panel, 1, 'INT 0')
-        bn_int1 = wx.Button(panel, 2, 'INT 1')
-        sizer.Add(bn_int0, 1, wx.ALL, 2)
+        b_sizer1 = wx.BoxSizer(wx.HORIZONTAL) 
+        pins = ['RA0','RA1','RA2','RA3','RA4','RA5','RA6','RA7',
+                'RB0','RB1','RB2','RB3','RB4','RB5','RB6','RB7',
+                'RC0','RC1','RC2','RC3','RC4','RC5','RC6','RC7',]
+        parent.cb_int0 = cb_int0 = wx.ComboBox(panel, -1, value='RB0', pos=(-1,-1), size=(100, -1), choices=pins, style=wx.CB_DROPDOWN)
+        parent.bn_int0 = bn_int0 = wx.Button(panel, 1, 'RB0')
+        b_sizer1.Add(cb_int0, 1, wx.ALL, 0)
+        b_sizer1.Add(bn_int0, 1, wx.ALL, 0)
+        
+        bn_int1 = wx.Button(panel, 2, 'INT')
+        sizer.Add(b_sizer1, 1, wx.ALL, 2)
         sizer.Add(bn_int1, 1, wx.ALL, 2)
         
         parent.uart_input = wx.TextCtrl(panel, -1, "")
         sizer.Add(parent.uart_input, 1, wx.ALL|wx.EXPAND|wx.GROW, 2)
         
-        parent.frame.Bind(wx.EVT_BUTTON, parent.OnInt0, bn_int0)
-        parent.frame.Bind(wx.EVT_BUTTON, parent.OnInt1, bn_int1)
+        cb_int0.Bind(wx.EVT_COMBOBOX, parent.OnSelectInt0, cb_int0)
+        #parent.frame.Bind(wx.EVT_BUTTON, parent.OnInt0, bn_int0)
+        bn_int0.Bind(wx.EVT_LEFT_DOWN, parent.OnInt0Down, bn_int0)
+        bn_int0.Bind(wx.EVT_LEFT_UP, parent.OnInt0Up, bn_int0)
+        bn_int1.Bind(wx.EVT_BUTTON, parent.OnInt1, bn_int1)
         
-        parent.frame.Bind(wx.EVT_TEXT, parent.OnEvtText, parent.uart_input)
+        parent.uart_input.Bind(wx.EVT_TEXT, parent.OnEvtText, parent.uart_input)
         
         panel.SetSizer(sizer)
         panel.Layout()
@@ -427,16 +438,37 @@ class WatchPanel (wx.Panel):
         self.Layout()
        
     #--------------------------------------------------------------
+    def OnSelectInt0(self, event):
+        if self.sim:
+            key = self.cb_int0.GetValue()
+            self.bn_int0.SetLabel(key)
+            
+    #--------------------------------------------------------------
+    def OnInt0Down(self, event):
+        if self.sim:
+            key = self.cb_int0.GetValue()
+            self.sim.set_input(key, 1)
+        event.Skip()
+        
+    #--------------------------------------------------------------
+    def OnInt0Up(self, event):
+        if self.sim:
+            key = self.cb_int0.GetValue()
+            self.sim.set_input(key, 0)
+        event.Skip()
+        
+    #--------------------------------------------------------------
     def OnInt0(self, event):
         if self.sim:
-            self.sim.set_input('int0', 1)
-            self.sim.set_input('int0', 0)
+            key = self.cb_int0.GetValue()
+            #self.sim.set_input(key, 1)
+            #self.sim.set_input(key, 0)
     
     #--------------------------------------------------------------
     def OnInt1(self, event):
         if self.sim:
-            self.sim.set_input('int1', 1)
-            self.sim.set_input('int1', 0)
+            self.sim.set_input('INT', 1)
+            self.sim.set_input('INT', 0)
             
     #--------------------------------------------------------------
     def OnEvtText(self, event):

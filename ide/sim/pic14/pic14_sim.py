@@ -48,8 +48,8 @@ class SimPic():
         self.addr_map_lst = pic_lst_scan.pic_lst_scan(source_list)
         #print '\n\nself.addr_map_lst', self.addr_map_lst
         #for t in self.addr_map_lst:
-        #    if t != 0:
-        #        print(t)
+            #if t != 0:
+                #print(t)
                 
         self.c_line = 0
         self.asm_code = ""
@@ -74,6 +74,9 @@ class SimPic():
         self.tmr0_enabled = False
         self.tmr1_enabled = False
         self.tmr2_enabled = False
+        self.tmr0_value = 0
+        self.tmr1_value = 0
+        self.tmr2_value = 0
         self.tmr0_rate = 0
         self.wdt_rate = 0
         self.ticks = 0
@@ -308,6 +311,7 @@ class SimPic():
         if bit == 7:
             if b == 1:
                 self.int_enabled = True
+                self.tmr0_value = self.freg[self.TMR0]
             else:
                 self.int_enabled = False
         elif bit == 6:
@@ -315,6 +319,11 @@ class SimPic():
                 self.int_p_enabled = True
             else:
                 self.int_p_enabled = False
+                
+        if bit == -1:
+            if v & BIT7 and self.int_enabled == False:
+                self.int_enabled = True
+                self.tmr0_value = self.freg[self.TMR0]
         
     #-------------------------------------------------------------------
     def set_option_reg(self, v, bit=-1, b=None):
@@ -482,15 +491,29 @@ class SimPic():
     
     #-------------------------------------------------------------------
     def set_input(self, k, v):
-        # INTCON, PIE1, PIE2
-        intcon = self.freg[0xB]
-        
-        if k == 'int0':
-            if intcon & BIT4:
-                self.reg[0xB] |= BIT2
-                
-        elif k == 'int1':
-            pass
+        # INTCON, PIE1, PIE2        
+        k2 = k[0:2]
+        if k == 'INT':
+            if self.freg[self.INTCON] & BIT4:
+                self.reg[self.INTCON] |= BIT2
+        elif k2 == 'RA':
+            bit = int(k[2:3])
+            if v:
+                self.freg[self.PORTA] |= 1 << bit
+            else:
+                self.freg[self.PORTA] &= ~(1 << bit)
+        elif k2 == 'RB':
+            bit = int(k[2:3])
+            if v:
+                self.freg[self.PORTB] |= 1 << bit
+            else:
+                self.freg[self.PORTB] &= ~(1 << bit)
+        elif k2 == 'RC':
+            bit = int(k[2:3])
+            if v:
+                self.freg[self.PORTC] |= 1 << bit
+            else:
+                self.freg[self.PORTC] &= ~(1 << bit)
         elif k == 'uart':
             # set RI = 1
             pass
@@ -639,21 +662,20 @@ class SimPic():
             if self.ticks < self.tmr0_rate:
                 return
         self.ticks = 0
-        #if self.freg[0xB] & BIT2:
-        #    return
-        tmr0 = self.freg[0x01]
+
+        tmr0 = self.tmr0_value
         if tmr0 < 0xff:
             tmr0 += 1
         elif tmr0 == 0xff:
-            tmr0 = 0
+            tmr0 = self.freg[self.TMR0]
             # set T0IF : bit2 of INTCON 0xB
             self.freg[0xB] |= BIT2
-        self.freg[0x01] = tmr0
-
+        self.tmr0_value = tmr0
+        
     #-------------------------------------------------------------------
-    def show_inst_log(self):
+    def update_c_line(self):
         # get current program counter 
-        addr = self.inst_addr
+        addr = self.pc
 
         if addr < len(self.addr_map_lst):
             t = self.addr_map_lst[addr]
@@ -667,8 +689,10 @@ class SimPic():
             self.c_line = 0
             self.asm_code = ""
             
-        if self.step_mode :
-            return
+    #-------------------------------------------------------------------
+    def show_inst_log(self):
+        # get current program counter 
+        addr = self.inst_addr
         addr += addr
         lsb = self.code_space[addr]
         msb = self.code_space[addr + 1] & 0x3f
@@ -689,7 +713,9 @@ class SimPic():
                             
         if self.int_enabled :
             self.proc_int()
-        addr = self.pc+self.pc
+            
+        addr = self.inst_addr = self.pc
+        addr += addr
         lsb = self.code_space[addr]
         msb = self.code_space[addr + 1] & 0x3f
         
@@ -713,8 +739,10 @@ class SimPic():
         self.cmd_queue = Queue.Queue()
         self.c_line = 0
         
-        #while self.c_line == 0:
-        #    self.load_inst()
+        if self.debug:
+            while self.c_line == 0:
+                self.load_inst()
+                self.update_c_line()
             
     #-------------------------------------------------------------------
     def step(self, count=1):
@@ -724,14 +752,14 @@ class SimPic():
         self.step_mode = None
         if self.debug:
             self.load_inst()
+            self.update_c_line()
             self.show_inst_log()
-            #self.load_inst_no_log()
         else:
             for i in range(count):
                 self.load_inst()
                 
                 if self.err or self.pc == 0:
-                    break            
+                    break
         
         if self.err:
             self.log("#simulation Error")
@@ -756,7 +784,7 @@ class SimPic():
         while self.c_line == n and self.c_file == f:
             i += 1
             self.load_inst()
-            self.show_inst_log()
+            self.update_c_line()
             if i > 1000:
                 break
                    
