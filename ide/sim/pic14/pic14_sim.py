@@ -36,11 +36,12 @@ class SimPic():
             #print k, v
         
         #print self.sfr_addr
-        self.mem_sfr_map = {}
-        self.reg_table = {}
+        self.sfr_name = {}
+        for v in range(512):
+            self.sfr_name[v] = ""
+            
         for k, v in self.sfr_addr.items():
-            self.mem_sfr_map[v] = k
-            self.reg_table[k] = 0
+            self.sfr_name[v] = k
         
         #print self.mem_sfr_map
         
@@ -55,6 +56,7 @@ class SimPic():
         
         self.stack = []
         self.stack_depth = 0
+        self.sp = 0
         self.err = 0
         self.sbuf_list = []
         self.init_memory()
@@ -127,19 +129,12 @@ class SimPic():
     #-------------------------------------------------------------------
     def disassembly(self):
         return pic_hex_scan(self.frame, self.hex_file, self.mcu_name, self.addr_map_lst)
-        #fn = self.hex_file.replace('.hex', '.hex2asm')
-        #text = read_file(fn)
-        #print text
-        #return text
     
     #-------------------------------------------------------------------
     def init_registers(self):
         self.status_reg = 0
         self.pc = 0
         self.wreg = 0
-        self.bsr = 0
-        self.wreg_addr = self.sfr_addr.get('wreg', 0x0FE8)
-        self.bsr_addr = self.sfr_addr.get('bsr', 0xFE0) 
         
     #-------------------------------------------------------------------
     def init_memory(self):
@@ -157,7 +152,7 @@ class SimPic():
     def get_mem(self, addr):
         v = self.mem[addr]
         if self.debug:
-            key = self.mem_sfr_map.get(addr, "")
+            key = self.sfr_name[addr]
             self.log("     get mem "+hex(addr) + " " + key +" = "+hex(v))
         return v    
     #-------------------------------------------------------------------
@@ -171,7 +166,7 @@ class SimPic():
     def set_mem(self, addr, v):
         
         if self.debug:
-            key = self.mem_sfr_map.get(addr, "")
+            key = self.sfr_name[addr]
             self.log("     set mem " + hex(addr) + " " + key + " = " + hex(v))
         if (v > 0xff) :
             self.log(v, "> 0xff")
@@ -226,11 +221,11 @@ class SimPic():
 
         if v & (1 << bit):
             if self.debug: 
-                self.log("     get bit " + str(bit) + " of " + tohex(addr, 4), 1)
+                self.log("     get bit %d of %02x is 1" % (bit, addr))
             return 1
         else:
             if self.debug: 
-                self.log("     get bit " + str(bit) + " of " + tohex(addr, 4), 0)
+                self.log("     get bit %d of %02x is 0" % (bit, addr))
             return 0
                 
     #-------------------------------------------------------------------
@@ -243,46 +238,27 @@ class SimPic():
             v &= ~(1 << bit)
             
         self.set_mem(addr, v)
-        
-    #-------------------------------------------------------------------
-    def set_sfr(self, k, v):
-        #self.log('set sfr ', k, v)
-        addr = self.sfr_addr[k]
-        self.set_mem(addr, v)
-        
-        # update reg_table
-        self.reg_table[k] = v
-        
-    #-------------------------------------------------------------------
-    def get_sfr(self, k):
-        if k == 'pc':
-            return self.pc
-        addr = self.sfr_addr[k]
-        v = self.mem[addr]
-        #v = self.get_mem(addr)
-        
-        # update reg_table
-        #self.reg_table[k] = v
-        return v
-    
-    #-------------------------------------------------------------------
-    def update_sfr(self):     
-        pass
-        #n = 0x1000
-        #for k, v in self.sfr_addr.items():
-            #if v < n:
-                #self.set_sfr(k, self.mem[v])
-            
+               
     #-------------------------------------------------------------------
     def set_reg(self, k, v):
-        self.reg_table[k] = v
+        addr = self.sfr_addr.get(k, -1)
+        if addr == -1:
+            self.log("Error set_reg", k)
+            return
+        self.mem[addr] = v
         
     #-------------------------------------------------------------------
     def get_reg(self, k):
-        #v = self.reg_table.get(k, 0)
-        addr = self.sfr_addr.get(k, 0)
+        addr = self.sfr_addr.get(k, -1)
+        if addr == -1:
+            if k == 'PC':
+                return self.pc
+            elif k == 'SP':
+                return self.sp
+            else:
+                return 0xFF
         v = self.mem[addr]
-        #self.log('get_reg', k, hex(self.sfr_addr.get(k, 0)), v)
+
         return v
     
     #-------------------------------------------------------------------
@@ -291,8 +267,8 @@ class SimPic():
             addr += self.bank_addr
         
         if self.debug:
-            key = self.mem_sfr_map.get(addr, "")
-            self.log("     set freg " + key + " " + hex(addr) + " = "+hex(v))
+            key = self.sfr_name[addr]
+            self.log("     set freg %s %02x = %02x" % (key, addr, v))
             
         self.freg[addr] = v
         if addr == 3:
@@ -304,32 +280,15 @@ class SimPic():
         elif addr == self.PCL:
             #self.log('     set_reg ', key, v)
             self.update_pc_from_PCL()
-            
-    #-------------------------------------------------------------------
-    def set_freg0(self, addr, v):
-        if not addr in [2, 3, 4, 0xA, 0xB]:
-            addr += self.bank_addr
-        key = self.mem_sfr_map.get(addr, "")
-        if self.debug:
-            self.log("     set freg " + key + " " + hex(addr) + " = "+hex(v))
-        #self.freg[addr] = v
-        self.set_mem(addr, v)
-        if addr == 3:
-            self.status_reg = v
                     
-        #self.mem[addr] = v
-        #key = self.mem_sfr_map.get(addr, None)
-        #if key:
-        #    self.set_reg(key, v)
-        
     #-------------------------------------------------------------------
     def set_freg_bit(self, addr, bit, b):
         if not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
         
         if self.debug:
-            key = self.mem_sfr_map.get(addr, "")
-            self.log("     set freg " + key + " " + hex(addr) + " bit " + str(bit) + " = "+hex(b))
+            key = self.sfr_name[addr]
+            self.log("     set freg %s %02x bit %d = %d" % (key, addr, bit, b))
             
         v = self.freg[addr]
         if b == 0:
@@ -355,22 +314,22 @@ class SimPic():
 
         v = self.freg[addr]
         if self.debug:
-            self.log("     get freg " + hex(addr) + " = "+hex(v))
+            key = self.sfr_name[addr]
+            self.log("     get freg %s %02x is %02x" % (key, addr, v))
+            
         return v
     
     #-------------------------------------------------------------------
     def set_wreg(self, v):
         if self.debug:
-            self.log("     set w = "+hex(v))
+            self.log("     set w = %02x" % (v))
         self.wreg = v
-        #self.set_sfr('W', v)
         
     #-------------------------------------------------------------------
     def get_wreg(self):
-        #v = self.get_sfr('W')
         v = self.wreg
         if self.debug:
-            self.log("     get w = "+hex(v))
+            self.log("     get w = %02x" % (v))
         return v
     
     #-------------------------------------------------------------------
@@ -442,31 +401,14 @@ class SimPic():
                 # WDT rate
                 self.wdt_rate = 1 << i
                 self.tmr0_rate = 0
-                
-        
-    #-------------------------------------------------------------------
-    def set_bsr(self, v):
-        if self.debug:
-            self.log("     set bsr = "+hex(v))
-        #self.set_sfr('BSR', v)
-        self.freg[self.BSR] = v
-        
-    #-------------------------------------------------------------------
-    def get_bsr(self):
-        v = self.freg[self.BSR] #self.get_sfr('BSR')
-        if self.debug:
-            self.log("     get bsr = "+hex(v))
-        return v
-    
+
     #-------------------------------------------------------------------
     def set_prod(self, v):
         if self.debug:
-            self.log("     set prod = "+hex(v))
+            self.log("     set prod = %02x" % (v))
         self.freg[self.PRODH] = (v >> 8) & 0xff
         self.freg[self.PRODL] = v & 0xff
-        #self.set_sfr('PRODH', (v >> 8) & 0xff)
-        #self.set_sfr('PRODL', v & 0xff)
-    
+
     #-------------------------------------------------------------------
     def set_status_reg(self, bit, v, name = ''):
         #bit 7:
@@ -512,9 +454,9 @@ class SimPic():
         #Note: For borrow the second operand the polarity is reversed. A subtraction is executed by adding the two's complement of. For rotate (RRF, RLF) instructions, this bit is loaded with either the high or low order bit of the source register.        
         if self.debug:
             if name:
-                self.log("     set status " + name + " bit " + str(bit) + " = "+hex(v))
+                self.log("     set status %s bit %d = %d" % (name, bit, v))
             else:
-                self.log("     set status bit " + str(bit) + " = "+hex(v))
+                self.log("     set status bit %d = %d" % (bit, v))
 
         if v:
             self.status_reg |= 1 << bit
@@ -528,21 +470,19 @@ class SimPic():
             self.bank_addr = bank * 0x80
             if bit == 6:
                 if self.debug:
-                    self.log("     select bank " + str(bank) + ", " + hex(self.bank_addr))
+                    self.log("     select bank %d, %02x", (bank, self.bank_addr))
                 
     #-------------------------------------------------------------------
     def clear_status_reg_flags(self):
-        self.status_reg &= 0xf0
-        
-        #self.set_freg(3, self.status_reg)
-        self.freg[0x03] = self.status_reg
+        v = self.status_reg & 0xf0
+        self.freg[0x03] = self.status_reg = v
         
     #-------------------------------------------------------------------
     def get_status_reg(self, bit):
         v = self.status_reg
         b = get_bit(v, bit)
         if self.debug:
-            self.log("     get status bit" + str(bit) + " = "+hex(b))
+            self.log("     get status bit %d is %x" % (bit, b))
         
         return b
         
@@ -588,9 +528,9 @@ class SimPic():
     #-------------------------------------------------------------------
     def push(self, v):
         if self.debug:
-            self.log("     push "+hex(v))
+            self.log("     push %02x" % (v))
+        self.sp = len(self.stack)
         self.stack.insert(0, v)
-        self.set_reg('SP', len(self.stack))
         # print("     #stack = "+tostring(#self.stack))
         
     #-------------------------------------------------------------------
@@ -600,9 +540,9 @@ class SimPic():
             self.stopped = True
             return 0
         v = self.stack.pop(0)
-        self.set_reg('SP', len(self.stack))
+        self.sp = len(self.stack)
         if self.debug:
-            self.log("     pop "+hex(v))
+            self.log("     pop %02x" % (v))
         return v
 
     #-------------------------------------------------------------------
@@ -611,9 +551,8 @@ class SimPic():
         #PCLATH   0FFA
         #PCLATU   0FFB
         if self.debug:
-            self.log("     set pc = "+tohex(v, 4), hex(self.get_reg('PC')))
+            self.log("     set pc = %04x" % (v))
         self.pc = v
-        self.set_reg('PC', v)
         
         self.freg[self.PCL] = v & 0xff
         
@@ -637,7 +576,7 @@ class SimPic():
     def jump_rel(self, v):
         offset = val8(v)
         if self.debug:
-            self.log("     jump_rel  "+str(offset) )
+            self.log("     jump_rel %d" % (offset) )
         self.set_pc(self.pc + offset)
         
     #-------------------------------------------------------------------
@@ -651,9 +590,7 @@ class SimPic():
         addr = self.pop()
         self.set_pc(addr)
         self.stack_depth -= 1
-        if self.debug:
-            self.log("****** ret set pc = "+tohex(addr, 4), hex(self.get_reg('PC')))
-        
+                
     #-------------------------------------------------------------------
     def retfie(self):
         # return from interrupt
@@ -784,7 +721,8 @@ class SimPic():
         if self.debug:
             opcode = (msb << 8) + lsb
             s = get_pic14_inst_str(opcode, msb, lsb)
-            self.log("---------", tohex(addr, 4) + "  " + tohex(msb, 2) + tohex(lsb, 2) + '  <' + s +'>')
+            self.log("--------- %04x %02x %02x <%s>" % (addr, msb, lsb, s))
+            
         #self.log("asm_code    ", self.c_line, self.asm_code)
         #self.log("     ", s)
         f(self, msb, lsb)
@@ -830,7 +768,6 @@ class SimPic():
         self.step_mode = None
         if self.debug:
             self.load_inst()
-            self.update_sfr()
         else:
             for i in range(count):
                 self.ticks += 1
@@ -876,9 +813,7 @@ class SimPic():
             self.load_inst()
             if i > 10:
                 break
-            
-        self.update_sfr()
-        
+                   
         if self.step_mode == 'c_line':
             if self.c_line != self.start_line or self.c_file != self.start_file:
                 self.step_mode = None
