@@ -84,7 +84,7 @@ class SimPic():
         #    return
         #import inspect
         #s1 = inspect.stack()[1][3] + " "
-        if not self.debug:
+        if not self.debug or self.step_mode:
             return
         
         msg = " "
@@ -153,21 +153,23 @@ class SimPic():
         v = self.mem[addr]
         if self.debug:
             key = self.sfr_name[addr]
-            self.log("     get mem "+hex(addr) + " " + key +" = "+hex(v))
+            self.log("     get mem %s %02x is %02x" % (key, addr, v))
         return v    
+    
     #-------------------------------------------------------------------
-    #def update_pc_from_PCL(self):
-        #pch = self.get_sfr('PCLATH')
-        #pcl = self.get_sfr('PCL')
-        #v = (pch << 8) | pcl
-        #self.set_pc(v)
+    def update_pc_from_PCL(self):
+        pch = self.freg[self.PCLATH]
+        pcl = self.freg[self.PCL]
+        v = (pch << 8) | pcl
+        self.set_pc(v)
         
     #-------------------------------------------------------------------
     def set_mem(self, addr, v):
         
         if self.debug:
             key = self.sfr_name[addr]
-            self.log("     set mem " + hex(addr) + " " + key + " = " + hex(v))
+            self.log("     set mem %s %02x = %02x" % (key, addr, v))
+            
         if (v > 0xff) :
             self.log(v, "> 0xff")
             #v = bits_and(v, 0xff)
@@ -177,44 +179,12 @@ class SimPic():
             self.mem_access_list.append(addr)
             
         self.mem[addr] = v
-        
-        #if key != "":
-            #self.log('     set_reg ', key, v)
-        #    self.set_reg(key, v)
 
         if addr == self.PCL:
             self.update_pc_from_PCL()
             
         return v
-    #-------------------------------------------------------------------
-    def update_pc_from_PCL(self):
-        pch = self.freg[self.PCLATH]
-        pcl = self.freg[self.PCL]
-        v = (pch << 8) | pcl
-        self.set_pc(v)
-        
-    ##-------------------------------------------------------------------
-    #def set_mem(self, addr, v):
-        
-        #if self.debug:
-            #key = self.mem_sfr_map.get(addr, "")
-            #self.log("     set mem " + hex(addr) + " " + key + " = " + hex(v))
-            
-        #if (v > 0xff) :
-            #self.log(v, "> 0xff")
-            #v = v & 0xff
-        
-        #if not addr in self.mem_access_list:
-            #self.mem_access_list.append(addr)
-            
-        #self.mem[addr] = v
-        
-        #if addr == self.PCL:
-            ##self.log('     set_reg ', key, v)
-            #self.update_pc_from_PCL()
-                
-        #return v
-
+    
     #-------------------------------------------------------------------
     def mem_get_bit(self, addr, bit):       
         v = self.get_mem(addr)
@@ -679,65 +649,51 @@ class SimPic():
             # set T0IF : bit2 of INTCON 0xB
             self.freg[0xB] |= BIT2
         self.freg[0x01] = tmr0
+
+    #-------------------------------------------------------------------
+    def show_inst_log(self):
+        # get current program counter 
+        addr = self.inst_addr
+
+        if addr < len(self.addr_map_lst):
+            t = self.addr_map_lst[addr]
+            #print addr, len(self.addr_map_lst), t
+            if t != 0:
+                self.c_file = t[0]
+                self.c_line = t[1]
+                self.asm_code = t[2]
+        else:
+            self.c_file = ""
+            self.c_line = 0
+            self.asm_code = ""
             
+        if self.step_mode :
+            return
+        addr += addr
+        lsb = self.code_space[addr]
+        msb = self.code_space[addr + 1] & 0x3f
+        
+        #self.log('**************** ', hex(msb), hex(lsb))
+       
+        #self.log('**************** pc ', hex(self.pc))
+        opcode = (msb << 8) + lsb
+        s = get_pic14_inst_str(opcode, msb, lsb)
+        self.log("--------- %04x %02x %02x <%s>" % (addr, msb, lsb, s))
+
+        
     #-------------------------------------------------------------------
     def load_inst(self):
         self.ticks += 1
         if self.tmr0_enabled :
             self.proc_tmr0()
-            
-        #if self.t1_enabled:
-            #self.proc_timer1()
-            
+                            
         if self.int_enabled :
             self.proc_int()
-            
-        # get current program counter 
-        addr = self.pc
-        self.inst_addr = self.pc
-        if self.debug:
-            if addr < len(self.addr_map_lst):
-                t = self.addr_map_lst[addr]
-                #print addr, len(self.addr_map_lst), t
-                if t != 0:
-                    self.c_file = t[0]
-                    self.c_line = t[1]
-                    self.asm_code = t[2]
-            else:
-                self.c_file = ""
-                self.c_line = 0
-                self.asm_code = ""
-        
-        lsb = self.code_space[addr*2]
-        msb = self.code_space[addr*2 + 1] & 0x3f
-        
-        #self.log('**************** ', hex(msb), hex(lsb))
-        
-        # self.set_pc(self.pc + blen)
-        self.pc = self.pc + 1
-        
-        #self.log('**************** pc ', hex(self.pc))
-        f = inst_handler[msb]
-        if self.debug:
-            opcode = (msb << 8) + lsb
-            s = get_pic14_inst_str(opcode, msb, lsb)
-            self.log("--------- %04x %02x %02x <%s>" % (addr, msb, lsb, s))
-            
-        #self.log("asm_code    ", self.c_line, self.asm_code)
-        #self.log("     ", s)
-        f(self, msb, lsb)
-        
-        #ch = self.get_uart_put_ch()
-        #if ch != 0:
-            #self.sbuf_list.append(ch)
-            
-    #-------------------------------------------------------------------
-    def load_inst_no_log(self):
         addr = self.pc+self.pc
         lsb = self.code_space[addr]
         msb = self.code_space[addr + 1] & 0x3f
         
-        self.pc = self.pc + 1
+        self.pc += 1
 
         f = inst_handler[msb]
         f(self, msb, lsb)
@@ -768,22 +724,11 @@ class SimPic():
         self.step_mode = None
         if self.debug:
             self.load_inst()
+            self.show_inst_log()
+            #self.load_inst_no_log()
         else:
             for i in range(count):
-                self.ticks += 1
-                if self.tmr0_enabled :
-                    self.proc_tmr0()
-                                    
-                if self.int_enabled :
-                    self.proc_int()
-                addr = self.pc+self.pc
-                lsb = self.code_space[addr]
-                msb = self.code_space[addr + 1] & 0x3f
-                
-                self.pc += 1
-        
-                f = inst_handler[msb]
-                f(self, msb, lsb)
+                self.load_inst()
                 
                 if self.err or self.pc == 0:
                     break            
@@ -811,7 +756,8 @@ class SimPic():
         while self.c_line == n and self.c_file == f:
             i += 1
             self.load_inst()
-            if i > 10:
+            self.show_inst_log()
+            if i > 1000:
                 break
                    
         if self.step_mode == 'c_line':
@@ -832,7 +778,7 @@ class SimPic():
             self.log("#end of simulation")
             return False
         
-        return True    
+        return True
 
     #-------------------------------------------------------------------
     def step_c_line(self):
