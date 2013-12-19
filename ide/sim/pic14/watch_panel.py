@@ -189,7 +189,7 @@ class PortTextCtrlList(wx.StaticBoxSizer):
         sizer.Add(parent.uart_input, 1, wx.ALL|wx.EXPAND|wx.GROW, 2)
         
         cb_int0.Bind(wx.EVT_COMBOBOX, parent.OnSelectInt0, cb_int0)
-        #parent.frame.Bind(wx.EVT_BUTTON, parent.OnInt0, bn_int0)
+
         bn_int0.Bind(wx.EVT_LEFT_DOWN, parent.OnInt0Down, bn_int0)
         bn_int0.Bind(wx.EVT_LEFT_UP, parent.OnInt0Up, bn_int0)
         bn_int1.Bind(wx.EVT_BUTTON, parent.OnInt1, bn_int1)
@@ -456,14 +456,7 @@ class WatchPanel (wx.Panel):
             key = self.cb_int0.GetValue()
             self.sim.set_input(key, 0)
         event.Skip()
-        
-    #--------------------------------------------------------------
-    def OnInt0(self, event):
-        if self.sim:
-            key = self.cb_int0.GetValue()
-            #self.sim.set_input(key, 1)
-            #self.sim.set_input(key, 0)
-    
+            
     #--------------------------------------------------------------
     def OnInt1(self, event):
         if self.sim:

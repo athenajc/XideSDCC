@@ -59,6 +59,7 @@ def inst_option(sim, msb, lsb):
     w = sim.get_wreg()
     sim.freg[0x81] = w
     sim.freg[0x181] = w
+    sim.set_option_reg(w, -1, 0)
 
 #----------------------------------------------------------------------------
 def inst_sleep(sim, msb, lsb):
@@ -71,17 +72,17 @@ def inst_clrwdt(sim, msb, lsb):
 #----------------------------------------------------------------------------
 def inst_tris1(sim, msb, lsb):
     w = sim.get_wreg()
-    sim.set_sfr('trisa', w)
+    sim.set_freg(sim.TRISA, w)
 
 #----------------------------------------------------------------------------
 def inst_tris2(sim, msb, lsb):
     w = sim.get_wreg()
-    sim.set_sfr('trisb', w)    
+    sim.set_freg(sim.TRISB, w)
 
 #----------------------------------------------------------------------------
 def inst_tris3(sim, msb, lsb):
     w = sim.get_wreg()
-    sim.set_sfr('trisc', w)    
+    sim.set_freg(sim.TRISC, w)
 
 #----------------------------------------------------------------------------
 def inst_movwf(sim, msb, lsb):
@@ -98,9 +99,8 @@ def inst_clrf(sim, msb, lsb):
     #01 : 0000 0001 dfff ffff  CLR f,d(bit 7)  Z dest <- 0, usually written CLRW or CLRF f
     d = (lsb >> 7) & 1
     f = lsb & 0x7f
-    sim.set_z(1)
-    sim.set_c(0)
-    sim.set_dc(0)
+    
+    sim.set_status_flags(1,0,0)
     if d == 0:
         sim.set_wreg(0)
     else:
@@ -137,9 +137,7 @@ def inst_subwf(sim, msb, lsb):
     if v == 0:
         z = 1
 
-    sim.set_c(c)
-    sim.set_z(z)
-    sim.set_dc(dc)
+    sim.set_status_flags(z, dc, c)
     
     if d == 0:
         sim.set_wreg(v)
@@ -164,7 +162,7 @@ def inst_decf(sim, msb, lsb):
     else:
         v = (v - 1) & 0xff
         z = 0
-    sim.set_z(z)
+    sim.set_status_flags(z)
     
     if d == 0:
         sim.set_wreg(v)
@@ -185,9 +183,12 @@ def inst_iorwf(sim, msb, lsb):
     v = sim.get_freg(f)
     w = sim.get_wreg()
     v = v | w
-    sim.clear_status_reg_flags()
+
     if v == 0:
-        sim.set_z(1)
+        z = 1
+    else:
+        z = 0
+    sim.set_status_flags(z, 0, 0)
     
     if d == 0:
         sim.set_wreg(v)
@@ -212,7 +213,7 @@ def inst_andwf(sim, msb, lsb):
         z = 1
     else:
         z = 0
-    sim.set_z(z)
+    sim.set_status_flags(z, 0, 0)
     if d == 0:
         sim.set_wreg(v)
     else:
@@ -237,7 +238,7 @@ def inst_xorwf(sim, msb, lsb):
         z = 1
     else:
         z = 0
-    sim.set_z(z)
+    sim.set_status_flags(z, 0, 0)
     if d == 0:
         sim.set_wreg(v)
     else:
@@ -274,9 +275,7 @@ def inst_addwf(sim, msb, lsb):
     if v == 0:
         z = 1
 
-    sim.set_c(c)
-    sim.set_z(z)
-    sim.set_dc(dc)
+    sim.set_status_flags(z, dc, c)
     
     if d == 0:
         sim.set_wreg(v)
@@ -299,12 +298,13 @@ def inst_movf(sim, msb, lsb):
     d = (lsb >> 7) & 1
     f = lsb & 0x7f
     v = sim.get_freg(f)
-    sim.clear_status_reg_flags()
+
     if v == 0:
         z = 1
     else:
         z = 0
-    sim.set_z(z)
+    sim.set_status_flags(z, 0, 0)
+    
     if d == 0:
         sim.set_wreg(v)
     else:
@@ -327,10 +327,12 @@ def inst_comf(sim, msb, lsb):
     f = lsb & 0x7f
     v = ~sim.get_freg(f)
     w = sim.get_wreg()
-    sim.clear_status_reg_flags()
-    if v == 0:
-        sim.set_z(1)
     
+    if v == 0:
+        z = 0
+    else:
+        z = 1
+    sim.set_status_flags(z, 0, 0)
     if d == 0:
         sim.set_wreg(v)
     else:
@@ -354,9 +356,11 @@ def inst_incf(sim, msb, lsb):
     v = sim.get_freg(f)
     v = (v + 1) & 0xff
     
-    sim.clear_status_reg_flags()
     if v == 0:
-        sim.set_z(1)
+        z = 0
+    else:
+        z = 1
+    sim.set_status_flags(z, 0, 0)
     
     if d == 0:
         sim.set_wreg(v)
@@ -379,7 +383,6 @@ def inst_decfsz(sim, msb, lsb):
     d = (lsb >> 7) & 1
     f = lsb & 0x7f
     v = sim.get_freg(f)
-    sim.clear_status_reg_flags()
     
     if v == 1:
         v = 0
@@ -387,7 +390,7 @@ def inst_decfsz(sim, msb, lsb):
     else:
         v = (v - 1) & 0xff
         z = 0
-    sim.set_z(z)
+    sim.set_status_flags(z, 0, 0)
     
     if d == 0:
         sim.set_wreg(v)
@@ -410,6 +413,7 @@ def inst_rrf(sim, msb, lsb):
     bit0 = v & 1
     c = sim.get_c()
     v = (v >> 1) | (c << 7)
+    
     sim.set_c(bit0)
     if d == 0:
         sim.set_wreg(v)
@@ -456,14 +460,13 @@ def inst_incfsz(sim, msb, lsb):
     f = lsb & 0x7f
     v = sim.get_freg(f)
     v = (v + 1) & 0xff
-    sim.clear_status_reg_flags()
     if v == 0:
         v = 0
         z = 1
     else:
         z = 0
         
-    sim.set_z(z)
+    sim.set_status_flags(z, 0, 0)
     
     if d == 0:
         sim.set_wreg(v)
@@ -476,7 +479,7 @@ def inst_incfsz(sim, msb, lsb):
 #----------------------------------------------------------------------------
 def inst_bcf(sim, msb, lsb):
     #10 : 0001 00bb bfff ffff  bit(3, b7-b9) f(7, b0-b6) BCF f,b   Clear bit b of f
-    bit = get_bits((msb << 8) | lsb, 7, 9)
+    bit = ((msb & 3) << 1) | ((lsb >> 7) & 1)
     f = lsb & 0x7f
     if f == 3:
         sim.set_status_reg(bit, 0)
@@ -486,7 +489,7 @@ def inst_bcf(sim, msb, lsb):
 #----------------------------------------------------------------------------
 def inst_bsf(sim, msb, lsb):
     #14 : 0001 01bb bfff ffff  BSF f,b   Set bit b of f
-    bit = get_bits((msb << 8) | lsb, 7, 9)
+    bit = ((msb & 3) << 1) | ((lsb >> 7) & 1)
     f = lsb & 0x7f
     if f == 3:
         sim.set_status_reg(bit, 1)
@@ -496,10 +499,10 @@ def inst_bsf(sim, msb, lsb):
 #----------------------------------------------------------------------------
 def inst_btfsc(sim, msb, lsb):
     #18 : 0001 10bb bfff ffff  BTFSC f,b   Skip if bit b of f is clear
-    bit = get_bits((msb << 8) | lsb, 7, 9)
+    bit = ((msb & 3) << 1) | ((lsb >> 7) & 1)
     f = lsb & 0x7f
     v = sim.get_freg(f)
-    b = (v >> bit) & 1
+    b = v & (1 << bit)
     #print 'inst_btfsc', b
     if b == 0:
         sim.skip_next_inst()
@@ -507,10 +510,10 @@ def inst_btfsc(sim, msb, lsb):
 #----------------------------------------------------------------------------
 def inst_btfss(sim, msb, lsb):
     #1c : 0001 11bb bfff ffff  BTFSS f,b   Skip if bit b of f is set
-    bit = get_bits((msb << 8) | lsb, 7, 9)
+    bit = ((msb & 3) << 1) | ((lsb >> 7) & 1)
     f = lsb & 0x7f
     v = sim.get_freg(f)
-    b = (v >> bit) & 1
+    b = v & (1 << bit)
     #sim.log('inst_btfss ', f, bit, v, b)
     if b != 0:
         sim.skip_next_inst()
@@ -544,13 +547,13 @@ def inst_iorlw(sim, msb, lsb):
     w = sim.get_wreg()
     k = lsb
     w = k | w
-    sim.clear_status_reg_flags()
+    
     if w == 0:
         z = 1
     else:
         z = 0
     sim.set_wreg(w)
-    sim.set_z(z)
+    sim.set_status_flags(z, 0, 0)
 
 #----------------------------------------------------------------------------
 def inst_andlw(sim, msb, lsb):
@@ -558,13 +561,13 @@ def inst_andlw(sim, msb, lsb):
     w = sim.get_wreg()
     k = lsb
     w = k & w
-    sim.clear_status_reg_flags()
+
     if w == 0:
         z = 1
     else:
         z = 0
     sim.set_wreg(w)
-    sim.set_z(z)
+    sim.set_status_flags(z, 0, 0)
 
 #----------------------------------------------------------------------------
 def inst_xorlw(sim, msb, lsb):
@@ -572,18 +575,17 @@ def inst_xorlw(sim, msb, lsb):
     w = sim.get_wreg()
     k = lsb
     w = k ^ w
-    sim.clear_status_reg_flags()
+
     if w == 0:
         z = 1
     else:
         z = 0
     sim.set_wreg(w)
-    sim.set_z(z)
+    sim.set_status_flags(z, 0, 0)
 
 #----------------------------------------------------------------------------
 def inst_sublw(sim, msb, lsb):
     #3c : 0011 110x kkkk kkkk SUBLW k C Z W <- k-W (dest <- k+~W+1)
-    sim.clear_status_reg_flags()
     c = dc = z = 0
     w = (comp8(sim.get_wreg()) + 1) & 0xff
     k = lsb
@@ -601,9 +603,7 @@ def inst_sublw(sim, msb, lsb):
         z = 1
         
     sim.set_wreg(w)
-    sim.set_c(c)
-    sim.set_z(z)
-    sim.set_dc(dc)    
+    sim.set_status_flags(z, dc, c)
 
 #----------------------------------------------------------------------------
 def inst_addlw(sim, msb, lsb):
@@ -626,9 +626,7 @@ def inst_addlw(sim, msb, lsb):
         z = 1
 
     sim.set_wreg(w)
-    sim.set_c(c)
-    sim.set_z(z)
-    sim.set_dc(dc)
+    sim.set_status_flags(z, dc, c)
     
 
 #----------------------------------------------------------------------------

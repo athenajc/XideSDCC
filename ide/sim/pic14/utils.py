@@ -282,3 +282,21 @@ def get_mem_sfr_map(dev_name):
             sfr_map[int(v, 16) & 0xff] = k
         
     return sfr_map
+
+
+#-------------------------------------------------------------------
+def get_dev_name(fn):
+    from pic14_devices import pic14_devices
+    
+    text = read_file(fn)
+    inc_lines = ""
+    for line in text.split('\n'):
+        if line.find("#include") >= 0:
+            inc_lines += line + '\n'
+            
+    text = inc_lines
+    for d in pic14_devices:
+        if text.find(d) >= 0:
+            return d
+            
+    return None    

@@ -11,11 +11,14 @@ class IdeApp(wx.App):
     
     def OnInit(self):
         set_app(self)
+        
         self.name = 'Xide SDCC'
-        self.config_file = 'xide.cfg'
+        self.dirname = os.path.dirname(os.path.abspath(__file__)) + os.sep
+        
+        self.config_file = self.dirname + 'xide.cfg'
         self.cflags = ""
         self.ldflags = ""
-        self.dirname = os.path.dirname(os.path.abspath(__file__)) + os.sep
+        
         self.work_dir = "/home/athena/"
         self.logger = None
         self.debugging = False

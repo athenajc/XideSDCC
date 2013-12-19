@@ -495,9 +495,13 @@ class MenuFile(wx.Menu):
     def OnFileHistory(self, event):
         # get the file based on the menu ID
         index = event.GetId() - wx.ID_FILE1
-        log(index, wx.ID_FILE1, wx.ID_PROJ1)
+        #log(index, wx.ID_FILE1, wx.ID_PROJ1)
         path = self.app.file_history.GetHistoryFile(index)
-        log("You selected %s\n" % path)
+        if os.path.exists(path):
+            s = "existed"
+        else:
+            s = "not existed"
+        log("You selected %s %s\n" % (path, s))
         
         self.app.open_file(path)
         

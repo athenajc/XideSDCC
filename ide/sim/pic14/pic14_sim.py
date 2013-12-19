@@ -50,7 +50,7 @@ class SimPic():
         #for t in self.addr_map_lst:
             #if t != 0:
                 #print(t)
-                
+        self.pc = 0
         self.c_line = 0
         self.asm_code = ""
         
@@ -131,7 +131,7 @@ class SimPic():
     
     #-------------------------------------------------------------------
     def disassembly(self):
-        return pic_hex_scan(self.frame, self.hex_file, self.mcu_name, self.addr_map_lst)
+        return pic_hex_scan(self.frame, self.hex_file, self.mcu_name, self.dev_name)
     
     #-------------------------------------------------------------------
     def init_registers(self):
@@ -185,7 +185,8 @@ class SimPic():
 
         if addr == self.PCL:
             self.update_pc_from_PCL()
-            
+        elif addr == self.TMR0:
+            self.tmr0_value = v
         return v
     
     #-------------------------------------------------------------------
@@ -253,7 +254,9 @@ class SimPic():
         elif addr == self.PCL:
             #self.log('     set_reg ', key, v)
             self.update_pc_from_PCL()
-                    
+        elif addr == self.TMR0:
+            self.tmr0_value = v
+            
     #-------------------------------------------------------------------
     def set_freg_bit(self, addr, bit, b):
         if not addr in [2, 3, 4, 0xA, 0xB]:
@@ -311,7 +314,6 @@ class SimPic():
         if bit == 7:
             if b == 1:
                 self.int_enabled = True
-                self.tmr0_value = self.freg[self.TMR0]
             else:
                 self.int_enabled = False
         elif bit == 6:
@@ -323,7 +325,6 @@ class SimPic():
         if bit == -1:
             if v & BIT7 and self.int_enabled == False:
                 self.int_enabled = True
-                self.tmr0_value = self.freg[self.TMR0]
         
     #-------------------------------------------------------------------
     def set_option_reg(self, v, bit=-1, b=None):
@@ -449,8 +450,14 @@ class SimPic():
             self.bank_addr = bank * 0x80
             if bit == 6:
                 if self.debug:
-                    self.log("     select bank %d, %02x", (bank, self.bank_addr))
-                
+                    self.log("     select bank %d, %02x" % (bank, self.bank_addr))
+                    
+    #-------------------------------------------------------------------
+    def set_status_flags(self, z, dc=0, c=0):
+        v = self.status_reg & 0xf8
+        v |= c | (dc << 1) | (z << 2)
+        self.freg[0x03] = self.status_reg = v
+        
     #-------------------------------------------------------------------
     def clear_status_reg_flags(self):
         v = self.status_reg & 0xf0
@@ -491,11 +498,11 @@ class SimPic():
     
     #-------------------------------------------------------------------
     def set_input(self, k, v):
-        # INTCON, PIE1, PIE2        
+        # INTCON, PIE1, PIE2
         k2 = k[0:2]
         if k == 'INT':
-            if self.freg[self.INTCON] & BIT4:
-                self.reg[self.INTCON] |= BIT2
+            if v == 1:
+                self.freg[self.INTCON] |= BIT1
         elif k2 == 'RA':
             bit = int(k[2:3])
             if v:
@@ -545,6 +552,9 @@ class SimPic():
         #PCLATU   0FFB
         if self.debug:
             self.log("     set pc = %04x" % (v))
+        
+        if v >= 0x1000:
+            self.err = True
         self.pc = v
         
         self.freg[self.PCL] = v & 0xff
@@ -642,7 +652,7 @@ class SimPic():
         if intcon & BIT7 == 0:
             return
         if intcon & 7:  #T0IF, 
-            if intcon & BIT4 and intcon & BIT1:
+            if intcon & BIT4 and intcon & BIT1: # 4:INTE and 1:INTF
                 # RB0/INT flag
                 self.int_enabled = False
                 self.call_interrupt(1)
@@ -716,6 +726,9 @@ class SimPic():
             
         addr = self.inst_addr = self.pc
         addr += addr
+        if addr >= 0x1000:
+            self.err = True
+            return
         lsb = self.code_space[addr]
         msb = self.code_space[addr + 1] & 0x3f
         
@@ -735,7 +748,7 @@ class SimPic():
         #set_sim(self)
 
         self.mode = 'run'
-        self.pc = 0x0
+        self.pc = 0
         self.cmd_queue = Queue.Queue()
         self.c_line = 0
         
