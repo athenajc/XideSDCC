@@ -1,6 +1,270 @@
 import wx
 from utils import tohex, get_sfr_addr
 
+
+#----------------------------------------------------------------------
+
+label1 = "Click here to show pane"
+label2 = "Click here to hide pane"
+
+btnlbl1 = "call Expand(True)"
+btnlbl2 = "call Expand(False)"
+
+#---------------------------------------------------------------------------------------------------
+class WatchPane():
+    def __init__(self, parent, parent_sizer, title):
+        self.sim = None
+        self.parent = parent
+        self.label1 = "Click here to Show " + title
+        self.label2 = "Click here to Hide " + title
+        self.cp = cp = wx.CollapsiblePane(parent, label=self.label1,
+                                          style=wx.CP_DEFAULT_STYLE |wx.CP_NO_TLW_RESIZE)
+        cp.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, cp)
+
+        parent_sizer.Add(cp, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
+        
+    #------------------------------------------------------------------------
+    def OnPaneChanged(self, evt=None):
+        # redo the layout
+        self.parent.Layout()
+
+        # and also change the labels
+        if self.cp.IsExpanded():
+            self.cp.SetLabel(self.label2)
+        else:
+            self.cp.SetLabel(self.label1)
+            
+
+#----------------------------------------------------------------------------------
+USE_BUFFER = ('wxMSW' in wx.PlatformInfo) # use buffered drawing on Windows
+
+#----------------------------------------------------------------------------------
+class Led(wx.Panel):
+    def __init__(self, parent, value):
+        self.d = 5
+        self.w = 40
+        self._buffer = None
+        self.path_v = self.path_h = None
+        self.value = value
+        wx.Panel.__init__(self, parent, -1, size=(120, 200))
+
+        self.Bind(wx.EVT_PAINT, self.OnPaint)
+        if USE_BUFFER:
+            self.Bind(wx.EVT_SIZE, self.OnSize)
+
+    #----------------------------------------------------------------------------
+    def OnSize(self, evt):
+        self.init_buffer()
+        evt.Skip()
+        
+    #----------------------------------------------------------------------------
+    def OnPaint(self, evt):
+        if USE_BUFFER:
+            # The buffer already contains our drawing, so no need to
+            # do anything else but create the buffered DC.  When this
+            # method exits and dc is collected then the buffer will be
+            # blitted to the paint DC automagically
+            dc = wx.BufferedPaintDC(self, self._buffer)
+        else:
+            # Otherwise we need to draw our content to the paint DC at
+            # this time.
+            dc = wx.PaintDC(self)
+            self.gc = gc = self.make_gc(dc)
+            self.draw(gc)
+            
+    #----------------------------------------------------------------------------
+    def init_path(self):
+        gc = self.gc
+        # make a path that contains a circle and some lines, centered at 0,0
+        path = gc.CreatePath()
+        d = self.d
+        w = self.w
+        d2 = d * 2
+        path.MoveToPoint(0, d)
+        path.AddLineToPoint(d, 0)
+        path.AddLineToPoint(w + d, 0)
+        path.AddLineToPoint(w + d2, d)
+        path.AddLineToPoint(w + d, d2)
+        path.AddLineToPoint(d, d2)
+        path.AddLineToPoint(0, d)
+        
+        path_v = gc.CreatePath()
+        path_v.MoveToPoint(0, d)
+        path_v.AddLineToPoint(d, 0)
+        path_v.AddLineToPoint(d2, d)
+        path_v.AddLineToPoint(d2, w + d)
+        path_v.AddLineToPoint(d, w + d2)
+        path_v.AddLineToPoint(0, w + d)
+        path_v.AddLineToPoint(0, d)
+        
+        self.path_h = path
+        self.path_v = path_v
+        
+    #----------------------------------------------------------------------------
+    def init_buffer(self):
+        sz = self.GetClientSize()
+        sz.width = max(1, sz.width)
+        sz.height = max(1, sz.height)
+        self._buffer = wx.EmptyBitmap(sz.width, sz.height, 32)
+
+        dc = wx.MemoryDC(self._buffer)
+        dc.SetTextForeground((220,220,220))
+        dc.SetBackground(wx.Brush(self.GetBackgroundColour()))
+        dc.Clear()
+        self.gc = gc = self.make_gc(dc)
+        self.draw(gc)
+        
+    #----------------------------------------------------------------------------
+    def make_gc(self, dc):
+        try:
+            gc = wx.GraphicsContext.Create(dc)
+        except NotImplementedError:
+            dc.DrawText("This build of wxPython does not support the wx.GraphicsContext "
+                        "family of classes.",
+                        25, 25)
+            return None
+        return gc
+    
+    #----------------------------------------------------------------------------
+    def draw_led_pin(self, label, x, y, path, fill):
+        gc = self.gc
+        gc.PushState()
+        gc.Translate(x, y)
+        if not fill:
+            self.gc.StrokePath(path)
+            if path == self.path_v:
+                gc.DrawText(label, 2, 20)
+            else:
+                gc.DrawText(label, 20, -1)
+        else:
+            self.gc.DrawPath(path)
+
+        gc.PopState()
+        
+    #----------------------------------------------------------------------------
+    def draw_led(self, x, y, value):
+        gc = self.gc
+        if self.path_h == None:
+            self.init_path()
+        gc.SetPen(wx.Pen("grey", 1))
+        gc.SetBrush(wx.Brush("red"))
+        
+        font = wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
+        font.SetWeight(wx.LIGHT)
+        gc.SetFont(font, "grey")
+        
+        gc.PushState()
+        d = self.d
+        d2 = d + d
+        w = self.w + d2
+        path_h = self.path_h
+        path_v = self.path_v
+        gc.Translate(x, y)
+        self.draw_led_pin('a', d + 2, 0, path_h, value & 1)        #A
+        self.draw_led_pin('b', w + 4, d + 1, path_v, value & 0x2)  #B
+        self.draw_led_pin('c', w + 4, w + d + 3, path_v, value & 0x4)  #C
+        self.draw_led_pin('d', d + 2, w * 2 + 4, path_h, value & 0x8)  #D
+        self.draw_led_pin('e', 0, w + d + 3, path_v, value & 0x10)     #E
+        self.draw_led_pin('f', 0, d + 1, path_v, value & 0x20)      #F
+        self.draw_led_pin('g', d + 2, w + 2, path_h, value & 0x40)  #G
+        gc.PopState()
+        
+    #----------------------------------------------------------------------------
+    def test(self):
+        gc = self.gc
+        font = wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
+        font.SetWeight(wx.BOLD)
+        gc.SetFont(font)
+        led_lst = [0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6D, 0x7D, 0x07, 0x7f, 0x6f]
+        w1 = 100
+        for i in range(10):
+            x = w1 * i + 20
+            self.draw_led(x, 20, led_lst[i])
+            
+    #----------------------------------------------------------------------------
+    def draw(self, gc):
+        self.draw_led(20, 20, self.value)
+        
+    #----------------------------------------------------------------------------
+    def set_value(self, value):
+        self.value = value
+        self.Refresh()
+        
+#---------------------------------------------------------------------------
+class ComboBox(wx.ComboBox):
+    """ usage : cbox = ComboBox(parent, sizer, "label", ['item a', 'bbb', 'c'] """
+    def __init__(self, parent, sizer, label, lst, flag = wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL):
+        wx.ComboBox.__init__(self, parent, pos=(150, 90), size=(95, -1), choices=lst, style=wx.CB_DROPDOWN)
+        box = wx.BoxSizer(wx.HORIZONTAL)
+
+        label = wx.StaticText(parent, -1, label, size=(10, -1))
+        box.Add(label, 0, wx.ALIGN_CENTRE|wx.LEFT|wx.RIGHT, 5)
+        box.Add(self, 0, wx.ALIGN_CENTRE|wx.ALL, 0)
+        
+        if sizer:
+            sizer.Add(box, 0, flag, 0)
+            
+
+#---------------------------------------------------------------------------------------------------
+class WatchLed(WatchPane):
+    def __init__(self, parent, parent_sizer):
+        WatchPane.__init__(self, parent, parent_sizer, "LED")
+                    
+        panel = self.cp.GetPane() #wx.Panel(parent,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.led = Led(panel, 0x00)
+        
+        cb_sizer = wx.BoxSizer(wx.VERTICAL)
+        pins = ['RA0','RA1','RA2','RA3','RA4','RA5','RA6','RA7',
+                        'RB0','RB1','RB2','RB3','RB4','RB5','RB6','RB7',
+                        'RC0','RC1','RC2','RC3','RC4','RC5','RC6','RC7',]
+        self.cb_lst = [None] * 7
+        s = ["a", "b", "c", "d", "e", "f", "g"]
+        for i in range(7):
+            self.cb_lst[i] = cb = ComboBox(panel, cb_sizer, s[i], pins)
+            cb.SetValue(pins[i])
+            if i == 0:
+                cb.Bind(wx.EVT_COMBOBOX, self.OnSelectPin0)
+            else:
+                cb.Bind(wx.EVT_COMBOBOX, self.OnSelectPin)
+        
+        sizer.Add(self.led, 0, wx.EXPAND)
+        sizer.Add(cb_sizer, 0, wx.EXPAND)
+        
+        panel.SetSizer(sizer)
+        panel.Layout()
+        self.cp.Expand()
+        #box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
+        #parent_sizer.Add(box_sizer, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
+        
+    #------------------------------------------------------------------------
+    def update(self, sim):
+        if sim is None:
+            return
+        self.led.set_value(sim.get_reg('PORTA'))
+        
+    #----------------------------------------------------------------------------
+    def set_value(self, value):
+        self.led.set_value(value)
+        
+    #--------------------------------------------------------------
+    def OnSelectPin0(self, event):
+        key = self.cb_lst[0].GetValue()
+        if key == 'RA0':
+            for i in range(1,7):
+                self.cb_lst[i].SetValue("RA" + str(i))
+        elif key == 'RB0':
+            for i in range(1,7):
+                self.cb_lst[i].SetValue("RB" + str(i))
+        elif key == 'RC0':
+            for i in range(1,7):
+                self.cb_lst[i].SetValue("RC" + str(i))
+                
+    #--------------------------------------------------------------
+    def OnSelectPin(self, event):
+        print event.GetString()
+        key = self.cb_lst[0].GetValue()
+
 #---------------------------------------------------------------------------------------------------
 class SfrTextCtrl(wx.TextCtrl):
     def __init__(self, parent, sizer, label_str, help_str="", default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, sz1=(40,-1), sz2=(35,-1)):
@@ -89,14 +353,15 @@ class LabelTextCtrl(wx.TextCtrl):
             self.SetBackgroundColour((235,235,235))
 
 #---------------------------------------------------------------------------------------------------
-class PcDptrTextCtrlList(wx.StaticBoxSizer):
+class PcDptrTextCtrlList(WatchPane):
     def __init__(self, parent, parent_sizer):
-        title = ''
-        box = wx.StaticBox(parent, wx.ID_ANY, title)
-        wx.StaticBoxSizer.__init__(self, box, wx.HORIZONTAL)
-        box_sizer = self
+        WatchPane.__init__(self, parent, parent_sizer, "PC ADDR")
+        #title = ''
+        #box = wx.StaticBox(parent, wx.ID_ANY, title)
+        #wx.StaticBoxSizer.__init__(self, box, wx.HORIZONTAL)
+        #box_sizer = self
                     
-        panel = wx.Panel(parent,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+        panel = self.cp.GetPane() #wx.Panel(parent,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
             
         self.pc_text = LabelTextCtrl(panel, sizer, 'PC ', '', '00', size=(60, -1))
@@ -104,9 +369,9 @@ class PcDptrTextCtrlList(wx.StaticBoxSizer):
         self.sp_text = LabelTextCtrl(panel, sizer, '  SP ', '', '00', size=(30, -1))
         panel.SetSizer(sizer)
         panel.Layout()
-         
-        box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
-        parent_sizer.Add(box_sizer, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
+        self.cp.Expand()
+        #box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
+        #parent_sizer.Add(box_sizer, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
         
     #------------------------------------------------------------------------
     def update(self, sim):
@@ -115,6 +380,8 @@ class PcDptrTextCtrlList(wx.StaticBoxSizer):
         self.pc_text.set_value(sim.get_reg('PC'), 4)
         self.dptr_text.set_value(sim.get_reg('FSR0'), 4)
         self.sp_text.set_value(sim.get_reg('SP'), 2)
+        
+
         
 #---------------------------------------------------------------------------
 class PortTextCtrl():
@@ -151,18 +418,17 @@ class PortTextCtrl():
             t.SetBackgroundColour(c[b])
         
 #---------------------------------------------------------------------------------------------------
-class PortTextCtrlList(wx.StaticBoxSizer):
+class PortTextCtrlList(WatchPane):
     def __init__(self, parent, parent_sizer):
+        WatchPane.__init__(self, parent, parent_sizer, "Port Data")
         
-        self.sim = None
-        self.parent = parent
-        
-        title = ''
-        box = wx.StaticBox(parent, wx.ID_ANY, title)
-        wx.StaticBoxSizer.__init__(self, box, wx.VERTICAL)
-        box_sizer = self
+        panel = self.cp.GetPane()
+        #title = ''
+        #box = wx.StaticBox(parent, wx.ID_ANY, title)
+        #wx.StaticBoxSizer.__init__(self, box, wx.VERTICAL)
+        #box_sizer = self
                     
-        panel = wx.Panel(parent,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+        #panel = wx.Panel(p,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         self.p0_text = PortTextCtrl(panel, sizer, 'PORTA ', '', '00', size=(30, -1))
@@ -198,10 +464,14 @@ class PortTextCtrlList(wx.StaticBoxSizer):
         
         panel.SetSizer(sizer)
         panel.Layout()
-         
-        box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
-        parent_sizer.Add(box_sizer, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
         
+        #sizer.Add(cp, 0, wx.RIGHT|wx.LEFT|wx.EXPAND, 25)
+        #box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
+        #parent_sizer.Add(cp, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
+        self.cp.Expand()
+        
+ 
+            
     #------------------------------------------------------------------------
     def update(self, sim):
         if sim is None:
@@ -214,108 +484,6 @@ class PortTextCtrlList(wx.StaticBoxSizer):
         self.t1_text.set_value(sim.get_reg('TRISB'))
         self.t2_text.set_value(sim.get_reg('TRISC'))
         
-#---------------------------------------------------------------------------------------------------
-class RegTextCtrlList(wx.StaticBoxSizer):
-    def __init__(self, parent, parent_sizer):
-        title = ''
-        box = wx.StaticBox(parent, wx.ID_ANY, title)
-        wx.StaticBoxSizer.__init__(self, box, wx.HORIZONTAL)
-        box_sizer = self
-                    
-        panel = wx.Panel(parent,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        
-        size1 = (25, -1)
-        size2 = (30, -1)
-        self.a_text = SfrTextCtrl(panel, sizer, '3', '', '00', sz1=size1, sz2=size2)
-        self.c_text = SfrTextCtrl(panel, sizer, '4', '', '00', sz1=size1, sz2=size2)
-        self.r0_text = SfrTextCtrl(panel, sizer, '5', '', '00', sz1=size1, sz2=size2)
-        self.r1_text = SfrTextCtrl(panel, sizer, '6', '', '00', sz1=size1, sz2=size2)
-        self.r2_text = SfrTextCtrl(panel, sizer, '7', '', '00', sz1=size1, sz2=size2)
-        self.r3_text = SfrTextCtrl(panel, sizer, '8', '', '00', sz1=size1, sz2=size2)
-        self.r4_text = SfrTextCtrl(panel, sizer, 'R4', '', '00', sz1=size1, sz2=size2)
-        self.r5_text = SfrTextCtrl(panel, sizer, 'R5', '', '00', sz1=size1, sz2=size2)
-        self.r6_text = SfrTextCtrl(panel, sizer, 'R6', '', '00', sz1=size1, sz2=size2)
-        self.r7_text = SfrTextCtrl(panel, sizer, 'R7', '', '00', sz1=size1, sz2=size2)
-        
-        panel.SetSizer(sizer)
-        panel.Layout()
-         
-        box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
-        parent_sizer.Add(box_sizer, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
-        
-    #------------------------------------------------------------------------
-    def update(self, sim):
-        if sim is None:
-            return
-
-        self.a_text.set_value(sim.get_mem(3))
-        self.c_text.set_value(sim.get_mem(4))
-        self.r0_text.set_value(sim.get_mem(5))
-        self.r1_text.set_value(sim.get_mem(6))
-        self.r2_text.set_value(sim.get_mem(7))
-        self.r3_text.set_value(sim.get_mem(8))
-        self.r4_text.set_value(sim.get_reg('r4'))
-        self.r5_text.set_value(sim.get_reg('r5'))
-        self.r6_text.set_value(sim.get_reg('r6'))
-        self.r7_text.set_value(sim.get_reg('r7'))
-                    
-#---------------------------------------------------------------------------------------------------
-class SfrWatchPanel(wx.Panel):
-    def __init__(self, parent):
-        wx.Panel.__init__ (self, parent, id = wx.ID_ANY, pos = wx.DefaultPosition, size = wx.Size(300,300), style = wx.TAB_TRAVERSAL)
-                
-        self.SetMinSize(wx.Size(300,300))
-        #main_sizer = wx.BoxSizer(wx.VERTICAL)
-        #self.pc_dptr_viewer = PcDptrTextCtrlList(self, main_sizer)
-        
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
-        
-        self.sfr_map_1 = [
-            ['P0',   0x80],
-            ['P1',   0x90],
-            ['P2',   0xA0],
-            ['P3',   0xB0],
-            ['DPL',  0x82],
-            ['DPH',  0x83],
-            ['PSW',  0xD0],
-            
-            ['ACC',  0xE0],
-            
-            ['IE',   0xA8],
-            ['IP',   0xB8],
-        ]
-        
-        self.sfr_map_2 = [
-            ['PCON', 0x87],
-            ['TCON', 0x88],
-            ['TMOD', 0x89],
-            ['TL0',  0x8A],
-            
-            ['TL1',  0x8B],
-            ['TH0',  0x8C],
-            ['TH1',  0x8D],
-            ['SCON', 0x98],
-            ['SBUF', 0x99],
-            ['B',    0xF0],
-        ]
-        
-        self.watch1 = SfrTextCtrlList(self, sizer, '', self.sfr_map_1)
-        self.watch2 = SfrTextCtrlList(self, sizer, '', self.sfr_map_2)
-        self.reg_watch = RegTextCtrlList(self, sizer)
-        
-        #main_sizer.Add(sizer, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, 0)
-        self.SetSizer(sizer)
-        self.Layout()
-        
-    #------------------------------------------------------------------------
-    def update(self, sim):
-        if sim is None:
-            return
-        #self.pc_dptr_viewer.update(sim)
-        self.watch1.update(sim)
-        self.watch2.update(sim)
-        self.reg_watch.update(sim)
         
         
 #---------------------------------------------------------------------------------------------------
@@ -427,7 +595,7 @@ class WatchPanel (wx.Panel):
         sizer = wx.BoxSizer(wx.VERTICAL)
         self.pc_dptr_viewer = PcDptrTextCtrlList(self, sizer)
         self.port_panel = PortTextCtrlList(self, sizer)
-        
+        self.watch_led = WatchLed(self, sizer)
         #watch_panel = self.sfr_watch = SfrWatchPanel(self)
         text_view = self.uart_text_view = UartTextViewer(self)
         
@@ -488,6 +656,7 @@ class WatchPanel (wx.Panel):
             self.sim = sim
         self.pc_dptr_viewer.update(sim)
         self.port_panel.update(sim)
+        self.watch_led.update(sim)
         #self.sfr_watch.update(sim)
         
     #------------------------------------------------------------------------
@@ -503,3 +672,119 @@ class WatchPanel (wx.Panel):
     #------------------------------------------------------------------------
     def __del__(self):
         pass
+    
+
+
+
+
+#class TestPanel(wx.Panel):
+    #def __init__(self, parent):
+        #self.log = None
+        #wx.Panel.__init__(self, parent, -1)
+        #title = wx.Button(self, label="wx.CollapsiblePane")
+        
+        #title.Bind(wx.EVT_BUTTON, self.OnClickTitle, title)
+        #self.cp = cp = wx.CollapsiblePane(self, label=label1,
+                                          #style=wx.CP_DEFAULT_STYLE |wx.CP_NO_TLW_RESIZE)
+        #self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, cp)
+        #self.MakePaneContent(cp.GetPane())
+        ##p = cp.GetPane()
+        ##p.frame = parent
+        ##WatchPanel(p, "PIC14", "pic16f883")
+        #sizer = wx.BoxSizer(wx.VERTICAL)
+        #self.SetSizer(sizer)
+        #sizer.Add(title, 0, wx.ALL|wx.EXPAND, 0)
+        #sizer.Add(cp, 0, wx.RIGHT|wx.LEFT|wx.EXPAND, 25)
+        
+    #def OnClickTitle(self, evt):
+        #self.cp.Collapse(self.cp.IsExpanded())
+        #self.OnPaneChanged()        
+        
+    #def OnToggle(self, evt):
+        #self.cp.Collapse(self.cp.IsExpanded())
+        #self.OnPaneChanged()
+        
+
+    #def OnPaneChanged(self, evt=None):
+        ## redo the layout
+        #self.Layout()
+
+        ## and also change the labels
+        #if self.cp.IsExpanded():
+            #self.cp.SetLabel(label2)
+        #else:
+            #self.cp.SetLabel(label1)
+        
+
+    #def MakePaneContent(self, pane):
+        #'''Just make a few controls to put on the collapsible pane'''
+        #nameLbl = wx.StaticText(pane, -1, "Name:")
+        #name = wx.TextCtrl(pane, -1, "");
+
+        #addrLbl = wx.StaticText(pane, -1, "Address:")
+        #addr1 = wx.TextCtrl(pane, -1, "");
+        #addr2 = wx.TextCtrl(pane, -1, "");
+
+        #cstLbl = wx.StaticText(pane, -1, "City, State, Zip:")
+        #city  = wx.TextCtrl(pane, -1, "", size=(150,-1));
+        #state = wx.TextCtrl(pane, -1, "", size=(50,-1));
+        #zip   = wx.TextCtrl(pane, -1, "", size=(70,-1));
+        
+        #addrSizer = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
+        #addrSizer.AddGrowableCol(1)
+        #addrSizer.Add(nameLbl, 0, 
+                #wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+        #addrSizer.Add(name, 0, wx.EXPAND)
+        #addrSizer.Add(addrLbl, 0,
+                #wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+        #addrSizer.Add(addr1, 0, wx.EXPAND)
+        #addrSizer.Add((5,5)) 
+        #addrSizer.Add(addr2, 0, wx.EXPAND)
+
+        #addrSizer.Add(cstLbl, 0,
+                #wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+
+        #cstSizer = wx.BoxSizer(wx.HORIZONTAL)
+        #cstSizer.Add(city, 1)
+        #cstSizer.Add(state, 0, wx.LEFT|wx.RIGHT, 5)
+        #cstSizer.Add(zip)
+        #addrSizer.Add(cstSizer, 0, wx.EXPAND)
+
+        #border = wx.BoxSizer()
+        #border.Add(addrSizer, 1, wx.EXPAND|wx.ALL, 5)
+        #pane.SetSizer(border)
+
+
+
+##----------------------------------------------------------------------------------
+#class TestFrame(wx.Frame):
+    #def __init__(self, parent, title):
+        #wx.Frame.__init__(self, parent, title=title, size=(400, 768),
+                          #style=wx.DEFAULT_FRAME_STYLE|wx.NO_FULL_REPAINT_ON_RESIZE)
+        #self.SetMinSize(wx.Size(300,300))
+
+        #self.sizer = wx.BoxSizer(wx.VERTICAL)
+        #self.frame = self
+        #p = WatchPanel(self, "PIC14", "pic16f883")
+        #self.sizer.Add(p, 1, wx.EXPAND)    
+        
+        #self.SetSizer(self.sizer)
+        #self.sizer.Layout()
+
+            
+##----------------------------------------------------------------------------------
+#class TestApp(wx.App):
+    #def OnInit(self):
+        #frame = TestFrame(None, 'Test Frame')
+        #self.SetTopWindow(frame)
+        #frame.Show(True)
+        #return True
+
+    #def OnClose(self):
+        #print 'TestApp onclose'
+        #return true
+
+##----------------------------------------------------------------------------------
+#if __name__ == '__main__':
+    #app = TestApp(0)
+    #app.MainLoop()

@@ -238,13 +238,15 @@ class SimPic():
     
     #-------------------------------------------------------------------
     def set_freg(self, addr, v):
+        if addr == 0:
+            addr = self.freg[self.FSR]
         if not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
         
         if self.debug:
             key = self.sfr_name[addr]
             self.log("     set freg %s %02x = %02x" % (key, addr, v))
-            
+
         self.freg[addr] = v
         if addr == 3:
             self.status_reg = v
@@ -258,6 +260,8 @@ class SimPic():
                        
     #-------------------------------------------------------------------
     def set_freg_bit(self, addr, bit, b):
+        if addr == 0:
+            addr = self.freg[self.FSR]
         if not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
         
@@ -284,6 +288,8 @@ class SimPic():
             
     #-------------------------------------------------------------------
     def get_freg(self, addr):
+        if addr == 0:
+            addr = self.freg[self.FSR]
         if not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
 
