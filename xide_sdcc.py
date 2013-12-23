@@ -1,4 +1,5 @@
 #!/usr/bin/python2
+# SDCC IDE
 import wx
 import ide
 
