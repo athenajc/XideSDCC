@@ -1,4 +1,4 @@
-XideSDCC
+XideSDCC  - SDCC IDE
 ========
 
 XIDE of SDCC - Xanadu Integrated Development Environment of Small Device C Compiler
