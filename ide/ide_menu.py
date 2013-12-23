@@ -456,26 +456,63 @@ class MenuProject(wx.Menu):
         """Close current SDCC project file."""
         self.app.close_project()    
         
+        
+#---------------------------------------------------------------------------------------------------
+class MenuExample(wx.Menu):
+    def __init__(self, parent):
+        self.app = parent.app
+        wx.Menu.__init__(self)
+        dirname = self.app.dirname.replace("ide" + os.sep, "examples" + os.sep)
+        lst = os.listdir(dirname)
+        i = 0
+        self.examples = {}
+        
+        for d in lst:
+            menu = wx.Menu()
+            sub_lst = os.listdir(dirname + d)
+            
+            for d1 in sub_lst:
+                _id = wx.NewId()
+                m = menu.Append(_id, d1)
+                parent.frame.Bind(wx.EVT_MENU, self.OnOpenFile, id = _id)
+                path = dirname + d + os.sep + d1 + os.sep
+                self.examples[_id] = path
+                
+            self.AppendSubMenu(menu, d)
+                        
+    #-------------------------------------------------------------------
+    def OnOpenFile(self, event):
+        path = self.examples[event.GetId()]
+        for f in os.listdir(path):
+            if f.endswith(".c") > 0:
+                self.app.open_file(path + f)
+    
+    
 #---------------------------------------------------------------------------------------------------
 class MenuFile(wx.Menu):
     def __init__(self, frame, menubar):
         self.app = frame.app
+        self.frame = frame
         wx.Menu.__init__(self)
 
         self.Append(ID_NEW_FILE,     "&New\tCtrl-N",   "Create an empty file")
         self.Append(ID_OPEN,    "&Open...\tCtrl-O",    "Open an existing file")
         self.sub_menu = wx.Menu()
         self.AppendSubMenu(self.sub_menu, "Recent files")
+        
+        self.example_menu = MenuExample(self)
+        self.AppendSubMenu(self.example_menu, "Examples")
         self.Append(ID_CLOSE,   "&Close file\tCtrl+W", "Close the current file")
         self.AppendSeparator()
         self.Append(ID_SAVE,    "&Save\tCtrl-S",       "Save the current document")
         self.Append(ID_SAVEAS,  "Save &As...\tAlt-S",  "Save the current document to a file with a new name")
         self.Append(ID_SAVEALL, "Save A&ll...\tCtrl-Shift-S", "Save all open documents")
         self.AppendSeparator()
+        
         self.Append(ID_EXIT,    "E&xit\tAlt-X",        "Exit Program")
         
         menubar.Append(self, ("File"))
-        self.frame = frame
+        
         
         frame.Bind(wx.EVT_MENU, self.OnNewFile,  id=ID_NEW_FILE)
         frame.Bind(wx.EVT_MENU, self.OnOpenFile,  id=ID_OPEN)

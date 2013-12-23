@@ -339,43 +339,44 @@ def pic_hex_scan(frame, fn, mcu, dev_name):
     
 
 
-#----------------------------------------------------------------------------
-def test_pic_hex_scan(fn):
-    cfn = fn.replace('.hex', '.c')
-    text = utils.read_file(cfn)
+##----------------------------------------------------------------------------
+#def test_pic_hex_scan(fn):
+    #cfn = fn.replace('.hex', '.c')
+    #text = utils.read_file(cfn)
     
-    dev_name = utils.get_dev_name(cfn)
-    if dev_name == None:
-        print "Can't find matched device " + cfn
-        return
+    #dev_name = utils.get_dev_name(cfn)
+    #if dev_name == None:
+        #print "Can't find matched device " + cfn
+        #return
     
-    mcu = None
-    if dev_name[0:2] != "18":
-        mcu = 'pic14'
+    #mcu = None
+    #if dev_name[0:2] != "18":
+        #mcu = 'pic14'
       
-    if mcu:
-        print mcu, dev_name, fn
-        pic_hex_scan(None, fn, mcu, dev_name)
+    #if mcu:
+        #print mcu, dev_name, fn
+        #pic_hex_scan(None, fn, mcu, dev_name)
     
-import re
-#-------------------------------------------------------------------
-def test_get_dev_name(fn):
-    fn = "/home/athena/src/pic14/0001/t0001.c"
-    
-    text = read_file(fn)
-    
-    match = re.findall(r"#include <\w+.h>", text)
-    #log(match)
-    for t in match :
-        t = re.sub("#include <", "", t)
-        t = re.sub(">", "", t)
 
-        if t.find("pic16") >= 0 or t.find("pic10") >= 0 or t.find("pic12") >= 0 :
-            mcu = "pic14"
-            dev = re.sub("pic", "", t)
-            dev = re.sub(".h", "", dev)
-            print mcu, dev
-    return None    
+##-------------------------------------------------------------------
+#def test_get_dev_name(fn):
+    #import re
+    #fn = "/home/athena/src/pic14/0001/t0001.c"
+    
+    #text = read_file(fn)
+    
+    #match = re.findall(r"#include <\w+.h>", text)
+    ##log(match)
+    #for t in match :
+        #t = re.sub("#include <", "", t)
+        #t = re.sub(">", "", t)
+
+        #if t.find("pic16") >= 0 or t.find("pic10") >= 0 or t.find("pic12") >= 0 :
+            #mcu = "pic14"
+            #dev = re.sub("pic", "", t)
+            #dev = re.sub(".h", "", dev)
+            #print mcu, dev
+    #return None    
 
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    
