@@ -212,7 +212,9 @@ class WatchLed(WatchPane):
         self.led = Led(panel, 0x00)
         
         # default select PortA RA0 - RA7
-        self.select_port = "PORTA"
+        self.select_port = parent.settings["led_port"]
+        if self.select_port == "None":
+            self.select_port = None
         
         cb_sizer = wx.BoxSizer(wx.VERTICAL)
         pins = ['RA0','RA1','RA2','RA3','RA4','RA5','RA6','RA7',
@@ -222,7 +224,8 @@ class WatchLed(WatchPane):
         s = ["a", "b", "c", "d", "e", "f", "g"]
         for i in range(7):
             self.cb_lst[i] = cb = ComboBox(panel, cb_sizer, s[i], pins)
-            cb.SetValue(pins[i])
+            #cb.SetValue(pins[i])
+            cb.SetValue(parent.settings["led_p" + str(i)])
             if i == 0:
                 cb.Bind(wx.EVT_COMBOBOX, self.OnSelectPin0)
             else:
@@ -266,9 +269,10 @@ class WatchLed(WatchPane):
         
     #----------------------------------------------------------------------------
     def update_select_pins(self):
-        for i in range(1,7):
+        self.parent.set_setting('led_port', self.select_port)
+        for i in range(0,7):
             s = self.cb_lst[i].GetValue()
-            
+            self.parent.set_setting('led_p' + str(i), s)
             
     #--------------------------------------------------------------
     def OnSelectPin0(self, event):
@@ -287,7 +291,7 @@ class WatchLed(WatchPane):
                 self.cb_lst[i].SetValue("RC" + str(i))
         else:
             self.select_port = None
-            self.update_select_pins()
+        self.update_select_pins()
                 
     #--------------------------------------------------------------
     def OnSelectPin(self, event):
@@ -601,13 +605,26 @@ class UartTextViewer(wx.Panel):
 #---------------------------------------------------------------------------------------------------
 class WatchPanel (wx.Panel):
     
-    def __init__(self, parent, mcu_name, mcu_device):
+    def __init__(self, parent, mcu_name, mcu_device, config_file):
         wx.Panel.__init__ (self, parent, id = wx.ID_ANY, pos = wx.DefaultPosition, size = wx.Size(500,300), style = wx.TAB_TRAVERSAL)
         
         self.sim = None
         self.frame = parent.frame
         self.mcu_name = mcu_name
         self.mcu_device = mcu_device
+        self.config_file = config_file
+        self.settings = {
+            'led_port':'PORTA',
+            'led_p0':'RA0',
+            'led_p1':'RA1',
+            'led_p2':'RA2',
+            'led_p3':'RA3',
+            'led_p4':'RA4',
+            'led_p5':'RA5',
+            'led_p6':'RA6',
+            'led_p7':'RA7',
+        }
+        self.load_config()
         
         sizer = wx.BoxSizer(wx.VERTICAL)
         self.pc_dptr_viewer = PcDptrTextCtrlList(self, sizer)
@@ -622,7 +639,35 @@ class WatchPanel (wx.Panel):
         
         self.SetSizer(sizer)
         self.Layout()
-       
+        
+    #-------------------------------------------------------------------
+    def set_setting(self, k, v):
+        self.settings[k] = v
+        
+    #-------------------------------------------------------------------
+    def save_config(self):
+        config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
+        
+        config.Write("pic14_watch_settings", "True")
+        for k, v in self.settings.items():
+            config.Write(k, str(v))
+
+        del config
+
+    #-------------------------------------------------------------------
+    def load_config(self):
+        config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
+        
+        if config.Exists("pic14_watch_settings"):
+            for k, v in self.settings.items():
+                s = config.Read(k, str(v))
+                if type(v) == str:
+                    self.settings[k] = s
+                else:
+                    self.settings[k] = int(s)
+
+        del config
+
     #--------------------------------------------------------------
     def OnSelectInt0(self, event):
         if self.sim:
@@ -688,6 +733,7 @@ class WatchPanel (wx.Panel):
         
     #------------------------------------------------------------------------
     def __del__(self):
+        self.save_config()
         pass
     
 
