@@ -1,8 +1,8 @@
-XideSDCC  - SDCC IDE
+SDCC IDE
 ========
 
 XIDE of SDCC - Xanadu Integrated Development Environment of Small Device C Compiler
-    
+
 
 * Integrate Editor, Compiler and Simulators
 * Target for all device supported by SDCC - MCS51, PIC14/PIC16, Z80, DS390, DS400....
