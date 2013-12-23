@@ -1045,14 +1045,15 @@ class PageMajorOption(wx.Panel):
         
 #---------------------------------------------------------------------------
 class BuildOption():
-    def __init__(self, file_path):
+    def __init__(self, app, file_path):
         self.dialog = None
         self.dirty = False
+        self.app = app
         
         self.target_file_path = file_path
         if file_path == '':
             self.target_type = ''
-            self.config_file = 'sdcc.cfg'
+            self.config_file = app.dirname + 'sdcc.cfg'
         elif file_path.find('.sdprj') >= 0:
             self.target_type = 'prj'
             self.config_file = file_path.replace('.sdprj', '.sdcfg')
@@ -1375,7 +1376,7 @@ class BuildOption():
         del config
         
         if self.config_file != 'sdcc.cfg':
-            utils.copy_file(self.config_file, 'sdcc.cfg')
+            utils.copy_file(self.config_file, self.app.dirname + 'sdcc.cfg')
             
         self.dirty = False
         
@@ -1419,6 +1420,7 @@ class BuildOptionDialog(Dialog):
         Dialog.__init__ ( self, parent, id, title)
         self.parent = parent
         self.log = parent.log
+        self.app = parent.app
         
         self.cflags = None
         self.ldflags = None
@@ -1426,7 +1428,7 @@ class BuildOptionDialog(Dialog):
         self.SetInitialSize((768, 525))
         main_sizer = wx.BoxSizer(wx.VERTICAL)
         
-        self.option = BuildOption(file_path)
+        self.option = BuildOption(self.app, file_path)
         opt = self.option
         opt.load_config()
         opt.dialog = self

@@ -1,11 +1,11 @@
-mcu_name=pic14
-mcu_device=16f883
+mcu_name=mcs51
+mcu_device=
 custom_flag_only=False
 custom_cflags=
 custom_ldflags=
 inc_pathes=-I. -I/usr/local/share/sdcc/include
 lib_pathes=-L. -L/usr/local/share/sdcc/lib
-cflag_lst=--use-non-free
+cflag_lst=
 ldflag_lst=
-cflags=-mpic14 -p16f883  --use-non-free -I. -I/usr/local/share/sdcc/include
+cflags=-mmcs51   -I. -I/usr/local/share/sdcc/include
 ldflags="  -L. -L/usr/local/share/sdcc/lib"

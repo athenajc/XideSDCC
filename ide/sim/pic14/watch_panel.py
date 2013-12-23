@@ -1,27 +1,25 @@
 import wx
 from utils import tohex, get_sfr_addr
 
+#----------------------------------------------------------------------------------
+USE_BUFFER = ('wxMSW' in wx.PlatformInfo) # use buffered drawing on Windows
 
-#----------------------------------------------------------------------
-
-label1 = "Click here to show pane"
-label2 = "Click here to hide pane"
-
-btnlbl1 = "call Expand(True)"
-btnlbl2 = "call Expand(False)"
 
 #---------------------------------------------------------------------------------------------------
-class WatchPane():
+class WatchPane(wx.CollapsiblePane):
     def __init__(self, parent, parent_sizer, title):
         self.sim = None
         self.parent = parent
         self.label1 = "Click here to Show " + title
         self.label2 = "Click here to Hide " + title
-        self.cp = cp = wx.CollapsiblePane(parent, label=self.label1,
+        
+        wx.CollapsiblePane.__init__(self, parent, label=self.label1,
                                           style=wx.CP_DEFAULT_STYLE |wx.CP_NO_TLW_RESIZE)
-        cp.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, cp)
+        #self.cp = cp = wx.CollapsiblePane(parent, label=self.label1,
+        #                                  style=wx.CP_DEFAULT_STYLE |wx.CP_NO_TLW_RESIZE)
+        self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, self)
 
-        parent_sizer.Add(cp, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
+        parent_sizer.Add(self, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
         
     #------------------------------------------------------------------------
     def OnPaneChanged(self, evt=None):
@@ -29,14 +27,12 @@ class WatchPane():
         self.parent.Layout()
 
         # and also change the labels
-        if self.cp.IsExpanded():
-            self.cp.SetLabel(self.label2)
+        if self.IsExpanded():
+            self.SetLabel(self.label2)
         else:
-            self.cp.SetLabel(self.label1)
+            self.SetLabel(self.label1)
             
 
-#----------------------------------------------------------------------------------
-USE_BUFFER = ('wxMSW' in wx.PlatformInfo) # use buffered drawing on Windows
 
 #----------------------------------------------------------------------------------
 class Led(wx.Panel):
@@ -190,6 +186,7 @@ class Led(wx.Panel):
         self.value = value
         self.Refresh()
         
+        
 #---------------------------------------------------------------------------
 class ComboBox(wx.ComboBox):
     """ usage : cbox = ComboBox(parent, sizer, "label", ['item a', 'bbb', 'c'] """
@@ -210,7 +207,7 @@ class WatchLed(WatchPane):
     def __init__(self, parent, parent_sizer):
         WatchPane.__init__(self, parent, parent_sizer, "LED")
                     
-        panel = self.cp.GetPane() #wx.Panel(parent,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+        panel = self.GetPane() #wx.Panel(parent,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.led = Led(panel, 0x00)
         
@@ -233,7 +230,7 @@ class WatchLed(WatchPane):
         
         panel.SetSizer(sizer)
         panel.Layout()
-        self.cp.Expand()
+        self.Expand()
         #box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
         #parent_sizer.Add(box_sizer, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
         
@@ -265,6 +262,7 @@ class WatchLed(WatchPane):
         print event.GetString()
         key = self.cb_lst[0].GetValue()
 
+
 #---------------------------------------------------------------------------------------------------
 class SfrTextCtrl(wx.TextCtrl):
     def __init__(self, parent, sizer, label_str, help_str="", default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, sz1=(40,-1), sz2=(35,-1)):
@@ -288,6 +286,7 @@ class SfrTextCtrl(wx.TextCtrl):
             self.SetBackgroundColour((185,185,185))
         else:
             self.SetBackgroundColour((235,235,235))   
+            
             
 #---------------------------------------------------------------------------------------------------
 class SfrTextCtrlList(wx.StaticBoxSizer):
@@ -329,6 +328,7 @@ class SfrTextCtrlList(wx.StaticBoxSizer):
             else:
                 text.SetBackgroundColour((235,235,235))
 
+
 #---------------------------------------------------------------------------
 class LabelTextCtrl(wx.TextCtrl):
     def __init__(self, parent, sizer, label_str, help_str="", default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, size=(-1,-1)):
@@ -352,6 +352,7 @@ class LabelTextCtrl(wx.TextCtrl):
         else:
             self.SetBackgroundColour((235,235,235))
 
+
 #---------------------------------------------------------------------------------------------------
 class PcDptrTextCtrlList(WatchPane):
     def __init__(self, parent, parent_sizer):
@@ -361,7 +362,7 @@ class PcDptrTextCtrlList(WatchPane):
         #wx.StaticBoxSizer.__init__(self, box, wx.HORIZONTAL)
         #box_sizer = self
                     
-        panel = self.cp.GetPane() #wx.Panel(parent,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+        panel = self.GetPane() #wx.Panel(parent,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
             
         self.pc_text = LabelTextCtrl(panel, sizer, 'PC ', '', '00', size=(60, -1))
@@ -369,7 +370,7 @@ class PcDptrTextCtrlList(WatchPane):
         self.sp_text = LabelTextCtrl(panel, sizer, '  SP ', '', '00', size=(30, -1))
         panel.SetSizer(sizer)
         panel.Layout()
-        self.cp.Expand()
+        self.Expand()
         #box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
         #parent_sizer.Add(box_sizer, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
         
@@ -407,7 +408,7 @@ class PortTextCtrl():
 
         sizer.Add(box, 0, flag, 0)
         
-            
+    #------------------------------------------------------------------------
     def set_value(self, v):
         self.text.SetValue(tohex(v, 2))
         c = [(180, 180, 180), (255, 255, 100)]
@@ -417,18 +418,14 @@ class PortTextCtrl():
             t.SetValue(str(b))
             t.SetBackgroundColour(c[b])
         
+        
 #---------------------------------------------------------------------------------------------------
 class PortTextCtrlList(WatchPane):
     def __init__(self, parent, parent_sizer):
         WatchPane.__init__(self, parent, parent_sizer, "Port Data")
         
-        panel = self.cp.GetPane()
-        #title = ''
-        #box = wx.StaticBox(parent, wx.ID_ANY, title)
-        #wx.StaticBoxSizer.__init__(self, box, wx.VERTICAL)
-        #box_sizer = self
-                    
-        #panel = wx.Panel(p,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+        panel = self.GetPane()
+
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         self.p0_text = PortTextCtrl(panel, sizer, 'PORTA ', '', '00', size=(30, -1))
@@ -464,14 +461,9 @@ class PortTextCtrlList(WatchPane):
         
         panel.SetSizer(sizer)
         panel.Layout()
-        
-        #sizer.Add(cp, 0, wx.RIGHT|wx.LEFT|wx.EXPAND, 25)
-        #box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
-        #parent_sizer.Add(cp, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
-        self.cp.Expand()
-        
- 
-            
+
+        self.Expand()
+
     #------------------------------------------------------------------------
     def update(self, sim):
         if sim is None:
@@ -510,16 +502,6 @@ class UartTextViewer(wx.Panel):
         s1 = ''.join(chr(i) for i in sbuf)
         s += s1 
         s += 'bank = ' + str(sim.bank_addr) + '\n'
-        #s += 'mem 3 = ' + hex(sim.mem[3]) + '\n'
-        #s += 'mem 4 = ' + hex(sim.mem[4]) + '\n'
-        #s += 'mem 5 = ' + hex(sim.mem[5]) + '\n'
-        #s += 'mem 6 = ' + hex(sim.mem[6]) + '\n'
-        #s += 'mem 7 = ' + hex(sim.mem[7]) + '\n'
-        #s += 'mem 0x83 = ' + hex(sim.mem[0x83]) + '\n'
-        #s += 'mem 0x84 = ' + hex(sim.mem[0x84]) + '\n'
-        #s += 'mem 0x85 = ' + hex(sim.mem[0x85]) + '\n'
-        #s += 'mem 0x86 = ' + hex(sim.mem[0x86]) + '\n'
-        #s += 'mem 0x87 = ' + hex(sim.mem[0x87]) + '\n'        
         
         if sim.debug:
             for a in sim.mem_access_list:
@@ -529,58 +511,8 @@ class UartTextViewer(wx.Panel):
             
         self.inst_text.WriteText(s)
         
-#class WatchPanel (wx.Panel):
-    
-    #def __init__(self, parent):
-        #wx.Panel.__init__ (self, parent, id = wx.ID_ANY, pos = wx.DefaultPosition, size = wx.Size(500,300), style = wx.TAB_TRAVERSAL)
         
-        #sizer = wx.BoxSizer(wx.HORIZONTAL)
-        
-        #self.splitter = wx.SplitterWindow(self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.SP_3D)
-        #self.splitter.Bind(wx.EVT_IDLE, self.OnIdle)
-        
-        #p1 = self.sfr_watch = SfrWatchPanel(self.splitter)
-        #p2 = self.sfr_text_view = SfrTextViewer(self.splitter)
 
-        #self.splitter.SplitHorizontally(p1, p2, 0)
-            
-        #sizer.Add(self.splitter, 1, wx.EXPAND, 5)
-                
-        #self.SetSizer(sizer)
-        #self.Layout()
-        
-    ##------------------------------------------------------------------------
-    #def update(self, sim):
-        #self.sfr_watch.update(sim)
-        
-    ##------------------------------------------------------------------------
-    #def update_inst(self, sim, sbuf): 
-        #self.sfr_text_view.update_inst(sim, sbuf)
-        
-    ##------------------------------------------------------------------------
-    #def OnIdle(self, event):
-        #self.splitter.SetSashPosition(0)
-        #self.splitter.Unbind(wx.EVT_IDLE)
-        
-    ##------------------------------------------------------------------------
-    #def __del__(self):
-        #pass
-        
-class IoPortPanel(wx.Panel):
-    def __init__(self, parent):
-        wx.Panel.__init__(self, parent, -1)
-
-        box = wx.StaticBox(self, -1, "This is a wx.StaticBox")
-        bsizer = wx.StaticBoxSizer(box, wx.VERTICAL)
-
-        t = wx.StaticText(self, -1, "Controls placed \"inside\" the box are really its siblings")
-        bsizer.Add(t, 0, wx.TOP|wx.LEFT, 5)
-
-
-        border = wx.BoxSizer()
-        border.Add(bsizer, 1, wx.EXPAND|wx.ALL, 5)
-        self.SetSizer(border)
-    
 #---------------------------------------------------------------------------------------------------
 class WatchPanel (wx.Panel):
     
@@ -644,7 +576,6 @@ class WatchPanel (wx.Panel):
             if c != '':
                 print c, hex(ord(c))
                 self.sim.set_input('uart', ord(c))
-
                 
     #------------------------------------------------------------------------
     def get_sim(self):
