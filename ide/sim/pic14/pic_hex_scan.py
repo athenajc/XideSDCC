@@ -357,13 +357,31 @@ def test_pic_hex_scan(fn):
         print mcu, dev_name, fn
         pic_hex_scan(None, fn, mcu, dev_name)
     
+import re
+#-------------------------------------------------------------------
+def test_get_dev_name(fn):
+    fn = "/home/athena/src/pic14/0001/t0001.c"
+    
+    text = read_file(fn)
+    
+    match = re.findall(r"#include <\w+.h>", text)
+    #log(match)
+    for t in match :
+        t = re.sub("#include <", "", t)
+        t = re.sub(">", "", t)
 
+        if t.find("pic16") >= 0 or t.find("pic10") >= 0 or t.find("pic12") >= 0 :
+            mcu = "pic14"
+            dev = re.sub("pic", "", t)
+            dev = re.sub(".h", "", dev)
+            print mcu, dev
+    return None    
 
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    
     #fn = "/home/athena/src/pic/test1/test.hex"
     #fn = "/home/athena/src/pic/0004/uart_tx.hex"
     fn = "/home/athena/src/pic14/0001/t0001.hex"
-    test_pic_hex_scan(fn)
+    #test_pic_hex_scan(fn)
     #print map_scan(fn)
-    
+    test_get_dev_name(fn)

@@ -1,5 +1,7 @@
 import os
 import sys
+import re
+
 import wx
 import wx.combo
 import wx.lib.scrolledpanel as scrolled
@@ -1049,7 +1051,7 @@ class BuildOption():
         self.dialog = None
         self.dirty = False
         self.app = app
-        
+        self.c_file = None
         self.target_file_path = file_path
         if file_path == '':
             self.target_type = ''
@@ -1059,12 +1061,15 @@ class BuildOption():
             self.config_file = file_path.replace('.sdprj', '.sdcfg')
         elif file_path.find('.c') >= 0:
             self.target_type = 'c'
+            self.c_file = file_path
             self.config_file = file_path.replace('.c', '.sdcfg')
         else:
             p, ext = os.path.splitext(file_path)
             self.target_type = ext.replace('.', '')
             self.config_file = file_path.replace(ext, '.sdcfg')
+            
         print self.config_file
+        
         self.mcu = None
         self.mcu_page = None
         self.mcu_name = 'mcs51'
@@ -1157,6 +1162,7 @@ class BuildOption():
             page = self.mcu_page
             page.parent.SetPageText(page.page_index, mcu_name + ' Options')
             page.select_mcu(mcu_name)
+
             
         if self.dialog:
             self.dialog.update_flags()
@@ -1284,7 +1290,7 @@ class BuildOption():
         else:
             if key == '--std-sdcc89' or key == '--model-small' :
                 pass
-            else:            
+            else:
                 self.cflag_lst.append(key)
             
     #-------------------------------------------------------------------
@@ -1353,6 +1359,30 @@ class BuildOption():
                 self.flag_dict[k] = v
                 
     #-------------------------------------------------------------------
+    def auto_detect_mcu(self):
+        if self.c_file == None:
+            return None, None
+
+        fn = self.c_file
+        
+        if os.path.exists(fn) == False:
+            return None, None
+        
+        text = utils.read_file(fn)
+        match = re.findall(r"pic\w+.h", text)
+
+        for t in match :    
+            if t.find("pic16") >= 0 or t.find("pic10") >= 0 or t.find("pic12") >= 0 :
+                mcu = "pic14"
+                dev = re.sub("pic", "", t)
+                dev = re.sub(".h", "", dev)
+                self.mcu_name = mcu
+                self.mcu_device = dev
+                return mcu, dev
+
+        return None, None
+        
+    #-------------------------------------------------------------------
     def save_config(self):
         #print("save config - sdcc.cfg")
         config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
@@ -1408,7 +1438,17 @@ class BuildOption():
             self.load_ldflags(s)
         else:
             self.clear_flags()
-            self.select_mcu("mcs51")
+            mcu, dev = self.auto_detect_mcu()
+            if mcu and dev:
+                self.select_mcu(mcu)
+                self.select_mcu_device(dev)
+                if mcu.find('pic') >= 0:
+                    self.cflag_lst.append('--use-non-free')
+                self.update_cflags()
+            elif mcu:
+                self.select_mcu(mcu)
+            else:
+                self.select_mcu("mcs51")
             
         del config
         
