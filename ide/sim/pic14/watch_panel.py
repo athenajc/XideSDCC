@@ -211,6 +211,9 @@ class WatchLed(WatchPane):
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.led = Led(panel, 0x00)
         
+        # default select PortA RA0 - RA7
+        self.select_port = "PORTA"
+        
         cb_sizer = wx.BoxSizer(wx.VERTICAL)
         pins = ['RA0','RA1','RA2','RA3','RA4','RA5','RA6','RA7',
                         'RB0','RB1','RB2','RB3','RB4','RB5','RB6','RB7',
@@ -231,38 +234,69 @@ class WatchLed(WatchPane):
         panel.SetSizer(sizer)
         panel.Layout()
         self.Expand()
-        #box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
-        #parent_sizer.Add(box_sizer, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
         
     #------------------------------------------------------------------------
     def update(self, sim):
         if sim is None:
             return
-        self.led.set_value(sim.get_reg('PORTA'))
-        
+        port = self.select_port
+        if port:
+            self.led.set_value(sim.get_reg(port))
+        else:
+            v = 0
+            a = sim.get_reg("PORTA")
+            b = sim.get_reg("PORTB")
+            c = sim.get_reg("PORTC")
+            for i in range(0,7):
+                s = self.cb_lst[i].GetValue() 
+                s2 = s[1:2]
+                pin = int(s[2:3])
+                if s2 == "A":
+                    bit = (a >> pin) & 1
+                elif s2 == "B":
+                    bit = (b >> pin) & 1
+                elif s2 == "C":
+                    bit = (c >> pin) & 1
+                v |= bit << i
+            self.led.set_value(v)
+                
     #----------------------------------------------------------------------------
     def set_value(self, value):
         self.led.set_value(value)
         
+    #----------------------------------------------------------------------------
+    def update_select_pins(self):
+        for i in range(1,7):
+            s = self.cb_lst[i].GetValue()
+            
+            
     #--------------------------------------------------------------
     def OnSelectPin0(self, event):
         key = self.cb_lst[0].GetValue()
         if key == 'RA0':
+            self.select_port = "PORTA"
             for i in range(1,7):
                 self.cb_lst[i].SetValue("RA" + str(i))
         elif key == 'RB0':
+            self.select_port = "PORTB"
             for i in range(1,7):
                 self.cb_lst[i].SetValue("RB" + str(i))
         elif key == 'RC0':
+            self.select_port = "PORTC"
             for i in range(1,7):
                 self.cb_lst[i].SetValue("RC" + str(i))
+        else:
+            self.select_port = None
+            self.update_select_pins()
                 
     #--------------------------------------------------------------
     def OnSelectPin(self, event):
         print event.GetString()
-        key = self.cb_lst[0].GetValue()
-
-
+        #key = self.cb_lst[0].GetValue()
+        self.select_port = None
+        self.update_select_pins()
+        
+        
 #---------------------------------------------------------------------------------------------------
 class SfrTextCtrl(wx.TextCtrl):
     def __init__(self, parent, sizer, label_str, help_str="", default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, sz1=(40,-1), sz2=(35,-1)):
@@ -419,6 +453,41 @@ class PortTextCtrl():
             t.SetBackgroundColour(c[b])
         
         
+#---------------------------------------------------------------------------
+class TrisCtrl():
+    def __init__(self, parent, sizer, label_str, help_str="", default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, size=(-1,-1)):
+        
+        box = wx.BoxSizer(wx.HORIZONTAL)
+
+        label = wx.StaticText(parent, -1, label_str, style=wx.ALIGN_RIGHT)
+        box.Add(label, 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 1)
+        
+        self.text = wx.TextCtrl(parent, -1, default_str, size = size)
+        self.text.SetValue(default_str)
+        self.text.SetHelpText(help_str)
+        box.Add(self.text, 0, wx.ALIGN_CENTRE|wx.RIGHT, 1)
+        
+        self.bit_obj_list = []
+        c = parent.GetBackgroundColour()
+        for i in range(8):
+            t = wx.CheckBox(parent, -1, size=(20, -1))
+            self.bit_obj_list.append(t)
+            box.Add(t, 0, wx.ALIGN_CENTRE, 0)
+
+        sizer.Add(box, 0, flag, 0)
+        
+    #------------------------------------------------------------------------
+    def set_value(self, v):
+        self.text.SetValue(tohex(v, 2))
+        c = [(180, 180, 180), (255, 255, 100)]
+        for i in range(8):
+            b = (v >> (7 - i)) & 1
+            t = self.bit_obj_list[i]
+            t.SetValue(b)
+            #t.SetBackgroundColour(c[b])
+            
+        
+
 #---------------------------------------------------------------------------------------------------
 class PortTextCtrlList(WatchPane):
     def __init__(self, parent, parent_sizer):
@@ -431,9 +500,37 @@ class PortTextCtrlList(WatchPane):
         self.p0_text = PortTextCtrl(panel, sizer, 'PORTA ', '', '00', size=(30, -1))
         self.p1_text = PortTextCtrl(panel, sizer, 'PORTB ', '', '00', size=(30, -1))
         self.p2_text = PortTextCtrl(panel, sizer, 'PORTC ', '', '00', size=(30, -1))
-        self.t0_text = PortTextCtrl(panel, sizer, 'TRISA ', '', '00', size=(30, -1))
-        self.t1_text = PortTextCtrl(panel, sizer, 'TRISB ', '', '00', size=(30, -1))
-        self.t2_text = PortTextCtrl(panel, sizer, 'TRISC ', '', '00', size=(30, -1))     
+        self.t0_text = TrisCtrl(panel, sizer, 'TRISA ', '', '00', size=(30, -1))
+        self.t1_text = TrisCtrl(panel, sizer, 'TRISB ', '', '00', size=(30, -1))
+        self.t2_text = TrisCtrl(panel, sizer, 'TRISC ', '', '00', size=(30, -1))     
+        
+        panel.SetSizer(sizer)
+        panel.Layout()
+
+        self.Expand()
+
+    #------------------------------------------------------------------------
+    def update(self, sim):
+        if sim is None:
+            return
+
+        self.p0_text.set_value(sim.get_reg('PORTA'))
+        self.p1_text.set_value(sim.get_reg('PORTB'))
+        self.p2_text.set_value(sim.get_reg('PORTC'))
+        self.t0_text.set_value(sim.get_reg('TRISA'))
+        self.t1_text.set_value(sim.get_reg('TRISB'))
+        self.t2_text.set_value(sim.get_reg('TRISC'))
+        
+        
+
+#---------------------------------------------------------------------------------------------------
+class InputCtrlList(WatchPane):
+    def __init__(self, parent, parent_sizer):
+        WatchPane.__init__(self, parent, parent_sizer, "Input Button")
+        
+        panel = self.GetPane()
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
 
         b_sizer1 = wx.BoxSizer(wx.HORIZONTAL) 
         pins = ['RA0','RA1','RA2','RA3','RA4','RA5','RA6','RA7',
@@ -464,18 +561,6 @@ class PortTextCtrlList(WatchPane):
 
         self.Expand()
 
-    #------------------------------------------------------------------------
-    def update(self, sim):
-        if sim is None:
-            return
-
-        self.p0_text.set_value(sim.get_reg('PORTA'))
-        self.p1_text.set_value(sim.get_reg('PORTB'))
-        self.p2_text.set_value(sim.get_reg('PORTC'))
-        self.t0_text.set_value(sim.get_reg('TRISA'))
-        self.t1_text.set_value(sim.get_reg('TRISB'))
-        self.t2_text.set_value(sim.get_reg('TRISC'))
-        
         
         
 #---------------------------------------------------------------------------------------------------
@@ -528,6 +613,7 @@ class WatchPanel (wx.Panel):
         self.pc_dptr_viewer = PcDptrTextCtrlList(self, sizer)
         self.port_panel = PortTextCtrlList(self, sizer)
         self.watch_led = WatchLed(self, sizer)
+        InputCtrlList(self, sizer)
         #watch_panel = self.sfr_watch = SfrWatchPanel(self)
         text_view = self.uart_text_view = UartTextViewer(self)
         
@@ -715,7 +801,22 @@ class WatchPanel (wx.Panel):
         #print 'TestApp onclose'
         #return true
 
+def bit_invert(v):
+    v1 = 0
+    for i in range(8):
+        bit = (v >> i) & 1
+        j = 7 - i
+        v1 |= bit << j
+    return v1
+
 ##----------------------------------------------------------------------------------
-#if __name__ == '__main__':
+if __name__ == '__main__':
     #app = TestApp(0)
     #app.MainLoop()
+    led = [0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6D, 0x7D, 0x07, 0x7f, 0x6f]
+    lst = []
+    for v in led:
+        v1 = bit_invert(v)
+        lst.append(v1)
+        print hex(v1), ",",
+    
