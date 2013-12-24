@@ -74,7 +74,6 @@ class IdeFrame (wx.Frame):
         obj = event.GetEventObject()
         event_id = event.GetId()
         self.menu_debug.update_ui(event_id)
-        self.app.toolbar.update_ui(event_id)
         
         #update menu and toolbar
         #if obj != self.menu_debug:

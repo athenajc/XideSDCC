@@ -213,6 +213,7 @@ class TargetToolBar(wx.ToolBar):
 class DebugToolBar(ToolBar):
     def __init__(self, parent, frame, aui_mgr):
         self.app = frame.app
+        self.debugging = None
         id_build_option = self.app.id('BUILD_OPTION')
         p = self.app.dirname
         debug_lst = [
@@ -225,28 +226,22 @@ class DebugToolBar(ToolBar):
             [ID_DBG_STOP,      "Stop Debug",  p + "images/dbgstop.png",    "Stop debugger"],
         ]        
         ToolBar.__init__(self, parent, frame, aui_mgr, "debug toolbar", debug_lst)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdate)
         
+
     #-------------------------------------------------------------------
-    def update_ui(self, event_id):
-        if event_id == ID_RUN:
-            self.EnableTool(ID_DBG_STOP, True) 
-            self.debug_started()  
-        elif event_id == ID_DBG_START:
-            self.debug_started()
-        elif event_id == ID_DBG_STOP:
-            self.debug_stopped()
-        
-    #-------------------------------------------------------------------
-    def debug_stopped(self):
-        self.EnableTool(ID_DBG_START, True) 
-        self.EnableTool(ID_DBG_STOP, False)
-        
-    #-------------------------------------------------------------------
-    def debug_started(self):
-        log("enable toolbar debug stop icon")
-        self.EnableTool(ID_DBG_START, False) 
-        self.EnableTool(ID_DBG_STOP, True) 
-        
+    def OnUpdate(self, event):
+        if self.debugging == self.app.debugging :
+            return
+        self.debugging = self.app.debugging
+
+        if self.debugging:
+            self.EnableTool(ID_DBG_START, False)
+            self.EnableTool(ID_DBG_STOP, True)             
+        else:
+            self.EnableTool(ID_DBG_START, True) 
+            self.EnableTool(ID_DBG_STOP, False)            
+                
         
 #---------------------------------------------------------------------------------------------------
 class EditToolBar(ToolBar):
@@ -288,11 +283,6 @@ class ToolBarMgr():
             self.tb_edit = EditToolBar(self, frame, aui_mgr)
             
         self.app = frame.app
-        self.tb_debug.debug_stopped()
-        
-    #-------------------------------------------------------------------
-    def update_ui(self, event_id):
-        self.tb_debug.update_ui(event_id)
         
     #-------------------------------------------------------------------
     def add_file(self, file_path):

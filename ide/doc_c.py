@@ -217,6 +217,7 @@ class DocC(DocBase):
         os.chdir(os.path.dirname(self.file_path))
         name, ext = self.file_name.split('.')
         self.compile_before_debug()
+        self.app.debugging = True
         self.sim_frame = sim.DebugFrame(self.app, self, 
                                   [self.file_path], 
                                   self.config_file)
@@ -238,7 +239,7 @@ class DocC(DocBase):
         #if mcu_name == 'pic14':
             #sim = sim_pic14
         #else:
-            
+        self.app.debugging = True
         self.sim_frame = sim.SimFrame(self.app, self, 
                                   [self.file_path], 
                                   self.config_file)
@@ -250,7 +251,7 @@ class DocC(DocBase):
     #-------------------------------------------------------------------
     def sim_close(self):
         self.sim_frame = None
-        self.app.toolbar.tb_debug.debug_stopped()
+        self.app.debugging = False       
         
     #-------------------------------------------------------------------
     def c_pre_process(self, s):
