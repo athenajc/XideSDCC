@@ -1045,8 +1045,12 @@ class Sim():
         self.pc = 0x0
         self.cmd_queue = Queue.Queue()
         
+        i = 100000
         if self.debug:
             while self.c_line == 0:
+                i -= 1
+                if i == 0:
+                    break
                 self.load_and_debug_inst()
             
     #-------------------------------------------------------------------

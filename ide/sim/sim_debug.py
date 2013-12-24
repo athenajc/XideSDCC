@@ -373,7 +373,7 @@ class DebugFrame (wx.Frame):
     def sim_stop(self):
         if self.running:
             self.running = False
-            if hasattr(self, 'timer2'):
+            if hasattr(self, 'step_timer'):
                 self.Unbind(event=wx.EVT_TIMER, source=self.step_timer, handler=self.OnStepTimerTick)
                 self.step_timer.Stop()
                 del self.step_timer
