@@ -9,10 +9,20 @@ from utils import *
 class CodeMap():
     def __init__(self, line_i, s):
         self.line_index = line_i + 1
+        
+        if s.find(":\\") > 0:
+            windows = True
+            s = s.replace(":\\", "%%%%\\")
+        else:
+            windows = False
+            
         n = len(s)
         s = s[41:n]
-        lst = s.split(':')
-        self.c_file = lst[0].replace('\t', '')
+        lst = s.split(':')      
+        f = lst[0].replace('\t', '')
+        if windows:
+            f.replace("%%%%\\", ":\\")
+        self.c_file = f
         self.c_line = int(lst[1])
         self.c_code = lst[2]
         self.addr_lst = []
@@ -77,6 +87,7 @@ def rst_get_lines(text, c_name, fn_index):
     return addr_map_lst
 
 
+#------------------------------------------------------------------------
 class MapList():
     def __init__(self, file_path):
         text = read_whole_file(file_path)
@@ -101,6 +112,7 @@ class MapList():
         #print self.addr_lst
         self.lst = lst
         
+    #--------------------------------------------------------------
     def get_symbol(self, addr):
         #print hex(addr)
         if addr in self.addr_lst:
@@ -111,7 +123,7 @@ class MapList():
         return None
         
         
-        
+#------------------------------------------------------------------------
 def map_scan(fn):
     path, ext = fn.split('.')
     map_file = path + ".map"
@@ -123,7 +135,7 @@ def map_scan(fn):
     return map_lst
 
 
-
+#------------------------------------------------------------------------
 def rst_scan_file(fn, fn_index, only_one_file):
     path, ext = fn.split('.')
     rst_file = path + ".rst"
@@ -139,7 +151,7 @@ def rst_scan_file(fn, fn_index, only_one_file):
     #print lst
     return lst
     
-    
+#------------------------------------------------------------------------    
 def rst_scan(source_list):
     fn_index = 0
     lst = {}
