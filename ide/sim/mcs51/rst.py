@@ -1,5 +1,7 @@
 import os
 import sys
+import wx
+
 from utils import *
 
 
@@ -74,6 +76,7 @@ def rst_get_lines(text, c_name, fn_index):
         
     return addr_map_lst
 
+
 class MapList():
     def __init__(self, file_path):
         text = read_whole_file(file_path)
@@ -107,6 +110,8 @@ class MapList():
 
         return None
         
+        
+        
 def map_scan(fn):
     path, ext = fn.split('.')
     map_file = path + ".map"
@@ -117,8 +122,9 @@ def map_scan(fn):
 
     return map_lst
 
+
+
 def rst_scan_file(fn, fn_index, only_one_file):
-    #print fn
     path, ext = fn.split('.')
     rst_file = path + ".rst"
     
@@ -133,31 +139,40 @@ def rst_scan_file(fn, fn_index, only_one_file):
     #print lst
     return lst
     
+    
 def rst_scan(source_list):
     fn_index = 0
-    lst = [0] * 4096
+    lst = {}
     if len(source_list) == 1:
         only_one_file = True
     else:
         only_one_file = False
     for fn in source_list:
         addr_map_lst = rst_scan_file(fn, fn_index, only_one_file)
-        
+        addr_map_lst.sort()
         for a in addr_map_lst:
             #print a[0], a[1]
-            while a[0] >= len(lst):
-                lst.append(0)
+            #while a[0] >= len(lst):
+                #lst.append(0)
             if only_one_file:
                 a[1] = ''
             lst[a[0]] = [a[1], a[2], a[3], a[4]]
+            
         
         fn_index += 1
-    
+
     return lst
         
     
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    
-    fn = "/home/athena/src/8051/BlinkLEDs/main.rst"
-    rst_scan(fn)
+    if wx.Platform == '__WXMSW__' :
+        fn = 'C:\\git\\XideSDCC\\examples\\mcs51\\blink\\blink.c'
+    else:
+        fn = "/home/athena/src/8051/BlinkLEDs/main.rst"
+            
+    lst = rst_scan([fn])
+    
+    for t in lst:
+        print hex(t)
 
