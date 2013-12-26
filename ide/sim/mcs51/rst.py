@@ -169,7 +169,7 @@ if __name__ == '__main__':
     if wx.Platform == '__WXMSW__' :
         fn = 'C:\\git\\XideSDCC\\examples\\mcs51\\blink\\blink.c'
     else:
-        fn = "/home/athena/src/8051/BlinkLEDs/main.rst"
+        fn = "/home/athena/XideSDCC/examples/mcs51/blink/blink.c"
             
     lst = rst_scan([fn])
     
