@@ -380,11 +380,13 @@ class DocC(DocBase):
             obj_file = c_file.replace('.c', '.o')
             
             #temp_remove_sdcc_gsinit_startup(asm_file)
-            
-            lkr = " /usr/local/share/gputils/lkr/" + self.mcu_device + "_g.lkr "
-            sdcc_lib = " /usr/local/share/sdcc/lib/pic14/libsdcc.lib "
-            pic14_lib = " /usr/local/share/sdcc/non-free/lib/pic14/pic" + self.mcu_device + ".lib "
-            
+            q = "\""
+            sp = " "
+            lkr = sp + q + Gputil_path + os.sep + "lkr" + os.sep + self.mcu_device + "_g.lkr" + q + sp
+            sdcc_lib = sp + q + pic14_sdcc_lib + q + sp
+            pic14_lib = sp + q + SDCC_non_free_path + "/lib/pic14/pic" + self.mcu_device + ".lib" + q + sp
+            pic14_lib = pic14_lib.replace('/', os.sep)
+                
             cmd = "gpasm -c " + asm_file + " && "
             cmd += "gplink -m -s " + lkr + " -o " + hex_file
             cmd += pic14_lib + sdcc_lib + obj_file
@@ -428,10 +430,12 @@ class DocC(DocBase):
             lst.append(s)
         if len(lst) >= 4 :
             file_path = lst[0]
-            line = int(lst[1])
-            #log(file_path, line)
-            if file_exist(file_path):
-                self.app.goto_file_line(file_path, line)
+            s = lst[1]
+            if s.isdigit():
+                line = int(s)
+                #log(file_path, line)
+                if file_exist(file_path):
+                    self.app.goto_file_line(file_path, line)
                 
     #-------------------------------------------------------------------
     def select_undefined(self, msg):

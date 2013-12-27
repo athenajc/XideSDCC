@@ -27,6 +27,11 @@ if wx.Platform == '__WXMSW__' :
     SDCC_lib_path = SDCC_path + "lib"
     
     NodeJS_path = "C:\\tools\\nw\\nw.exe"
+    
+    Gputil_path = "C:\\Program Files\\gputils\\"
+    pic14_sdcc_lib = "C:\\Program Files\\SDCC\\lib\\pic14\\libsdcc.lib"
+    pic16_sdcc_lib = "C:\\Program Files\\SDCC\\lib\\pic16\\libsdcc.lib"
+    SDCC_non_free_path = "C:\\Program Files\\SDCC\\non-free\\"    
 else:
     wxLua_path = "/usr/local/bin/wxLua"
     wxLua_Param = ""
@@ -35,6 +40,12 @@ else:
     SDCC_inc_path = "/usr/local/share/sdcc/include"
     SDCC_lib_path = "/usr/local/share/sdcc/lib"
     NodeJS_path = "/usr/local/bin/nw"
+    Gputil_path = " /usr/local/share/gputils/"
+    pic14_sdcc_lib = "/usr/local/share/sdcc/lib/pic14/libsdcc.lib"
+    pic16_sdcc_lib = "/usr/local/share/sdcc/lib/pic16/libsdcc.lib"
+    SDCC_non_free_path = "/usr/local/share/sdcc/non-free/"
+    
+
     
 ID_ANY              = wx.ID_ANY
 

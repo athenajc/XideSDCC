@@ -59,6 +59,9 @@ class Sim():
             self.op_n_lst.append(t[1])
             
         self.addr_map_lst = rst.rst_scan(source_list)
+        #print source_list
+        print self.addr_map_lst
+        
         self.c_line = 0
         self.asm_code = ""
         self.c_file = ""
@@ -708,14 +711,14 @@ class Sim():
         
     #-------------------------------------------------------------------
     def update_sfr(self):
-        self.reg_table['dptr'] = (self.reg[self.DPH] << 8) + self.reg[self.DPL]
-        self.reg_table['pc'] = self.pc
         for k, v in self.sfr_map.items():
             if v < 0x80:
                 self.reg_table[k] = self.mem[v]
             else:
                 self.reg_table[k] = self.reg[v]
-
+        self.reg_table['dptr'] = (self.reg[self.DPH] << 8) + self.reg[self.DPL]
+        self.reg_table['pc'] = self.pc
+        
     #-------------------------------------------------------------------
     def set_r(self, i, v):
         i &= 0x7
@@ -955,20 +958,19 @@ class Sim():
             self.proc_int()
         # get current program counter 
         self.inst_addr = addr = self.pc
-        
-        if addr < len(self.addr_map_lst):
-            t = self.addr_map_lst[addr]
-            if t != 0:
-                if t[0] == "":
-                    self.c_file = self.file_path
-                else:
-                    self.c_file = t[0]
-                self.c_line = t[1]
-                self.asm_code = t[2]
+        t = self.addr_map_lst.get(addr, 0)
+        if t != 0:            
+            if t[0] == "":
+                self.c_file = self.file_path
+            else:
+                self.c_file = t[0]
+            self.c_line = t[1]
+            self.asm_code = t[2]
         else:
             self.c_file = ""
             self.c_line = 0
             self.asm_code = ""
+            
         self.log('------------', self.c_file, self.c_line)
         rom = self.code_space
         inst_code = rom[addr]

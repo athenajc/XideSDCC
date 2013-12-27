@@ -1,6 +1,7 @@
 import wx
 from utils import tohex
 
+
 #---------------------------------------------------------------------------------------------------
 class SfrTextCtrl(wx.TextCtrl):
     def __init__(self, parent, sizer, label_str, help_str="", default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, sz1=(40,-1), sz2=(35,-1)):
@@ -24,6 +25,7 @@ class SfrTextCtrl(wx.TextCtrl):
             self.SetBackgroundColour((185,185,185))
         else:
             self.SetBackgroundColour((235,235,235))   
+            
             
 #---------------------------------------------------------------------------------------------------
 class SfrTextCtrlList(wx.StaticBoxSizer):
@@ -65,6 +67,7 @@ class SfrTextCtrlList(wx.StaticBoxSizer):
             else:
                 text.SetBackgroundColour((235,235,235))
 
+
 #---------------------------------------------------------------------------
 class LabelTextCtrl(wx.TextCtrl):
     def __init__(self, parent, sizer, label_str, help_str="", default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, size=(-1,-1)):
@@ -87,6 +90,7 @@ class LabelTextCtrl(wx.TextCtrl):
             self.SetBackgroundColour((185,185,185))
         else:
             self.SetBackgroundColour((235,235,235))
+
 
 #---------------------------------------------------------------------------------------------------
 class PcDptrTextCtrlList(wx.StaticBoxSizer):
@@ -115,6 +119,7 @@ class PcDptrTextCtrlList(wx.StaticBoxSizer):
         self.pc_text.set_value(sim.get_reg('pc'), 4)
         self.dptr_text.set_value(sim.get_reg('dptr'), 4)
         self.sp_text.set_value(sim.get_reg('sp'), 2)
+        
         
 #---------------------------------------------------------------------------
 class PortTextCtrl():
@@ -149,6 +154,7 @@ class PortTextCtrl():
             t = self.bit_text_list[i]
             t.SetValue(str(b))
             t.SetBackgroundColour(c[b])
+        
         
 #---------------------------------------------------------------------------------------------------
 class PortTextCtrlList(wx.StaticBoxSizer):
@@ -325,6 +331,7 @@ class UartTextViewer(wx.Panel):
         self.inst_text.SetValue(s)
         
         
+#---------------------------------------------------------------------------------------------------
 class IoPortPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, -1)
@@ -338,8 +345,7 @@ class IoPortPanel(wx.Panel):
         border = wx.BoxSizer()
         border.Add(bsizer, 1, wx.EXPAND|wx.ALL, 5)
         self.SetSizer(border)
-        
-   
+           
     
 #---------------------------------------------------------------------------------------------------
 class WatchPanel (wx.Panel):
@@ -387,7 +393,6 @@ class WatchPanel (wx.Panel):
             if c != '':
                 print c, hex(ord(c))
                 self.sim.set_input('uart', ord(c))
-
                 
     #------------------------------------------------------------------------
     def get_sim(self):

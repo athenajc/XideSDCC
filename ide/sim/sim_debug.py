@@ -265,7 +265,8 @@ class DebugFrame (wx.Frame):
         self.Bind(wx.EVT_TOOL, self.OnStep,    id=ID_DBG_STEP)
         self.Bind(wx.EVT_TOOL, self.OnStepOver, id=ID_DBG_STEP_OVER)
         self.Bind(wx.EVT_TOOL, self.OnStepOut,  id=ID_DBG_STEP_OUT)
-                
+        
+        self.ihx_path = None
         file_list = self.find_included_source(file_list)
         self.file_list = file_list
         self.file_path = file_list[0]
@@ -300,7 +301,8 @@ class DebugFrame (wx.Frame):
     def OnTimer1Timer(self, event):  
         self.SetStatusText(time.asctime())
         self.timer1.Stop()
-        self.sim_run('debug')
+        if self.ihx_path:
+            self.sim_run('debug')
         self.command = None
         
     #-------------------------------------------------------------------
