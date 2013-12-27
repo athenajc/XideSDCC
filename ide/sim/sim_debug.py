@@ -605,8 +605,9 @@ class DebugFrame (wx.Frame):
     #-------------------------------------------------------------------
     def stop(self):
         print "stop"
-        if self.step_timer:
-            self.step_timer.Stop()
+        if hasattr(self, 'step_timer'):
+            if self.step_timer:
+                self.step_timer.Stop()
             
         if self.sim:
             print "StopSimulation"

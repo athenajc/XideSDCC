@@ -376,9 +376,11 @@ class DocC(DocBase):
             cmd += pic16_lib + sdcc_lib + obj_file
             self.run_cmd(cmd)
         elif self.mcu_name == 'pic14' :
-
-            cmd = "sdcc -S -V -mpic14 -p16f628a --use-non-free " + self.file_path
+            flag += ' -c '
+            cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path             
+            #cmd = "sdcc -S -V -mpic14 -p" +  self.mcu_device + " --use-non-free " + self.file_path
             #cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path
+            os.chdir(os.path.dirname(self.file_path))
             result = self.run_cmd(cmd)
             
             c_file = self.file_path
