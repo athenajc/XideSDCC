@@ -10,26 +10,21 @@
 
 // Main body
 void main() {
-    unsigned char i = 0;
+    int i = 0;
     int j;
     // Initializing ports
     PORTA = 0;
-    PORTB = 0;
 
-    // Set RA4 as input and RB3-RB0 as output
-    TRISA |= 0x10;
-    TRISB &= 0xF0;
+    // Set PORTA and PORTB as output
+    TRISA = 0x0;
 
-    // Set value 0x0A to PORTB
-    PORTB = 0x0A;
-
-    // If button is pressed, toggle PORTB
-    for (i = 0; i < 30; i++)
+    // Set value 
+    PORTA = 0xFF;
+    
+    for (i = 0; i < 300; i++)
     {
-        //if(PORTAbits.RA4 != 0)
-        PORTB = ~PORTB;
-        PORTA++;
-        PORTB += 2;
+        PORTA = ~PORTA;
+
         for (j = 0; j < 3000; j++) {}
     }
 }

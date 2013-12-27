@@ -516,7 +516,7 @@ class PrjTree(wx.TreeCtrl):
                     proj.close()
                     self.open_project(file_path)
                 except IOError:
-                    MsgDlg_Warn(self, 'There was an error saving the new project file.', 'Error!', wx.OK)
+                    MsgDlg_Warn(self, 'There was an error saving the new project file.', 'Error!')
         dlg.Destroy()
         
     #-------------------------------------------------------------------

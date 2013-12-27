@@ -215,3 +215,25 @@ def log(*args):
         msg = msg + str(t) + " "
     s = get_hh_mm_ss() + " " + msg
     print(inspect.stack()[1][3], "log", s)    
+
+def MsgDlg_YesNoCancel(parent, question, caption = 'Yes or no?'):
+    dlg = wx.MessageDialog(parent, question, caption, wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION)
+    result = dlg.ShowModal()
+    dlg.Destroy()
+    return result
+
+def MsgDlg_YesNo(parent, question, caption = 'Yes or no?'):
+    dlg = wx.MessageDialog(parent, question, caption, wx.YES_NO | wx.ICON_QUESTION)
+    result = dlg.ShowModal()
+    dlg.Destroy()
+    return result
+
+def MsgDlg_Info(parent, message, caption = 'Insert program title'):
+    dlg = wx.MessageDialog(parent, message, caption, wx.OK | wx.ICON_INFORMATION)
+    dlg.ShowModal()
+    dlg.Destroy()
+    
+def MsgDlg_Warn(parent, message, caption = 'Warning!'):
+    dlg = wx.MessageDialog(parent, message, caption, wx.OK | wx.ICON_WARNING)
+    dlg.ShowModal()
+    dlg.Destroy()

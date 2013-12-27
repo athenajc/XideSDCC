@@ -364,9 +364,16 @@ class DocC(DocBase):
             hex_file = c_file.replace('.c', '.hex')
             obj_file = c_file.replace('.c', '.o')
             
+            q = "\""
+            sp = " "
+            lkr = sp + q + Gputil_path + os.sep + "lkr" + os.sep + self.mcu_device + "_g.lkr" + q + sp
+            sdcc_lib = sp + q + pic16_sdcc_lib + q + sp
+            pic16_lib = sp + q + SDCC_non_free_path + "lib/pic16/libdev" + self.mcu_device + ".lib" + q + sp
+            pic16_lib = pic16_lib.replace('/', os.sep)
+            
             cmd = "gpasm -c " + asm_file + " && "
-            cmd += "gplink -m -s /usr/local/share/gputils/lkr/" + self.mcu_device + "_g.lkr -o " + hex_file
-            cmd += " /usr/local/share/sdcc/non-free/lib/pic16/libdev" + self.mcu_device + ".lib /usr/local/share/sdcc/lib/pic16/libsdcc.lib " + obj_file
+            cmd += "gplink -m -s " + lkr + " -o " + hex_file
+            cmd += pic16_lib + sdcc_lib + obj_file
             self.run_cmd(cmd)
         elif self.mcu_name == 'pic14' :
 

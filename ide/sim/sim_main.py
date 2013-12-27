@@ -172,8 +172,14 @@ class PanelSplitter (wx.Panel):
 class SimFrame (wx.Frame):
 
     def __init__(self, app, parent, file_list, config_file):
+        sz = wx.GetDisplaySize() 
+        w = sz.GetWidth() - 64
+        h = sz.GetHeight() -32
+        x = (sz.GetWidth() - w) / 2
+        y = (sz.GetHeight() - h) / 2
+        
         wx.Frame.__init__ (self, parent, id = wx.ID_ANY, title = file_list[0], 
-                            pos = wx.DefaultPosition, size = wx.Size(1280,800), 
+                            pos=(x, y), size=(w, h), 
                             style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL)
         self.app = app
         self.parent = parent
@@ -216,7 +222,7 @@ class SimFrame (wx.Frame):
         if self.mcu_name == "mcs51":
             panel = self.reg_panel = mcs51.WatchPanel(nb2)
         elif self.mcu_name == "pic16":
-            panel = self.reg_panel = pic16.WatchPanel(nb2, self.mcu_name, self.mcu_device)
+            panel = self.reg_panel = pic16.WatchPanel(nb2, self.mcu_name, self.mcu_device, self.config_file)
         elif self.mcu_name == "pic14":
             panel = self.reg_panel = pic14.WatchPanel(nb2, self.mcu_name, self.mcu_device, self.config_file)
         else:

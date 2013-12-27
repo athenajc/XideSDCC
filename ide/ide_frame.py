@@ -20,6 +20,8 @@ class IdeFrame (wx.Frame):
                             size = wx.Size(1600,1024),
                             style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL)
         self.app = app
+        #print wx.GetDisplaySize() 
+  
         frame = self
         self.log = None
         self.deact_time = time.time()

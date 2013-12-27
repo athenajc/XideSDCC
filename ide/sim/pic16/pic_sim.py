@@ -92,6 +92,7 @@ class SimPic():
         
         self.stack = []
         self.stack_depth = 0
+        self.sp = 0
         self.err = 0
         self.sbuf_list = []
         self.init_memory()
@@ -102,6 +103,20 @@ class SimPic():
         self.mem_access_list = []
         self.status_bits_name = ['C', 'DC', 'Z', 'OV', 'N']
         self.step_mode = None
+        self.debug = False
+        
+        self.int_enabled = False
+        self.int_p_enabled = False
+        self.tmr0_mode  = 1 # T0CS = 1:counter, 0:timer
+        self.tmr0_enabled = False
+        self.tmr1_enabled = False
+        self.tmr2_enabled = False
+        self.tmr0_value = 0
+        self.tmr1_value = 0
+        self.tmr2_value = 0
+        self.tmr0_rate = 0
+        self.wdt_rate = 0
+        self.ticks = 0
 
     #-------------------------------------------------------------------
     def log(self, *args):
@@ -109,13 +124,15 @@ class SimPic():
         #    return
         #import inspect
         #s1 = inspect.stack()[1][3] + " "
+        if not self.debug or self.step_mode:
+            return
         
         msg = " "
         for t in args:
             msg = msg + str(t) + " "
         s = get_hh_mm_ss() + msg + "\n"
         if self.frame == None:
-            print get_hh_mm_ss() + msg
+            pass #print msg
         else:
             self.frame.log(s)
 
@@ -167,10 +184,12 @@ class SimPic():
         self.mem = [0] * 0x1000
         self.ext_mem = [0] * 64 * 1024
         self.code_space = [0] * 64 * 1024
+        self.freg = self.mem #[0] * 128 * 4
         
     #-------------------------------------------------------------------
     def select_access_bank(self):
-        self.log("     set bank")
+        if self.debug:
+            self.log("     set bank")
     
     #-------------------------------------------------------------------
     def get_tblptr(self):    
@@ -609,7 +628,119 @@ class SimPic():
                 self.code_space_fill(addr, llen, line[9: 10 + llen*2])
                 
     #-------------------------------------------------------------------
+    def proc_int(self):
+        intcon = self.freg[0xB]
+        if intcon & BIT7 == 0:
+            return
+        if intcon & 7:  #T0IF, 
+            if intcon & BIT4 and intcon & BIT1: # 4:INTE and 1:INTF
+                # RB0/INT flag
+                self.int_enabled = False
+                self.call_interrupt(1)
+                return
+            if intcon & BIT5 and intcon & BIT2:
+                self.int_enabled = False
+                self.call_interrupt(2)
+                return
+            if intcon & BIT3 and intcon & BIT0:
+                self.int_enabled = False
+                self.call_interrupt(0)
+                return
+            
+    #-------------------------------------------------------------------
+    def inc_tmr0(self):
+        tmr0 = self.tmr0_value
+        if tmr0 < 0xff:
+            self.tmr0_value = tmr0 + 1
+        elif tmr0 == 0xff:
+            self.tmr0_value = self.freg[self.TMR0]
+            # set T0IF : bit2 of INTCON 0xB
+            self.freg[0xB] |= BIT2
+        
+    #-------------------------------------------------------------------
+    def proc_tmr0(self):
+        if self.tmr0_rate > 0:
+            if self.ticks < self.tmr0_rate:
+                return
+        self.ticks = 0
+        self.inc_tmr0()
+        
+    #-------------------------------------------------------------------
+    def update_c_line(self):
+        # get current program counter 
+        addr = self.pc
+
+        if addr < len(self.addr_map_lst):
+            t = self.addr_map_lst[addr]
+            #print addr, len(self.addr_map_lst), t
+            if t != 0:
+                self.c_file = t[0]
+                self.c_line = t[1]
+                self.asm_code = t[2]
+        else:
+            self.c_file = ""
+            self.c_line = 0
+            self.asm_code = ""
+            
+    #-------------------------------------------------------------------
+    def show_inst_log(self):
+        # get current program counter 
+        addr = self.inst_addr
+        addr += addr
+        lsb = self.code_space[addr]
+        msb = self.code_space[addr + 1]  
+        
+        #self.log('**************** ', hex(msb), hex(lsb))
+       
+        #self.log('**************** pc ', hex(self.pc))
+        opcode = (msb << 8) + lsb
+        s = get_pic16_inst_str(opcode, msb, lsb)
+        self.log("--------- %04x %02x %02x <%s>" % (addr, msb, lsb, s))
+
+        
+    #-------------------------------------------------------------------
     def load_inst(self):
+        self.ticks += 1
+        #if self.tmr0_enabled :
+            #self.proc_tmr0()
+                            
+        #if self.int_enabled :
+            #self.proc_int()
+            
+        addr = self.inst_addr = self.pc
+        addr += addr
+        if addr >= 0x8000:
+            self.err = True
+            return
+        lsb = self.code_space[addr]
+        msb = self.code_space[addr + 1]
+        opcode = (msb << 8) + lsb
+        inst_len = 1
+        #self.log('**************** ', hex(msb), hex(lsb))
+        #inst_call,    #EC
+        #inst_call,    #ED
+        #inst_lfsr,    #EE
+        #inst_goto,    #EF        
+        if (msb & 0xf0) == 0xc0:
+            inst_len = 2
+        elif msb >= 0xEC and msb <= 0xEF:
+            inst_len = 2
+        
+        self.pc += inst_len
+
+        f = inst_handler[msb]
+
+        if inst_len == 2:
+            lsb1 = self.code_space[addr + 2]
+            msb1 = self.code_space[addr + 3]
+            # if msb1 & 0xf0 != 0xf0:
+            #    self.log('Error following inst', hex(msb), hex(lsb), hex(msb1), hex(lsb1))
+            f(self, msb, lsb, msb1, lsb1)
+        else:
+            f(self, msb, lsb)
+
+    #-------------------------------------------------------------------
+    def load_inst1(self):
         # get current program counter 
         addr = self.pc * 2
         self.inst_addr = self.pc * 2
@@ -672,22 +803,31 @@ class SimPic():
         #set_sim(self)
 
         self.mode = 'run'
-        self.pc = 0x0
+        self.pc = 0
         self.cmd_queue = Queue.Queue()
         self.c_line = 0
         
-        #while self.c_line == 0:
-        #    self.load_inst()
+        #if self.debug:
+        #    while self.c_line == 0:
+        #        self.load_inst()
+        #        self.update_c_line()
         
     #-------------------------------------------------------------------
-    def step(self, count = 1):
+    def step(self, count=1):
         if self.stopped:
             return False
         
         self.step_mode = None
-        for i in range(count):
+        if self.debug:
             self.load_inst()
-        self.update_sfr()
+            self.update_c_line()
+            self.show_inst_log()
+        else:
+            for i in range(count):
+                self.load_inst()
+                
+                if self.err or self.pc == 0:
+                    break
         
         if self.err:
             self.log("#simulation Error")
@@ -712,11 +852,10 @@ class SimPic():
         while self.c_line == n and self.c_file == f:
             i += 1
             self.load_inst()
-            if i > 10:
+            self.update_c_line()
+            if i > 1000:
                  break
             
-        self.update_sfr()
-        
         if self.step_mode == 'c_line':
             if self.c_line != self.start_line or self.c_file != self.start_file:
                 self.step_mode = None
@@ -744,29 +883,6 @@ class SimPic():
         self.step_mode = 'c_line'
         self.start_line = self.c_line
         self.start_file = self.c_file
-        #n = self.c_line
-        #f = self.c_file
-        #i = 1
-        #line = self.c_line
-        #if line > 0:
-            #line += 1
-        #self.log('\n-------------- line = ' + str(line) + ',   ' + str(self.c_file) + ' -----------')        
-        #while self.c_line == n and self.c_file == f:
-            #i += 1
-            
-            ##self.log(tohex(self.pc, 4), self.asm_code)
-            
-            #self.load_inst()
-            #if i > 100:
-                #return 'not finished'
-            
-            #if self.err:
-                #self.log('#simulation Error')
-                #return False
-            #if self.pc == 0 or self.stopped:
-                #self.log('#end of simulation')
-                #return False
-            
         
         return True
     
@@ -780,22 +896,7 @@ class SimPic():
         self.start_stack_depth = self.stack_depth
         self.start_line = self.c_line
         self.start_file = self.c_file
-        #s0 = self.stack_depth
-        #if not self.step_c_line():
-        #    return False
-        #s1 = self.stack_depth
         
-        # check stack depth if same means at same function        
-        #if s1 <= s0:
-            #return True
-        #else:
-            #i = 0
-            #while self.stack_depth > s0:
-                #i += 1
-                #if i > 100:
-                    #return False
-                #if not self.step_c_line():
-                    #return False
         return True
         
     #-------------------------------------------------------------------
@@ -805,12 +906,6 @@ class SimPic():
             return False
         self.step_mode = 'out'
         self.start_stack_depth = self.stack_depth
-        #s0 = self.stack_depth
-        
-        # check stack depth if same means at same function
-        #while self.stack_depth >= s0:
-            #if not self.step_c_line():
-                #return False
             
         return True
     
