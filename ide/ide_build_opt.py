@@ -1379,7 +1379,14 @@ class BuildOption():
                 self.mcu_name = mcu
                 self.mcu_device = dev
                 return mcu, dev
-
+            elif t.find("pic18") >= 0 :
+                mcu = "pic16"
+                
+                dev = re.sub("pic", "", t)
+                dev = re.sub(".h", "", dev)
+                self.mcu_name = mcu
+                self.mcu_device = dev
+                return mcu, dev
         return None, None
         
     #-------------------------------------------------------------------

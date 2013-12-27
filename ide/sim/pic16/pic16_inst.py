@@ -1201,7 +1201,7 @@ def get_pic16_inst_str(v, msb, lsb):
     elif v0 == 0xE:
         lst = ['BZ', 'BNZ', 'BC', 'BNC', 'BOV', 'BNOV', 'BN', 'BNN', 
                'reserved','reserved','reserved','reserved',
-               'CALL', 'CALL', 'LFSR'
+               'CALL', 'CALL', 'LFSR', 'GOTO'
                ]
         inst = lst[v1]
         
