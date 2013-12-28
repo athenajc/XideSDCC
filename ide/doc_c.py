@@ -368,7 +368,7 @@ class DocC(DocBase):
             sdcc_lib = self.app.get_path('sdcc', ['lib', 'pic16'], 'libsdcc.lib')
             pic_lib = self.app.get_path('sdcc', ['non-free', 'lib', 'pic16'], "libdev" + self.mcu_device + ".lib")
             #q = "\""
-            #sp = " "
+            sp = " "
             #lkr = sp + q + Gputil_path + os.sep + "lkr" + os.sep + self.mcu_device + "_g.lkr" + q + sp
             #sdcc_lib = sp + q + pic16_sdcc_lib + q + sp
             #pic16_lib = sp + q + SDCC_non_free_path + "lib/pic16/libdev" + self.mcu_device + ".lib" + q + sp
@@ -376,7 +376,7 @@ class DocC(DocBase):
             
             cmd = "gpasm -c " + asm_file + " && "
             cmd += "gplink -m -s " + lkr + " -o " + hex_file
-            cmd += pic_lib + sdcc_lib + obj_file
+            cmd += sp + pic_lib + sp + sdcc_lib + sp + obj_file
             self.run_cmd(cmd)
         elif self.mcu_name == 'pic14' :
             flag += ' -c '
@@ -396,7 +396,7 @@ class DocC(DocBase):
             sdcc_lib = self.app.get_path('sdcc', ['lib', 'pic14'], 'libsdcc.lib')
             pic_lib = self.app.get_path('sdcc', ['non-free', 'lib', 'pic14'], "pic" + self.mcu_device + ".lib")
             #q = "\""
-            #sp = " "
+            sp = " "
             #lkr = sp + q + Gputil_path + os.sep + "lkr" + os.sep + self.mcu_device + "_g.lkr" + q + sp
             #sdcc_lib = sp + q + pic14_sdcc_lib + q + sp
             #pic14_lib = sp + q + SDCC_non_free_path + "/lib/pic14/pic" + self.mcu_device + ".lib" + q + sp
@@ -404,7 +404,7 @@ class DocC(DocBase):
                 
             cmd = "gpasm -c " + asm_file + " && "
             cmd += "gplink -m -s " + lkr + " -o " + hex_file
-            cmd += pic_lib + sdcc_lib + obj_file
+            cmd += sp + pic_lib + sp + sdcc_lib + sp + obj_file
             
             self.run_cmd(cmd)
 

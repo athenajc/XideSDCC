@@ -2,7 +2,7 @@ import os
 import wx
 
 #import ide's modules
-from ide_global import get_id, set_app, log, search_sdcc_bin, search_file
+from ide_global import *
 from ide_frame import IdeFrame
 from ide_build_opt import BuildOptionDialog
 
@@ -270,15 +270,17 @@ class IdeApp(wx.App):
         return ""
 
     #-------------------------------------------------------------------
-    def get_path(self, name, path_lst=None, file_name=""):
+    def get_path(self, name, path_lst=None, file_name=None):
         if wx.Platform == '__WXMSW__' :
             q = "\""
         else:
             q = ""
         sp = " "
         sep = os.sep
+        # get path from default tool_path dict at first
         path = self.tool_path.get(name, "")
                 
+        # if can't find, do auto search
         if path == "" or not os.path.exists(path):
             if name == 'sdcc_bin':
                 path = search_sdcc_bin()
@@ -288,22 +290,32 @@ class IdeApp(wx.App):
                 path = self.search_path(name, path)
                 if os.path.exists(path):
                     self.tool_path[name] = path
-            
+                    
+        # if search top forlder only, exit and return path
         if path_lst == None:
             return path
         
+        # if no sep at the end, add it
         if path.endswith(sep) == False:
             path += sep
 
-        for p in path_lst:
-            path += p + sep
-           
-        path += file_name
+        # join sub folders in path_lst
+        path += sep.join(path_lst)
+        
+        # append file name 
+        if file_name:
+            path += sep + file_name
+        
+        # check if file exists
         if os.path.exists(path):
-            return sp + q + path + q + sp
+            # if space inside, add quote
+            if path.find(' ') >= 0:
+                return q + path + q
+            else:
+                return path
         else:
-            path = self.search_path(name, path)
-            return sp + q + path + q + sp
+            MsgDlg_Warn(self.frame, 'File ' + path  + ' not exists')
+            return ""
         
     #-------------------------------------------------------------------
     def OnDocPageChange(self, event):
