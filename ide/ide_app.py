@@ -247,7 +247,14 @@ class IdeApp(wx.App):
             return path
         
         if wx.Platform == '__WXMSW__' :
+            if name == 'sdcc':
+                name = 'SDCC'
             dir_lst = ['c:\\Tools\\', 'c:\\Program Files\\', 'c:\\Program Files (x86)\\', 'C:\\', 'D:\\']
+            for d in dir_lst:
+                path = d + name
+                if os.path.exists(path):
+                    return path
+                
             for d in dir_lst:
                 path = search_file(d, name)
                 if path != "":
@@ -275,8 +282,12 @@ class IdeApp(wx.App):
         if path == "" or not os.path.exists(path):
             if name == 'sdcc_bin':
                 path = search_sdcc_bin()
+                if os.path.exists(path):
+                    self.tool_path['sdcc_bin'] = path
             else:
                 path = self.search_path(name, path)
+                if os.path.exists(path):
+                    self.tool_path[name] = path
             
         if path_lst == None:
             return path

@@ -191,13 +191,20 @@ def search_sdcc_bin():
     
     #print "search_sdcc"
     if wx.Platform == '__WXMSW__' :
-        dir_lst = ['c:\\Tools\\', 'c:\\Program Files\\SDCC', 'c:\\Program Files (x86)\\SDCC', 'C:\\', 'D:\\']
+        dir_lst = ['c:\\Tools\\SDCC\\bin\\', 'c:\\Program Files\\SDCC\\bin\\', 'c:\\Program Files (x86)\\SDCC\\bin\\']
         for d in dir_lst:
-            path = search_file(d, 'sdcc.exe')
-            if path != "":
-                SDCC_bin_path = path
-                #print path
-                return path
+            if os.path.exists(d):
+                path = d + 'sdcc.exe'
+                if os.path.exists(path):
+                    return path
+        dir_lst = ['c:\\Tools\\SDCC\\bin\\', 'c:\\Program Files\\SDCC\\bin\\', 'c:\\Program Files (x86)\\SDCC\\bin\\', 'C:\\', 'D:\\']
+        for d in dir_lst:
+            if os.path.exists(d):
+                path = search_file(d, 'sdcc.exe')
+                if path != "":
+                    SDCC_bin_path = path
+                    #print path
+                    return path
         
     else:
         dir_lst = ['/usr/bin/', '/usr/local/bin/', '/usr', '/bin', '/sbin', '/']
