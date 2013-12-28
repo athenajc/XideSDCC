@@ -364,16 +364,19 @@ class DocC(DocBase):
             hex_file = c_file.replace('.c', '.hex')
             obj_file = c_file.replace('.c', '.o')
             
-            q = "\""
-            sp = " "
-            lkr = sp + q + Gputil_path + os.sep + "lkr" + os.sep + self.mcu_device + "_g.lkr" + q + sp
-            sdcc_lib = sp + q + pic16_sdcc_lib + q + sp
-            pic16_lib = sp + q + SDCC_non_free_path + "lib/pic16/libdev" + self.mcu_device + ".lib" + q + sp
-            pic16_lib = pic16_lib.replace('/', os.sep)
+            lkr = self.app.get_path('gputils', ['lkr'], self.mcu_device + "_g.lkr")
+            sdcc_lib = self.app.get_path('sdcc', ['lib', 'pic16'], 'libsdcc.lib')
+            pic_lib = self.app.get_path('sdcc', ['non-free', 'lib', 'pic16'], "libdev" + self.mcu_device + ".lib")
+            #q = "\""
+            #sp = " "
+            #lkr = sp + q + Gputil_path + os.sep + "lkr" + os.sep + self.mcu_device + "_g.lkr" + q + sp
+            #sdcc_lib = sp + q + pic16_sdcc_lib + q + sp
+            #pic16_lib = sp + q + SDCC_non_free_path + "lib/pic16/libdev" + self.mcu_device + ".lib" + q + sp
+            #pic16_lib = pic16_lib.replace('/', os.sep)
             
             cmd = "gpasm -c " + asm_file + " && "
             cmd += "gplink -m -s " + lkr + " -o " + hex_file
-            cmd += pic16_lib + sdcc_lib + obj_file
+            cmd += pic_lib + sdcc_lib + obj_file
             self.run_cmd(cmd)
         elif self.mcu_name == 'pic14' :
             flag += ' -c '
@@ -389,16 +392,19 @@ class DocC(DocBase):
             obj_file = c_file.replace('.c', '.o')
             
             #temp_remove_sdcc_gsinit_startup(asm_file)
-            q = "\""
-            sp = " "
-            lkr = sp + q + Gputil_path + os.sep + "lkr" + os.sep + self.mcu_device + "_g.lkr" + q + sp
-            sdcc_lib = sp + q + pic14_sdcc_lib + q + sp
-            pic14_lib = sp + q + SDCC_non_free_path + "/lib/pic14/pic" + self.mcu_device + ".lib" + q + sp
-            pic14_lib = pic14_lib.replace('/', os.sep)
+            lkr = self.app.get_path('gputils', ['lkr'], self.mcu_device + "_g.lkr")
+            sdcc_lib = self.app.get_path('sdcc', ['lib', 'pic14'], 'libsdcc.lib')
+            pic_lib = self.app.get_path('sdcc', ['non-free', 'lib', 'pic14'], "pic" + self.mcu_device + ".lib")
+            #q = "\""
+            #sp = " "
+            #lkr = sp + q + Gputil_path + os.sep + "lkr" + os.sep + self.mcu_device + "_g.lkr" + q + sp
+            #sdcc_lib = sp + q + pic14_sdcc_lib + q + sp
+            #pic14_lib = sp + q + SDCC_non_free_path + "/lib/pic14/pic" + self.mcu_device + ".lib" + q + sp
+            #pic14_lib = pic14_lib.replace('/', os.sep)
                 
             cmd = "gpasm -c " + asm_file + " && "
             cmd += "gplink -m -s " + lkr + " -o " + hex_file
-            cmd += pic14_lib + sdcc_lib + obj_file
+            cmd += pic_lib + sdcc_lib + obj_file
             
             self.run_cmd(cmd)
 
@@ -421,7 +427,7 @@ class DocC(DocBase):
         #flag = " --debug --peep-asm " #" --disable-warning 59 "
         flag = " " + self.app.cflags + " " + self.app.ldflags + " " 
         
-        SDCC_bin_path = get_sdcc_bin_path()    
+        SDCC_bin_path = self.app.get_path('sdcc_bin')
         self.dirname = os.path.dirname(self.file_path)
         os.chdir(self.dirname)
         

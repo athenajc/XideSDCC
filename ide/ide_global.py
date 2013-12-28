@@ -187,16 +187,16 @@ def search_file(root_dir, search_name):
 def search_sdcc_bin():
     global SDCC_bin_path
     if os.path.exists(SDCC_bin_path):
-        return True
+        return SDCC_bin_path
     
-    print "search_sdcc"
+    #print "search_sdcc"
     if wx.Platform == '__WXMSW__' :
         dir_lst = ['c:\\Tools\\', 'c:\\Program Files\\SDCC', 'c:\\Program Files (x86)\\SDCC', 'C:\\', 'D:\\']
         for d in dir_lst:
             path = search_file(d, 'sdcc.exe')
             if path != "":
                 SDCC_bin_path = path
-                print path
+                #print path
                 return path
         
     else:
@@ -205,7 +205,7 @@ def search_sdcc_bin():
             path = search_file(d, 'sdcc')
             if path != "":
                 SDCC_bin_path = path
-                print path
+                #print path
                 return path
 
     return ""

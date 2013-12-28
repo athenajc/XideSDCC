@@ -2,7 +2,7 @@ import os
 import wx
 
 #import ide's modules
-from ide_global import get_id, set_app, log, search_sdcc_bin
+from ide_global import get_id, set_app, log, search_sdcc_bin, search_file
 from ide_frame import IdeFrame
 from ide_build_opt import BuildOptionDialog
 
@@ -14,7 +14,7 @@ class IdeApp(wx.App):
         
         self.name = 'Xide SDCC'
         self.dirname = os.path.dirname(os.path.abspath(__file__)) + os.sep
-        
+        self.set_tool_path()
         self.config_file = self.dirname + 'xide.cfg'
         self.cflags = ""
         self.ldflags = ""
@@ -149,7 +149,7 @@ class IdeApp(wx.App):
             log(dlg.cflags)
             log(dlg.ldflags)
             
-        dlg.Destroy()        
+        dlg.Destroy()
 
     #-------------------------------------------------------------------
     def save_config(self):
@@ -184,7 +184,6 @@ class IdeApp(wx.App):
         #config.Write("ldflags", self.ldflags)
         del config
         
-        
     #-------------------------------------------------------------------
     def load_config(self):
         log("load config - " + self.config_file)
@@ -218,6 +217,82 @@ class IdeApp(wx.App):
         #self.cflags = config.Read("cflags", "")
         #self.ldflags = config.Read("ldflags", "")
         del config
+        
+    #-------------------------------------------------------------------
+    def set_tool_path(self):
+        if wx.Platform == '__WXMSW__' :
+            self.tool_path = {
+                'wxlua':"C:\\wx\\wxLua\\bin\\wxLua.exe",
+                'wxLua_Param':" --nostdout /c ",
+                'python':"C:\\Python27\\python.exe",
+                'sdcc'    : "C:\\tools\\SDCC",
+                'sdcc_bin': "C:\\tools\\SDCC\\bin\\sdcc.exe",
+                'nodejs'  : "C:\\tools\\nw\\nw.exe",
+                'gputils'  : "C:\\Program Files\\gputils",
+                }
+        else:
+            self.tool_path = {
+                'wxlua'   :"/usr/local/bin/wxLua",
+                'wxLua_Param':"",
+                'python'  : "/usr/bin/python2",
+                'sdcc'    : "/usr/local/share/sdcc",
+                'sdcc_bin': "/usr/local/bin/sdcc",
+                'nodejs'  : "/usr/local/bin/nw",
+                'gputils'  : "/usr/local/share/gputils",
+                }
+       
+    #-------------------------------------------------------------------
+    def search_path(self, name, path):
+        if os.path.exists(path):
+            return path
+        
+        if wx.Platform == '__WXMSW__' :
+            dir_lst = ['c:\\Tools\\', 'c:\\Program Files\\', 'c:\\Program Files (x86)\\', 'C:\\', 'D:\\']
+            for d in dir_lst:
+                path = search_file(d, name)
+                if path != "":
+                    return path
+            
+        else:
+            dir_lst = ['/usr/bin/', '/usr/local/bin/', '/usr/local/share/', '/usr', '/bin', '/sbin', '/']
+            for d in dir_lst:
+                path = search_file(d, name)
+                if path != "":
+                    return path
+    
+        return ""
+
+    #-------------------------------------------------------------------
+    def get_path(self, name, path_lst=None, file_name=""):
+        if wx.Platform == '__WXMSW__' :
+            q = "\""
+        else:
+            q = ""
+        sp = " "
+        sep = os.sep
+        path = self.tool_path.get(name, "")
+                
+        if path == "" or not os.path.exists(path):
+            if name == 'sdcc_bin':
+                path = search_sdcc_bin()
+            else:
+                path = self.search_path(name, path)
+            
+        if path_lst == None:
+            return path
+        
+        if path.endswith(sep) == False:
+            path += sep
+
+        for p in path_lst:
+            path += p + sep
+           
+        path += file_name
+        if os.path.exists(path):
+            return sp + q + path + q + sp
+        else:
+            path = self.search_path(name, path)
+            return sp + q + path + q + sp
         
     #-------------------------------------------------------------------
     def OnDocPageChange(self, event):
