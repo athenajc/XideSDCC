@@ -153,6 +153,8 @@ class TargetCombo(wx.ComboBox):
     #-------------------------------------------------------------------
     def get_target(self):
         item = self.GetCurrentSelection()
+        if item == -1:
+            return ""
         file_path = self.file_list[item]
         log('target ' + file_path)
         return file_path
