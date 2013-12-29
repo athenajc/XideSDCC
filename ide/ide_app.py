@@ -180,6 +180,20 @@ class IdeApp(wx.App):
         else:
             config.Write("LastProject", "")
         
+        # save external tool path
+        tp = self.tool_path
+        
+        i = 0
+        lst = []
+        for k in tp:
+            config.Write("tool_path_" + str(i), k + ':' + tp[k])
+            i += 1
+            lst.append(k)
+            
+        n = len(tp)
+        config.Write("tool_path_count", str(n))
+        config.Write("tool_path_keys", ':'.join(lst))
+            
         #config.Write("cflags",  self.cflags)
         #config.Write("ldflags", self.ldflags)
         del config
@@ -214,10 +228,24 @@ class IdeApp(wx.App):
             if path != "" and os.path.exists(path):
                 self.open_project(path)
                 
+            # read external tool path setting, get count at first 
+            n = int(config.Read("tool_path_count", "0"))
+            if n > 0:
+                # get all tool_path-* settings
+                for i in range(n):
+                    s = config.Read("tool_path_" + str(i), "")
+                    # check if empty
+                    if s != "":
+                        k, v = s.split(':')
+                        # check if path exists, otherwise remain the default ssetting
+                        if os.path.exists(v):
+                            self.tool_path[k] = v
+                #print self.tool_path
         #self.cflags = config.Read("cflags", "")
         #self.ldflags = config.Read("ldflags", "")
         del config
         
+         
     #-------------------------------------------------------------------
     def set_tool_path(self):
         if wx.Platform == '__WXMSW__' :
