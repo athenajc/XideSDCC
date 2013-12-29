@@ -2,7 +2,9 @@ import wx
 from utils import tohex, get_sfr_addr
 
 #----------------------------------------------------------------------------------
-USE_BUFFER = ('wxMSW' in wx.PlatformInfo) # use buffered drawing on Windows
+WINDOWS = ('wxMSW' in wx.PlatformInfo)
+USE_BUFFER = WINDOWS # use buffered drawing on Windows
+
 
 
 #---------------------------------------------------------------------------------------------------
@@ -45,13 +47,19 @@ class Led(wx.Panel):
         wx.Panel.__init__(self, parent, -1, size=(120, 200))
 
         self.Bind(wx.EVT_PAINT, self.OnPaint)
-        if USE_BUFFER:
-            self.Bind(wx.EVT_SIZE, self.OnSize)
-
-    #----------------------------------------------------------------------------
-    def OnSize(self, evt):
-        self.init_buffer()
-        evt.Skip()
+        #if USE_BUFFER:
+            #self.Bind(wx.EVT_SIZE, self.OnSize)
+            
+        #self.Bind(wx.EVT_ERASE_BACKGROUND, self.onErase)
+        
+        
+    #def onErase(self, event):
+        #pass
+        
+    ##----------------------------------------------------------------------------
+    #def OnSize(self, evt):
+        #self.init_buffer()
+        #evt.Skip()
         
     #----------------------------------------------------------------------------
     def OnPaint(self, evt):
@@ -60,6 +68,7 @@ class Led(wx.Panel):
             # do anything else but create the buffered DC.  When this
             # method exits and dc is collected then the buffer will be
             # blitted to the paint DC automagically
+            self.init_buffer()
             dc = wx.BufferedPaintDC(self, self._buffer)
         else:
             # Otherwise we need to draw our content to the paint DC at
@@ -184,7 +193,7 @@ class Led(wx.Panel):
     #----------------------------------------------------------------------------
     def set_value(self, value):
         self.value = value
-        self.Refresh()
+        self.Refresh(eraseBackground = True)
         
         
 #---------------------------------------------------------------------------
