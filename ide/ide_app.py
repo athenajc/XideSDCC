@@ -186,13 +186,13 @@ class IdeApp(wx.App):
         i = 0
         lst = []
         for k in tp:
-            config.Write("tool_path_" + str(i), k + ':' + tp[k])
+            config.Write("tool_path_" + str(i), k + ';' + tp[k])
             i += 1
             lst.append(k)
             
         n = len(tp)
         config.Write("tool_path_count", str(n))
-        config.Write("tool_path_keys", ':'.join(lst))
+        config.Write("tool_path_keys", ';'.join(lst))
             
         #config.Write("cflags",  self.cflags)
         #config.Write("ldflags", self.ldflags)
@@ -200,6 +200,7 @@ class IdeApp(wx.App):
         
     #-------------------------------------------------------------------
     def load_config(self):
+
         log("load config - " + self.config_file)
         config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
 
@@ -236,7 +237,7 @@ class IdeApp(wx.App):
                     s = config.Read("tool_path_" + str(i), "")
                     # check if empty
                     if s != "":
-                        k, v = s.split(':')
+                        k, v = s.split(';')
                         # check if path exists, otherwise remain the default ssetting
                         if os.path.exists(v):
                             self.tool_path[k] = v
