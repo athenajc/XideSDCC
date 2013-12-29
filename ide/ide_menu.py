@@ -462,7 +462,7 @@ class MenuExample(wx.Menu):
     def __init__(self, parent):
         self.app = parent.app
         wx.Menu.__init__(self)
-        dirname = self.app.dirname.replace("ide" + os.sep, "examples" + os.sep)
+        dirname = self.app.work_dir + os.sep
         lst = os.listdir(dirname)
         i = 0
         self.examples = {}
