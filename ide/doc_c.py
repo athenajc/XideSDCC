@@ -207,9 +207,15 @@ class DocC(DocBase):
 
     #-------------------------------------------------------------------
     def stop(self):
-        if self.sim_frame is not None:
-            self.sim_frame.close()
-            self.sim_frame = None
+        if hasattr(self, 'sim_frame'):
+            
+            if self.sim_frame is not None:
+                try:
+                    self.sim_frame.close()
+                except:
+                    print "Error: unable to close sim_frame"
+                
+        self.sim_frame = None
 
     #-------------------------------------------------------------------
     def start_debug(self):
@@ -251,7 +257,7 @@ class DocC(DocBase):
     #-------------------------------------------------------------------
     def sim_close(self):
         self.sim_frame = None
-        self.app.debugging = False       
+        self.app.debugging = False
         
     #-------------------------------------------------------------------
     def c_pre_process(self, s):

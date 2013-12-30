@@ -477,12 +477,12 @@ class SimFrame (wx.Frame):
         
     #-------------------------------------------------------------------
     def stop(self):
-        print "stop"
+        #print "stop"
         if self.step_timer:
             self.step_timer.Stop()
             
         if self.sim:
-            print "StopSimulation"
+            #print "StopSimulation"
             self.sim.stop()
             q = self.log_queue
             if q is not None:
@@ -497,7 +497,7 @@ class SimFrame (wx.Frame):
         
     #-------------------------------------------------------------------
     def __del__(self):
-        print "__del__"
+        #print "__del__"
         try:
             if self.parent is not None:
                 self.parent.sim_close()
@@ -507,7 +507,7 @@ class SimFrame (wx.Frame):
     #-------------------------------------------------------------------
     # Virtual event handlers, overide them in your derived class
     def OnClose(self, event):
-        print "OnClose"
+        #print "OnClose"
         self.stop()
         event.Skip()
         
