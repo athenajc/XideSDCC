@@ -6,6 +6,7 @@ from ide_global import *
 from ide_frame import IdeFrame
 from ide_build_opt import BuildOptionDialog
 
+
 #---------------------------------------------------------------------------------------------------
 class IdeApp(wx.App):
     
@@ -13,8 +14,20 @@ class IdeApp(wx.App):
         set_app(self)
         
         self.name = 'Xide SDCC'
+        
         cur_dir = os.path.dirname(os.path.abspath(__file__))
+        if cur_dir.find('library.zip') > 0:
+            if cur_dir.find('library.zip' + os.sep) > 0:
+                cur_dir = cur_dir.replace('library.zip' + os.sep, '')                
+            else:
+                cur_dir = cur_dir.replace('library.zip', '') 
+            if cur_dir.find('ide') < 0:
+                if cur_dir.endswith(os.sep) == False:
+                    cur_dir += os.sep
+                cur_dir += 'ide'
+            
         upper_dir = os.path.dirname(cur_dir) + os.sep
+ 
         self.dirname = cur_dir + os.sep
         
         self.set_tool_path()

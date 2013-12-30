@@ -7,8 +7,14 @@ from sim_global import *
 #---------------------------------------------------------------------------------------------------
 class Toolbar():
     def __init__(self, frame, aui_mgr, tb_lst):
+        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        if cur_dir.find('library.zip') > 0:
+            if cur_dir.find('library.zip' + os.sep) > 0:
+                cur_dir = cur_dir.replace('library.zip' + os.sep, '')                
+            else:
+                cur_dir = cur_dir.replace('library.zip', '') 
 
-        self.path = os.path.dirname(os.path.realpath(__file__)) + os.sep
+        self.path = cur_dir + os.sep
         
         self.tb = self.add_tools(frame, aui_mgr, "Sim toolbar", tb_lst)
         

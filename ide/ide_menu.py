@@ -468,17 +468,18 @@ class MenuExample(wx.Menu):
         self.examples = {}
         
         for d in lst:
-            menu = wx.Menu()
-            sub_lst = os.listdir(dirname + d)
+            if os.path.isdir(dirname + d):
+                menu = wx.Menu()
+                sub_lst = os.listdir(dirname + d)
             
-            for d1 in sub_lst:
-                _id = wx.NewId()
-                m = menu.Append(_id, d1)
-                parent.frame.Bind(wx.EVT_MENU, self.OnOpenFile, id = _id)
-                path = dirname + d + os.sep + d1 + os.sep
-                self.examples[_id] = path
-                
-            self.AppendSubMenu(menu, d)
+                for d1 in sub_lst:
+                    _id = wx.NewId()
+                    m = menu.Append(_id, d1)
+                    parent.frame.Bind(wx.EVT_MENU, self.OnOpenFile, id = _id)
+                    path = dirname + d + os.sep + d1 + os.sep
+                    self.examples[_id] = path
+                    
+                self.AppendSubMenu(menu, d)
                         
     #-------------------------------------------------------------------
     def OnOpenFile(self, event):

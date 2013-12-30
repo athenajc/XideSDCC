@@ -201,8 +201,8 @@ class DebugFrame (wx.Frame):
                             style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL)
         self.app = app
         self.parent = parent
-        
-        icon = wx.Icon(self.app.dirname + 'sim/images/dbg_frame.ico', wx.BITMAP_TYPE_ICO)
+        sep = os.sep
+        icon = wx.Icon(self.app.dirname + 'sim' + sep + 'images' + sep + 'dbg_frame.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(icon)
         
         self.sim = None
