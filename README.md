@@ -6,7 +6,7 @@ Xanadu Integrated Development Environment of Small Device C Compiler
 
 
 * Integrate Editor, Compiler and Simulators
-* Target for all device supported by SDCC - MCS51, PIC14/PIC16, Z80, DS390, DS400....
+* Target for all device supported by SDCC - MCS51(8051 family), PIC14/PIC16, Z80, DS390, DS400....
 
 
 System requirements:
