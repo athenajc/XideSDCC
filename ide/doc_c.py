@@ -222,7 +222,8 @@ class DocC(DocBase):
         # set cwd to doc file_path
         os.chdir(os.path.dirname(self.file_path))
         name, ext = self.file_name.split('.')
-        self.compile_before_debug()
+        if self.compile_before_debug() == False:
+            return
         self.app.debugging = True
         self.sim_frame = sim.DebugFrame(self.app, self, 
                                   [self.file_path], 
@@ -355,13 +356,15 @@ class DocC(DocBase):
         
         sdcc_path = self.app.get_path('sdcc_bin')
         if os.path.exists(sdcc_path) == False:
+            log('Error!!! Cannot find SDCC!')
             MsgDlg_Warn(self.app.frame, "Cannot find SDCC" , caption='Warning!')
-            return
+            return False
         if self.mcu_name.find('pic') >= 0:
             gputil_path = self.app.get_path('gputils')
             if os.path.exists(gputil_path) == False:
+                log('Error!!! Cannot find gputils!')
                 MsgDlg_Warn(self.app.frame, "Cannot find gputils" , caption='Warning!')
-                return
+                return False
             
         self.dirname = os.path.dirname(self.file_path)
         os.chdir(self.dirname)
@@ -444,6 +447,7 @@ class DocC(DocBase):
         
         sdcc_path = self.app.get_path('sdcc_bin')
         if os.path.exists(sdcc_path) == False:
+            log('Error!!! Cannot find SDCC!')
             MsgDlg_Warn(self.app.frame, "Cannot find SDCC" , caption='Warning!')
             return False
         

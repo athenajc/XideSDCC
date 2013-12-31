@@ -52,7 +52,7 @@ class IdeApp(wx.App):
         self.SetTopWindow(self.frame)
         self.frame.Show(True)
                 
-        search_sdcc_bin()
+        #search_sdcc_bin()
         
         return True
             

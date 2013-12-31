@@ -197,7 +197,7 @@ def search_sdcc_bin():
                 path = d + 'sdcc.exe'
                 if os.path.exists(path):
                     return path
-        dir_lst = ['c:\\Tools\\SDCC\\bin\\', 'c:\\Program Files\\SDCC\\bin\\', 'c:\\Program Files (x86)\\SDCC\\bin\\', 'C:\\', 'D:\\']
+        dir_lst = ['c:\\Tools\\SDCC\\bin\\', 'c:\\Program Files\\SDCC\\bin\\', 'c:\\Program Files (x86)\\SDCC\\bin\\', 'C:\\SDCC\\bin', 'c:\\sdcc\\bin']
         for d in dir_lst:
             if os.path.exists(d):
                 path = search_file(d, 'sdcc.exe')
