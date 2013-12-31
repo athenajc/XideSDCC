@@ -353,13 +353,22 @@ class DocC(DocBase):
         #flag = " --debug --peep-asm " #" --disable-warning 59 "
         flag = "  --debug " + self.app.cflags + " " + self.app.ldflags + " " 
         
-        SDCC_bin_path = get_sdcc_bin_path()    
+        sdcc_path = self.app.get_path('sdcc_bin')
+        if os.path.exists(sdcc_path) == False:
+            MsgDlg_Warn(self.app.frame, "Cannot find SDCC" , caption='Warning!')
+            return
+        if self.mcu_name.find('pic') >= 0:
+            gputil_path = self.app.get_path('gputils')
+            if os.path.exists(gputil_path) == False:
+                MsgDlg_Warn(self.app.frame, "Cannot find gputils" , caption='Warning!')
+                return
+            
         self.dirname = os.path.dirname(self.file_path)
         os.chdir(self.dirname)
         
         if self.mcu_name == 'pic16' :
             flag += ' -c '
-            cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path 
+            cmd = '\"' + sdcc_path + '\"' + flag + self.file_path 
     
             dprint("Cmd", cmd)
             os.chdir(os.path.dirname(self.file_path))
@@ -386,7 +395,7 @@ class DocC(DocBase):
             self.run_cmd(cmd)
         elif self.mcu_name == 'pic14' :
             flag += ' -c '
-            cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path             
+            cmd = '\"' + sdcc_path + '\"' + flag + self.file_path             
             #cmd = "sdcc -S -V -mpic14 -p" +  self.mcu_device + " --use-non-free " + self.file_path
             #cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path
             os.chdir(os.path.dirname(self.file_path))
@@ -415,7 +424,7 @@ class DocC(DocBase):
             self.run_cmd(cmd)
 
         else:
-            cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path 
+            cmd = '\"' + sdcc_path + '\"' + flag + self.file_path 
     
             dprint("Cmd", cmd)
             os.chdir(os.path.dirname(self.file_path))
@@ -433,11 +442,15 @@ class DocC(DocBase):
         #flag = " --debug --peep-asm " #" --disable-warning 59 "
         flag = " " + self.app.cflags + " " + self.app.ldflags + " " 
         
-        SDCC_bin_path = self.app.get_path('sdcc_bin')
+        sdcc_path = self.app.get_path('sdcc_bin')
+        if os.path.exists(sdcc_path) == False:
+            MsgDlg_Warn(self.app.frame, "Cannot find SDCC" , caption='Warning!')
+            return False
+        
         self.dirname = os.path.dirname(self.file_path)
         os.chdir(self.dirname)
         
-        cmd = '\"' + SDCC_bin_path + '\"' + flag + self.file_path 
+        cmd = '\"' + sdcc_path + '\"' + flag + self.file_path 
 
         dprint("Cmd", cmd)
         os.chdir(os.path.dirname(self.file_path))
