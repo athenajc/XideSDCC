@@ -19,9 +19,8 @@ class IdeFrame (wx.Frame):
                             title = app.name,
                             pos = wx.DefaultPosition,
                             size = wx.DefaultSize,
-                            style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL| wx.MAXIMIZE)
+                            style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL|wx.MAXIMIZE)
         self.app = app
-        #print wx.GetDisplaySize() 
   
         frame = self
         self.log = None
