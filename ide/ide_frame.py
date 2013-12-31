@@ -13,12 +13,13 @@ from ide_doc_book import DocBook
 #---------------------------------------------------------------------------------------------------
 class IdeFrame (wx.Frame):
     def __init__(self, app):
+        #sz = wx.GetDisplaySize()
         wx.Frame.__init__ (self, None,
                             id = wx.ID_ANY,
                             title = app.name,
                             pos = wx.DefaultPosition,
-                            size = wx.Size(1600,1024),
-                            style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL)
+                            size = wx.DefaultSize,
+                            style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL| wx.MAXIMIZE)
         self.app = app
         #print wx.GetDisplaySize() 
   
