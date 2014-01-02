@@ -7,12 +7,12 @@ from ide_global import *
 
 #---------------------------------------------------------------------------------------------------
 class LogNB(wx.Notebook):
-    def __init__(self, app, frame):
+    def __init__(self, app, frame, size):
         if wx.Platform == '__WXMSW__' :
             style = wx.NB_BOTTOM
         else:
             style = wx.NB_LEFT
-        wx.Notebook.__init__(self, frame, wx.ID_ANY, wx.DefaultPosition, wx.Size(600, 200), style)
+        wx.Notebook.__init__(self, frame, wx.ID_ANY, wx.DefaultPosition, size, style)
         self.app = app
         
         self.logger = LogTextCtrl(self)

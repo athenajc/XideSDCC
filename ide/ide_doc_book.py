@@ -18,10 +18,10 @@ DocDefault = doc_scripts.DocDefault
 #---------------------------------------------------------------------------------------------------
 class DocBook(wx.aui.AuiNotebook):
     
-    def __init__(self, app, frame):
+    def __init__(self, app, frame, size):
         wx.aui.AuiNotebook.__init__(self, frame, wx.ID_ANY,
                                     wx.DefaultPosition,
-                                    wx.DefaultSize,
+                                    size,
                                     wx.aui.AUI_NB_DEFAULT_STYLE | wx.aui.AUI_NB_TAB_EXTERNAL_MOVE |
                                     wx.NO_BORDER)
         self.nb = self

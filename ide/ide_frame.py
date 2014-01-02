@@ -13,12 +13,14 @@ from ide_doc_book import DocBook
 #---------------------------------------------------------------------------------------------------
 class IdeFrame (wx.Frame):
     def __init__(self, app):
-        #sz = wx.GetDisplaySize()
+        sz = wx.GetDisplaySize()
+        w = sz.GetWidth()
+        h = sz.GetHeight()
         wx.Frame.__init__ (self, None,
                             id = wx.ID_ANY,
                             title = app.name,
                             pos = wx.DefaultPosition,
-                            size = wx.DefaultSize,
+                            size = (w, h),
                             style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL|wx.MAXIMIZE)
         self.app = app
   
@@ -42,10 +44,27 @@ class IdeFrame (wx.Frame):
 
         app.toolbar = ide_toolbar.__init__(frame, self.mgr)
 
+        # init panel size
+        if app.left_panel_width > 80:
+            w1 = app.left_panel_width
+        else:        
+            w1 = w / 4
+            if w1 > 200:
+                w1 = 200
+            app.left_panel_width = w1
+            
+        if app.bottom_panel_height > 80:
+            h1 = app.bottom_panel_height
+        else:
+            h1 = h / 5
+            if h1 > 160:
+                h1 = 160
+            app.bottom_panel_height = h1
+                
         #-- add a bunch of panes
-        app.doc_book = DocBook(app, frame)
-        app.prj_mgr = PrjMgr(app, frame)
-        app.log_nb = LogNB(app, frame)
+        app.doc_book = DocBook(app, frame, (w - w1, h - h1))
+        app.prj_mgr = PrjMgr(app, frame, (w1, h - h1))
+        app.log_nb = LogNB(app, frame, (w, h1))
 
         self.mgr.AddPane(app.doc_book, wx.aui.AuiPaneInfo() .Left() .PinButton(True).Dock().Resizable().FloatingSize(wx.Size(298,206)).DockFixed(False).Layer(0).CentrePane())
         self.mgr.AddPane(app.prj_mgr, wx.aui.AuiPaneInfo() .Left() .PinButton(True).Dock().Resizable().FloatingSize(wx.DefaultSize).DockFixed(False).DefaultPane())
@@ -56,8 +75,6 @@ class IdeFrame (wx.Frame):
         #-- make some default perspectives
         self.perspective_default = self.mgr.SavePerspective()
 
-        app.load_config()
-        
         # "commit" all changes made to wxAuiManager
         self.mgr.Update()
         

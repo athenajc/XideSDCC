@@ -18,7 +18,7 @@ class IdeApp(wx.App):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         if cur_dir.find('library.zip') > 0:
             if cur_dir.find('library.zip' + os.sep) > 0:
-                cur_dir = cur_dir.replace('library.zip' + os.sep, '')                
+                cur_dir = cur_dir.replace('library.zip' + os.sep, '')
             else:
                 cur_dir = cur_dir.replace('library.zip', '') 
             if cur_dir.find('ide') < 0:
@@ -27,7 +27,6 @@ class IdeApp(wx.App):
                 cur_dir += 'ide'
             
         upper_dir = os.path.dirname(cur_dir) + os.sep
- 
         self.dirname = cur_dir + os.sep
         
         self.set_tool_path()
@@ -46,14 +45,15 @@ class IdeApp(wx.App):
         self.prj = None
         self.last_file_count = 0
         self.frame = None
+        self.load_frame_config()
         
         self.frame = IdeFrame(self)
-    
+        
+        self.load_config()
+        
         self.SetTopWindow(self.frame)
         self.frame.Show(True)
                 
-        #search_sdcc_bin()
-        
         return True
             
     #-------------------------------------------------------------------
@@ -179,16 +179,17 @@ class IdeApp(wx.App):
             config.Write("LastFile" + str(i), path)
             i += 1
 
-        config.Write("LastFileCount", str(i))
+        config.WriteInt("LastFileCount", i)
 
         perspective_all = self.frame.mgr.SavePerspective()
         config.Write("Perspective", perspective_all)
+        
         config.Write("LastWorkPath", self.work_dir)
         
         n = self.file_history.GetCount()
-        config.Write("HistoryFileCount", str(self.file_history.GetCount()))
+        config.WriteInt("HistoryFileCount", self.file_history.GetCount())
         for i in range(n):
-            print self.file_history.GetHistoryFile(i)
+            #print self.file_history.GetHistoryFile(i)
             config.Write("HistoryFile" + str(i), self.file_history.GetHistoryFile(i))
         
         if self.prj:
@@ -207,9 +208,12 @@ class IdeApp(wx.App):
             lst.append(k)
             
         n = len(tp)
-        config.Write("tool_path_count", str(n))
+        config.WriteInt("tool_path_count", n)
         config.Write("tool_path_keys", ';'.join(lst))
             
+        config.WriteInt("left_panel_width", self.prj_mgr.GetSize().GetWidth())
+        config.WriteInt("bottom_panel_height", self.log_nb.GetSize().GetHeight())
+        
         #config.Write("cflags",  self.cflags)
         #config.Write("ldflags", self.ldflags)
         del config
@@ -229,11 +233,7 @@ class IdeApp(wx.App):
                 file_name = config.Read("LastFile" + str(i), "")
                 if file_name != "":
                     self.open_file(file_name)
-
-            perspactive = config.Read("Perspective", "")
-            if perspactive != "":
-                print("load perspective")
-                #self.mgr.LoadPerspective(perspactive)
+                
             self.work_dir = config.Read("LastWorkPath", "")
                         
             n = int(config.Read("HistoryFileCount", "0"))
@@ -258,10 +258,25 @@ class IdeApp(wx.App):
                         if os.path.exists(v):
                             self.tool_path[k] = v
                 #print self.tool_path
+                
+
+        
         #self.cflags = config.Read("cflags", "")
         #self.ldflags = config.Read("ldflags", "")
         del config
         
+    #-------------------------------------------------------------------
+    def load_frame_config(self):
+        config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
+        
+        self.left_panel_width = config.ReadInt("left_panel_width", 0)
+        self.bottom_panel_height = config.ReadInt("bottom_panel_height", 0)
+        #perspactive = config.Read("Perspective", "")
+        #if perspactive != "":
+            ##print("load perspective")
+            #self.frame.mgr.LoadPerspective(perspactive, True)
+                
+        del config
          
     #-------------------------------------------------------------------
     def set_tool_path(self):

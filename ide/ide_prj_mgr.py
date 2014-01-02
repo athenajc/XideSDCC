@@ -816,10 +816,10 @@ class FunctionTree(wx.TreeCtrl):
 
 #---------------------------------------------------------------------------------------------------
 class PrjMgr(wx.aui.AuiNotebook):
-    def __init__(self, app, frame):
+    def __init__(self, app, frame, size):
         wx.aui.AuiNotebook.__init__(self, frame, wx.ID_ANY,
                                     wx.DefaultPosition,
-                                    wx.Size(250, 200),
+                                    size,
                                     wx.aui.AUI_NB_TOP |
                                     wx.aui.AUI_NB_TAB_SPLIT |
                                     wx.aui.AUI_NB_TAB_MOVE |
@@ -827,6 +827,7 @@ class PrjMgr(wx.aui.AuiNotebook):
                                     wx.aui.AUI_NB_SCROLL_BUTTONS |
                                     wx.aui.AUI_NB_WINDOWLIST_BUTTON |
                                     wx.NO_BORDER)
+        
         self.SetMinSize(wx.Size(200, 200))
 
         notebook = self
