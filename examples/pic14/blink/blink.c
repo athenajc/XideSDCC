@@ -1,4 +1,6 @@
 /**
+ * blink.c -- modified from 
+ * http://burningsmell.org/pic16f628/src/0001-test.c
  * 0001-test.c -- modified from 
  * http://ubicomp.lancs.ac.uk/~martyn/sdcc_linux/test.c
  *
