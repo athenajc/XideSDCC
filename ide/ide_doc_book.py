@@ -40,13 +40,13 @@ class DocBook(wx.aui.AuiNotebook):
 
     #-------------------------------------------------------------------
     def get_target_doc(self):
-        log("DocBook.get_target")
+        log("DocBook.get_target_doc")
         file_path = self.app.toolbar.get_target()
         #log('compile', file_path)
         
         # check if select prj, if yes compile project
         if file_path.find('sdprj') > 0 and self.app.prj :
-            self.app.prj.compile_project()
+            #self.app.prj.compile_project()
             return None
         
         # get toolbar selected target at first

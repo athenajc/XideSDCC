@@ -324,6 +324,9 @@ class SimFrame (wx.Frame):
                 
     #-------------------------------------------------------------------
     def sim_run(self, command):
+        if hasattr(self, 'ihx_path') == False:
+            MsgDlg_Warn(self, 'Cannot find hex file to run')
+            return
         
         if self.mcu_name == "mcs51":
             self.sim = mcs51.Sim(self, self.ihx_path, self.file_list, command)

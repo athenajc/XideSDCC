@@ -115,10 +115,10 @@ class DebugInfoList(wx.ListCtrl):
         self.InsertColumn(0, "Time", wx.LIST_FORMAT_RIGHT)
         self.InsertColumn(1, "Event")
         self.InsertColumn(2, "Message")
-
+        
         self.SetColumnWidth(0, 80)
         self.SetColumnWidth(1, 80)
-        self.SetColumnWidth(2, 1300)
+        self.SetColumnWidth(2, wx.GetDisplaySize().GetWidth())
 
         parent.AddPage(self, wxT("Debug Info"))
 

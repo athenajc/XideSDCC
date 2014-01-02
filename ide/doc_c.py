@@ -336,7 +336,7 @@ class DocC(DocBase):
             self.app.cflags  = config.Read("cflags", "")
             self.app.ldflags = config.Read("ldflags", "")
             self.mcu_name  = config.Read("mcu_name", "")
-            self.mcu_device = config.Read("mcu_device", "")            
+            self.mcu_device = config.Read("mcu_device", "")
         else:
             del config
             self.app.set_build_option()
@@ -440,6 +440,12 @@ class DocC(DocBase):
         result = 0
         dprint("Compile", self.file_path)
         self.load_config()
+        
+        #if self.mcu_name == 'pic14':
+            #inc = ' -I' + self.app.get_path('sdcc', ['non-free', 'include', 'pic14']) + ' '
+        #else:
+            #inc = ""
+        
         #-- do the compilation
         # --model-small --code-loc 0x2000 --data-loc 0x30 --stack-after-data --xram
         #flag = " --debug --peep-asm " #" --disable-warning 59 "

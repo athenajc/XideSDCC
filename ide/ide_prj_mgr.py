@@ -43,7 +43,7 @@ class Project():
             self.gen_prj_tree()
         
     #-------------------------------------------------------------------
-    def run_compile_cmd(self, cmd, file_path):
+    def run_compile_cmd(self, cmd, file_path, show_erro_count=False):
         proc = subprocess.Popen(args=cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if proc is None:
             return False
@@ -71,8 +71,11 @@ class Project():
             r = "Pass"
         else:
             r = "Fail"
-    
-        dprint(r, "Error:" + str(err_count) + ", Warning:" + str(warn_count))
+            
+        self.err_count += err_count
+        self.warn_count += warn_count
+        if show_erro_count :
+            dprint(r, "Error:" + str(self.err_count) + ", Warning:" + str(self.warn_count))
         
         if err_count > 0:
             return False
@@ -82,13 +85,19 @@ class Project():
     #-------------------------------------------------------------------
     def compile_file(self, file_path):
         dprint("Compile", file_path)
+
+        #cflags = self.app.cflags
+        #if cflags.find('pic14') >= 0:
+            #inc = ' -I' + self.app.get_path('sdcc', ['non-free', 'include', 'pic14']) + ' '
+        #else:
+            #inc = ""
         #-- do the compilation
         # --model-small --code-loc 0x2000 --data-loc 0x30 --stack-after-data --xram
         #flag = " --debug --peep-asm " 
+ 
         rel_file = file_path.replace('.c', '.rel')
-        #flag = " --disable-warning 59 -c "
-        flag = " " + self.app.cflags + " -c " 
-        cmd = SDCC_bin_path + flag + file_path + ' -o ' + rel_file
+        flag = " " + self.app.cflags + inc + " -c " 
+        cmd = self.sdcc_path + flag + file_path + ' -o ' + rel_file
 
         dprint("Cmd", cmd)
         #os.chdir(os.path.dirname(file_path))
@@ -97,24 +106,69 @@ class Project():
         return result # return True if it compiled ok
     
     #-------------------------------------------------------------------
-    def compile_main_and_link(self, file_path, lst):
-        dprint("Compile", file_path)
+    def compile_main_and_link_mcs51(self, file_path, lst):
+        #dprint("Compile", file_path)
         rel_files = ''
         for f in lst:
             f = f.replace('.c', '.rel')
             rel_files += ' ' + f
         #-- do the compilation
-        # --model-small --code-loc 0x2000 --data-loc 0x30 --stack-after-data --xram
-        #flag = " --debug --peep-asm " 
-        #flag = " --disable-warning 59 "        
         flag = " " + self.app.cflags + " " + self.app.ldflags + " "
-        cmd = SDCC_bin_path + flag + file_path + rel_files
+        cmd = self.sdcc_path + flag + file_path + rel_files
 
         dprint("Cmd", cmd)
         #os.chdir(os.path.dirname(file_path))
         result = self.run_compile_cmd(cmd, file_path)
 
         return result # return True if it compiled ok
+    
+    #-------------------------------------------------------------------
+    def compile_main_and_link_pic(self, file_path, lst):
+        # check and get gputils path
+        gputil_path = self.app.get_path('gputils')
+        if os.path.exists(gputil_path) == False:
+            log('Error!!! Cannot find gputils!')
+            MsgDlg_Warn(self.app.frame, "Cannot find gputils" , caption='Warning!')
+            return False
+        
+        # change current dir
+        self.dirname = os.path.dirname(self.file_path)
+        os.chdir(self.dirname)
+        
+        # sdcc compile and gpasm - .asm to .o
+        obj_files = ""
+        for f in lst:
+            if f.find('.c') > 0:
+                asm_file = f.replace('.c', '.asm')
+                obj_files += f.replace('.c', '.o') + " "
+                flag = " " + self.app.cflags + " -c " 
+                cmd = self.sdcc_path + flag + f 
+                dprint("Cmd", cmd)
+                if self.run_compile_cmd(cmd, f) == False:
+                    MsgDlg_Warn(self.app.frame, 'Compile ' + f + ' fail!')
+                    return False
+                
+                cmd = "gpasm -c " + asm_file 
+                dprint("Cmd", cmd)
+                if self.run_compile_cmd(cmd, asm_file) == False:
+                    MsgDlg_Warn(self.app.frame, 'Gpasm - ' + f + ' fail!')
+                    return False
+                
+        # setting link
+        lkr = self.app.get_path('gputils', ['lkr'], self.mcu_device + "_g.lkr")
+        sdcc_lib = self.app.get_path('sdcc', ['lib', self.mcu_name], 'libsdcc.lib')
+        pic_lib = self.app.get_path('sdcc', ['non-free', 'lib', self.mcu_name], "pic" + self.mcu_device + ".lib")
+
+        # link
+        hex_file = file_path.replace('.c', '.hex')
+        cmd = "gplink -m -s " + lkr + " -o " + hex_file
+        sp = " "
+        cmd += sp + pic_lib + sp + sdcc_lib + sp + obj_files
+        dprint("Cmd", cmd)
+        self.run_compile_cmd(cmd, self.file_path, True)
+            
+        return True # return True if it compiled ok
+
     
     #-------------------------------------------------------------------
     def get_project_main_file(self):
@@ -132,8 +186,41 @@ class Project():
         self.other_c_file_list = lst
         
     #-------------------------------------------------------------------
+    def load_config(self):
+        #print("load config - sdcc.cfg")
+        config_file = self.file_path.replace('.sdprj', '.sdcfg')
+        if not os.path.exists(config_file):
+            self.app.set_build_option()
+            return
+        
+        config = wx.FileConfig("", "", config_file, "", wx.CONFIG_USE_LOCAL_FILE)
+
+        if config.Exists("mcu_name"):
+            self.app.cflags  = config.Read("cflags", "")
+            self.app.ldflags = config.Read("ldflags", "")
+            self.mcu_name  = config.Read("mcu_name", "")
+            self.mcu_device = config.Read("mcu_device", "")
+        else:
+            del config
+            self.app.set_build_option()
+            return
+            
+        del config
+        
+    #-------------------------------------------------------------------
     def compile_project(self):
         self.app.clear_debug()
+        self.err_count = 0
+        self.warn_count = 0
+        
+        self.load_config()
+        sdcc_path = self.app.get_path('sdcc_bin')
+        if os.path.exists(sdcc_path) == False:
+            log('Error!!! Cannot find SDCC!')
+            MsgDlg_Warn(self.app.frame, "Cannot find SDCC" , caption='Warning!')
+            return False
+        
+        self.sdcc_path = sdcc_path
         
         self.get_project_main_file()
         lst = self.other_c_file_list
@@ -143,9 +230,13 @@ class Project():
             dprint('Error', 'Can\'t find function main.')
         else:
             os.chdir(os.path.dirname(self.main_file))
-            for f in lst:
-                self.compile_file(f)
-            self.compile_main_and_link(self.main_file, lst)
+            
+            if self.mcu_name == 'pic14' or self.mcu_name == 'pic16':
+                self.compile_main_and_link_pic(self.main_file, lst)
+            else:
+                for f in lst:
+                    self.compile_file(f)                
+                self.compile_main_and_link_mcs51(self.main_file, lst)
                
         self.app.show_debug()
                
@@ -154,7 +245,7 @@ class Project():
         log("PrjMgr.run_project")
         self.app.running = True
         self.app.clear_debug()
-            
+        self.load_config()
         dprint("Run", self.file_path)
         self.get_project_main_file()
         lst = self.other_c_file_list
@@ -891,6 +982,7 @@ class PrjMgr(wx.aui.AuiNotebook):
     #-------------------------------------------------------------------
     def compile_project(self):
         if self.prj_tree.prj:
+            log('self.prj_tree.prj.compile_project()')
             self.prj_tree.prj.compile_project()
         
     #-------------------------------------------------------------------
