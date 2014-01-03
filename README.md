@@ -14,3 +14,6 @@ System requirements:
 * wxPython 2.9.5 - [http://www.wxpython.org/download.php#devel](http://www.wxpython.org/download.php#devel)
 * SDCC - [http://sdcc.sourceforge.net/index.php#Download](http://sdcc.sourceforge.net/index.php#Download)
 * GPUTILS - If you work with PIC14/PIC16 microcontroller [http://sourceforge.net/projects/gputils/](http://sourceforge.net/projects/gputils/)
+
+[Screen Shot](https://github.com/athenajc/XideSDCC/wiki/Screen-shot)
+
