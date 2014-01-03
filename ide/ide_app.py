@@ -381,6 +381,7 @@ class IdeApp(wx.App):
     def OnDocPageChange(self, event):
         self.goto_line_combo.OnDocPageChange()
         
+        
     #-------------------------------------------------------------------
     def log(self, s):
         if self.logger is None:

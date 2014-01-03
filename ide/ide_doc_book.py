@@ -329,9 +329,13 @@ class DocBook(wx.aui.AuiNotebook):
 
         if page_text == "Information":
             self.cur_doc = None
+            self.app.set_title(page_text)
         else:
             self.update_function_list()
-            self.app.toolbar.select_file(self.cur_doc.file_path)
+            doc = self.cur_doc
+            path = doc.file_path
+            self.app.toolbar.select_file(path)
+            self.app.set_title(path)
 
         self.app.OnDocPageChange(event)
         
