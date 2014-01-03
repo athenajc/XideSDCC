@@ -91,11 +91,23 @@ class IdeApp(wx.App):
         
     #-------------------------------------------------------------------
     def open_file(self, file_path):
-        print(file_path)
+        #print(file_path)
         # add it to the history
         self.file_history.AddFileToHistory(file_path)
+        
+        # add file_path to toolbar target selection combo
         if self.toolbar:
-            self.toolbar.add_file(file_path)
+            skip = False
+            # if file is one of project file, skip add
+            if self.prj:
+                dirname = self.prj.dirname
+                for f in self.prj.file_list:
+                    if dirname + f == file_path:
+                        skip = True
+                        break
+            if not skip:
+                self.toolbar.add_file(file_path)
+                
         return self.doc_book.open_file(file_path)
     
     #-------------------------------------------------------------------
@@ -225,6 +237,10 @@ class IdeApp(wx.App):
         config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
 
         if config.Exists("LastFileCount"):
+            path = config.Read("LastProject", "")
+            if path != "" and os.path.exists(path):
+                self.open_project(path)
+                
             #--log("config exists")
             self.last_file_count = config.Read("LastFileCount", "0")
             
@@ -240,10 +256,6 @@ class IdeApp(wx.App):
             for i in range(n):
                 path = config.Read("HistoryFile" + str(i), "")
                 self.file_history.AddFileToHistory(path)
-
-            path = config.Read("LastProject", "")
-            if path != "" and os.path.exists(path):
-                self.open_project(path)
                 
             # read external tool path setting, get count at first 
             n = int(config.Read("tool_path_count", "0"))

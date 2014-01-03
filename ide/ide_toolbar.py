@@ -175,8 +175,8 @@ class TargetCombo(wx.ComboBox):
         
     #-------------------------------------------------------------------
     def select_file(self, file_path):
-        if self.select_target_prj:
-            return
+        #if self.select_target_prj:
+            #return
         
         if file_path in self.file_list:
             index = self.file_list.index(file_path)
