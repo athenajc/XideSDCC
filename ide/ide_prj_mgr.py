@@ -56,6 +56,9 @@ class Project():
                 log("find warning", line.find("warning"))
                 warn_count += 1
                 dprint("Warning", line)
+            elif line.find("error") >= 0:
+                err_count += 1
+                dprint("Error", line)                
             else:
                 dprint("Info", line)
     
@@ -65,8 +68,11 @@ class Project():
             else:
                 err_count += 1
                 dprint("Error", line)
-    
-        dprint("Done", file_path + " compilation done.")
+        if show_erro_count :
+            dprint("Done", file_path + " compilation done.")
+        else:
+            pass
+            
         if err_count == 0 :
             r = "Pass"
         else:
@@ -133,11 +139,13 @@ class Project():
                 
         # sdcc compile and gpasm - .asm to .o
         obj_files = ""
+        lst.insert(0, file_path)
         for f in lst:
             if f.find('.c') > 0:
                 asm_file = f.replace('.c', '.asm')
                 obj_files += f.replace('.c', '.o') + " "
-                flag = " " + self.app.cflags + " -c " 
+                dev = self.mcu_device.replace("pic", "")
+                flag = " " + self.app.cflags + " -D__" + dev + " -c " 
                 cmd = self.sdcc_path + flag + f 
                 dprint("Cmd", cmd)
                 if self.run_compile_cmd(cmd, f) == False:
@@ -159,7 +167,7 @@ class Project():
         hex_file = file_path.replace('.c', '.hex')
         cmd = "gplink -m -s " + lkr + " -o " + hex_file
         sp = " "
-        cmd += sp + pic_lib + sp + sdcc_lib + sp + obj_files
+        cmd += sp + pic_lib + sp + sdcc_lib + sp + obj_files 
         dprint("Cmd", cmd)
         self.run_compile_cmd(cmd, self.file_path, True)
             
@@ -276,7 +284,7 @@ class Project():
     
     #-------------------------------------------------------------------
     def debug_project(self):
-        log("PrjMgr.debug_project")
+        log("Project.debug_project")
         self.app.running = True
         self.app.clear_debug()
             
@@ -1002,6 +1010,11 @@ class PrjMgr(wx.aui.AuiNotebook):
         if self.prj_tree.prj:
             self.prj_tree.prj.run_project()
         
+    #-------------------------------------------------------------------
+    def debug_project(self):
+        if self.prj_tree.prj:
+            self.prj_tree.prj.debug_project()
+            
     #-------------------------------------------------------------------
     def set_func_lst(self, lst):
         self.func_tree.set_list(lst)
