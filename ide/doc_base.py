@@ -168,7 +168,7 @@ class DocBase(StyledText):
     def __init__(self, parent, file_path):
         StyledText.__init__(self, parent)
         #print("doc_base", file_path)
-
+        self.modified = None
         self.file_path = file_path
         self.file_name = os.path.basename(file_path)
         self.breakpoints = []
@@ -297,6 +297,12 @@ class DocBase(StyledText):
                 self.ask_if_reload("Save on modified outside")
                 
     #-------------------------------------------------------------------
+    def set_unmodified(self):
+        self.modified = False
+        doc_book = self.app.doc_book
+        doc_book.SetPageText(self.page_index, self.file_name)
+        
+    #-------------------------------------------------------------------
     def load_config(self):
         pass
     
@@ -305,13 +311,13 @@ class DocBase(StyledText):
         #print("Open", file_path, self.page_index)
         self.LoadFile(file_path)
         self.get_func_list(self.app.functree)
-        self.modified = False
+        self.set_unmodified()
             
     #-------------------------------------------------------------------
     def save_file(self):
         if self.modified :
             self.SaveFile(self.file_path)
-            self.modified = False
+            self.set_unmodified()
             
     #-------------------------------------------------------------------
     def read_file(self):
@@ -350,11 +356,21 @@ class DocBase(StyledText):
         log("ask_if_save return=", result, "yes=", wx.ID_YES, "no=", wx.ID_NO)
         if result == wx.ID_YES :
             self.save_file()
-            self.modified = False
             return wx.ID_YES
         else:
             return wx.ID_NO
-
+        
+    #-------------------------------------------------------------------
+    def save_if_modified(self):
+        path = self.file_path
+        if (self.GetModify() == False) :
+            log(path + " not modified.")
+        elif (self.SaveFile(path)) :
+            self.set_unmodified()
+            log(path + " saved.")
+        else:
+            log("fail to save " + path)
+            
     #-------------------------------------------------------------------
     def clear_cur_line_marker(self, line):
         self.MarkerDelete(line, MARKNUM_CURRENT_LINE)
@@ -390,9 +406,15 @@ class DocBase(StyledText):
                     
     #-------------------------------------------------------------------
     def OnDocModified(self, event):
+        m = self.modified
         self.modified = self.GetModify()
-        if (self.modified) :
+        if self.modified :
             self.app.doc_modified = True
+            
+            # means first modified
+            if m == False:
+                doc_book = self.app.doc_book
+                doc_book.SetPageText(self.page_index, self.file_name + " *")
     
     #-------------------------------------------------------------------
     def auto_indent(self):

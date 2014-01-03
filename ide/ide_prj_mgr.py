@@ -130,11 +130,7 @@ class Project():
             log('Error!!! Cannot find gputils!')
             MsgDlg_Warn(self.app.frame, "Cannot find gputils" , caption='Warning!')
             return False
-        
-        # change current dir
-        self.dirname = os.path.dirname(self.file_path)
-        os.chdir(self.dirname)
-        
+                
         # sdcc compile and gpasm - .asm to .o
         obj_files = ""
         for f in lst:
@@ -186,6 +182,15 @@ class Project():
         self.other_c_file_list = lst
         
     #-------------------------------------------------------------------
+    def check_and_save_file(self, file_path):
+        # get doc by search file_path in doc_book
+        doc_book = self.app.doc_book
+        if file_path != "":
+            doc = doc_book.search_doc(file_path)
+            if doc:
+                doc.save_if_modified()
+        
+    #-------------------------------------------------------------------
     def load_config(self):
         #print("load config - sdcc.cfg")
         config_file = self.file_path.replace('.sdprj', '.sdcfg')
@@ -214,6 +219,7 @@ class Project():
         self.warn_count = 0
         
         self.load_config()
+        
         sdcc_path = self.app.get_path('sdcc_bin')
         if os.path.exists(sdcc_path) == False:
             log('Error!!! Cannot find SDCC!')
@@ -222,10 +228,16 @@ class Project():
         
         self.sdcc_path = sdcc_path
         
+        # change current dir
+        os.chdir(self.dirname)
+        
         self.get_project_main_file()
         lst = self.other_c_file_list
+        
         # TODO: check if file opened, need save or not
-                
+        for f in lst:
+            self.check_and_save_file(f)
+                    
         if self.main_file == None:
             dprint('Error', 'Can\'t find function main.')
         else:
@@ -235,7 +247,7 @@ class Project():
                 self.compile_main_and_link_pic(self.main_file, lst)
             else:
                 for f in lst:
-                    self.compile_file(f)                
+                    self.compile_file(f)
                 self.compile_main_and_link_mcs51(self.main_file, lst)
                
         self.app.show_debug()

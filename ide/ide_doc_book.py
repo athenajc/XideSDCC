@@ -32,12 +32,17 @@ class DocBook(wx.aui.AuiNotebook):
 
         self.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CLOSE, self.OnPageClose)
         self.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CHANGED, self.OnPageChange)
+        #self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateTab)
         
         self.Bind(wx.EVT_MENU, self.OnRun,       id=ID_RUN)
         self.Bind(wx.EVT_MENU, self.OnCompile,   id=ID_COMPILE)
         self.Bind(wx.EVT_MENU, self.OnStartDebug,id=ID_DBG_START)
         self.Bind(wx.EVT_MENU, self.OnStopDebug, id=ID_DBG_STOP)
-
+                
+    ##-------------------------------------------------------------------
+    #def OnUpdateTab(self, event):
+        #log("DocBook.OnUpdateTab")
+        
     #-------------------------------------------------------------------
     def get_target_doc(self):
         log("DocBook.get_target_doc")
@@ -154,8 +159,8 @@ class DocBook(wx.aui.AuiNotebook):
         else:
             doc = DocDefault(self, file_path)
 
-        print("load", doc, doc.file_path)
-        print(os.path.dirname(file_path))
+        #print("load", doc, doc.file_path)
+        #print(os.path.dirname(file_path))
         if file_path == "":
             file_path = "untitled"
 

@@ -612,26 +612,13 @@ class MenuFile(wx.Menu):
             return OnSaveAsfile(event)
 
         #--log("Save"+ "   index="+str(self.app.doc_index))
-        log("Save "+file_name)
-        if (doc.GetModify() == False) :
-            log(file_name+ " not modified.")
-        elif (doc.SaveFile(file_name)) :
-            log(file_name+ " saved.")
-            doc.modified = False
-            #doc.get_func_list(self.app.functree)
-        else:
-            log("fail to save "+file_name)
+        doc.save_if_modified()
             
     #-------------------------------------------------------------------
     def OnSaveAllFile(self, event):
-        for path, doc in self.docs:
-            if (doc.GetModify() == False) :
-                log(file_name+ " not modified.")
-            elif (doc.SaveFile(file_name)) :
-                doc.modified = False
-                log(file_name+ " saved.")
-            else:
-                log("fail to save "+file_name)
+        doc_book = self.app.doc_book
+        for path, doc in doc_book.docs:
+            doc.save_if_modified()
                 
     #-------------------------------------------------------------------
     def OnNewFile(self, event):
