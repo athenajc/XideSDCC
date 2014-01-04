@@ -60,6 +60,7 @@ class DocC(DocBase):
         self.pop_menu.Append(101, '&Open', 'Open a new document')
         self.pop_menu.Append(102, '&Save', 'Save the document')
         self.config_file = self.file_path.replace('.c', '.sdcfg')
+        self.dirname = os.path.dirname(file_path)
         self.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
         self.mcu_name  = ""
         self.mcu_device = ""
@@ -242,11 +243,6 @@ class DocC(DocBase):
         os.chdir(os.path.dirname(self.file_path))
         name, ext = self.file_name.split('.')
 
-        #self.cmd_queue = Queue.Queue()
-        #mcu_name = sdcc.get_mcu_from_config(self.file_path)
-        #if mcu_name == 'pic14':
-            #sim = sim_pic14
-        #else:
         self.app.debugging = True
         self.sim_frame = sim.SimFrame(self.app, self, 
                                   [self.file_path], 
@@ -314,9 +310,6 @@ class DocC(DocBase):
                 start_pos = doc.FindText(1, n, t1, stc.STC_FIND_REGEXP)
                 if (start_pos < 0) :
                     start_pos = doc.FindText(1, n, token, stc.STC_FIND_REGEXP)
-                #end
-            #end
-        #end
 
         end_pos = doc.FindText(start_pos, n, "\n")
         doc.set_range_visible(start_pos, end_pos)
@@ -346,6 +339,24 @@ class DocC(DocBase):
         del config
 
     #-------------------------------------------------------------------
+    def get_sdcc_path(self):
+        sdcc_path = self.app.get_path('sdcc_bin')
+        if os.path.exists(sdcc_path) == False:
+            log('Error!!! Cannot find SDCC!')
+            MsgDlg_Warn(self.app.frame, "Cannot find SDCC" , caption='Warning!')
+            return None
+        return sdcc_path
+    
+    #-------------------------------------------------------------------
+    def get_gptuils_path(self):
+        gputil_path = self.app.get_path('gputils')
+        if os.path.exists(gputil_path) == False:
+            log('Error!!! Cannot find gputils!')
+            MsgDlg_Warn(self.app.frame, "Cannot find gputils" , caption='Warning!')
+            return None
+        return gputil_path
+    
+    #-------------------------------------------------------------------
     def compile_before_debug(self):
         dprint("Compile", self.file_path)
         
@@ -353,22 +364,17 @@ class DocC(DocBase):
         self.load_config()
         
         # get sdcc_bin path
-        sdcc_path = self.app.get_path('sdcc_bin')
-        if os.path.exists(sdcc_path) == False:
-            log('Error!!! Cannot find SDCC!')
-            MsgDlg_Warn(self.app.frame, "Cannot find SDCC" , caption='Warning!')
+        sdcc_path = self.get_sdcc_path()
+        if sdcc_path == None:
             return False
         
         # if pic14/pic16 get gputils path
         if self.mcu_name.find('pic') >= 0:
-            gputil_path = self.app.get_path('gputils')
-            if os.path.exists(gputil_path) == False:
-                log('Error!!! Cannot find gputils!')
-                MsgDlg_Warn(self.app.frame, "Cannot find gputils" , caption='Warning!')
+            gputil_path = self.get_gptuils_path()
+            if gputil_path == None:
                 return False
             
         # chdir to source path
-        self.dirname = os.path.dirname(self.file_path)
         os.chdir(self.dirname)
         
         # set flag
@@ -403,40 +409,26 @@ class DocC(DocBase):
             cmd = '\"' + sdcc_path + '\"' + flag + self.file_path 
     
             dprint("Cmd", cmd)
-            os.chdir(os.path.dirname(self.file_path))
             result = self.run_cmd(cmd)
             
         return result # return True if it compiled ok
     
     #-------------------------------------------------------------------
     def compile(self):
-        result = 0
         dprint("Compile", self.file_path)
         self.load_config()
-        
-        #if self.mcu_name == 'pic14':
-            #inc = ' -I' + self.app.get_path('sdcc', ['non-free', 'include', 'pic14']) + ' '
-        #else:
-            #inc = ""
-        
-        #-- do the compilation
-        # --model-small --code-loc 0x2000 --data-loc 0x30 --stack-after-data --xram
-        #flag = " --debug --peep-asm " #" --disable-warning 59 "
+
         flag = " " + self.app.cflags + " " + self.app.ldflags + " " 
         
-        sdcc_path = self.app.get_path('sdcc_bin')
-        if os.path.exists(sdcc_path) == False:
-            log('Error!!! Cannot find SDCC!')
-            MsgDlg_Warn(self.app.frame, "Cannot find SDCC" , caption='Warning!')
+        # get sdcc_bin path
+        sdcc_path = self.get_sdcc_path()
+        if sdcc_path == None:
             return False
-        
-        self.dirname = os.path.dirname(self.file_path)
-        os.chdir(self.dirname)
-        
+                
         cmd = '\"' + sdcc_path + '\"' + flag + self.file_path 
 
         dprint("Cmd", cmd)
-        os.chdir(os.path.dirname(self.file_path))
+        os.chdir(self.dirname)
         result = self.run_cmd(cmd)
         return result # return True if it compiled ok
 
