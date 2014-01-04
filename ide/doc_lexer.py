@@ -284,8 +284,8 @@ def c_lexer(self):
                 self.StyleSetBold(v[0], True)
             
     #--Key words
-    self.SetKeyWords(0, wxT("for while repeat until if else elseif end break return in do struct class switch case static"))
-    self.SetKeyWords(1, wxT("unsigned signed void int short char long double float #include #define #typedef __at __interrupt"))
+    self.SetKeyWords(0, wxT("for while repeat until if else elseif end break return in do struct class switch case static volatile extern"))
+    self.SetKeyWords(1, wxT("unsigned signed void int short char long double float union typedef __sfr __at __interrupt"))
     self.SetKeyWords(2, wxT(""))
     self.SetKeyWords(3, wxT("NULL TRUE FALSE None true False"))
 

@@ -102,7 +102,7 @@ class DocC(DocBase):
                 print inc_name
                 path = search_file(local_path, inc_name)
                 if path == "":
-                    path = search_file(SDCC_inc_path, inc_name)                    
+                    path = search_file(SDCC_inc_path, inc_name)
                 if path == "":
                     path = search_file('/home/', inc_name)
                 if path != "":
