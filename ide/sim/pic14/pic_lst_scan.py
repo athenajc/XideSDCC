@@ -83,7 +83,7 @@ def ishex(s):
     return True
 
 
-
+import shlex
 #----------------------------------------------------------------
 def lst_get_lines(text, fn_index):
     code_map_lst = []
@@ -96,10 +96,13 @@ def lst_get_lines(text, fn_index):
         s = line[0:7].strip()
         #print line
         
-        if s != '' and ishex(s) :
+        if len(s) >= 4 and ishex(s) :
             #print line
-            s1 = re.sub("\s+", " ", line)        # replace space
-            lst = s1.split(' ')
+            #s1 = re.sub("\s+", " ", line)        # replace space
+            lst = shlex.split(line)
+            if len(lst) < 4:
+                continue
+            
             #print lst
             addr = int("0x" + lst[0], 16)
             if addr < addr_min:

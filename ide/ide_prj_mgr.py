@@ -129,7 +129,7 @@ class Project():
         return result # return True if it compiled ok
     
     #-------------------------------------------------------------------
-    def compile_main_and_link_pic(self, file_path, lst):
+    def compile_and_link_pic(self, file_path, lst):
         # check and get gputils path
         gputil_path = self.app.get_path('gputils')
         if os.path.exists(gputil_path) == False:
@@ -252,7 +252,7 @@ class Project():
             os.chdir(os.path.dirname(self.main_file))
             
             if self.mcu_name == 'pic14' or self.mcu_name == 'pic16':
-                self.compile_main_and_link_pic(self.main_file, lst)
+                self.compile_and_link_pic(self.main_file, lst)
             else:
                 for f in lst:
                     self.compile_file(f)
