@@ -182,14 +182,20 @@ class DebugInfoList(wx.ListCtrl):
     def write(self, s1, s2):
         dt =  wx.DateTime.Now()
         t = "%02d:%02d:%02d" % (dt.Hour, dt.Minute, dt.Second)
-        limit = 200
+        limit = 220
         if len(s2) > limit:
             i = 0
-            self.add_item([t, s1, s2[i:i+limit]])
-            i += limit
+            x = s2.find(' ', limit)
+            if x < 0:
+                x = limit
+            self.add_item([t, s1, s2[i:i+x]])
+            i += x
             while i < len(s2):
-                self.add_item(["", "", s2[i:i+limit]])
-                i += limit
+                x = s2.find(' ', i + limit)
+                if x < 0:
+                    x = limit
+                self.add_item(["", "", s2[i:i+x]])
+                i += x
         else:
             self.add_item([t, s1, s2])
         self.Update()

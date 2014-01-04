@@ -222,6 +222,9 @@ class DocBase(StyledText):
                 log("find warning", line.find("warning"))
                 warn_count += 1
                 dprint("Warning", line)
+            elif line.find("error") >= 0:
+                err_count += 1
+                dprint("Error", line)                
             else:
                 dprint("Info", line)
 

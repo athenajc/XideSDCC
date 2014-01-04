@@ -265,23 +265,27 @@ def c_lexer(self):
         [stc.STC_C_DEFAULT, color.default],
         [stc.STC_C_IDENTIFIER, color.identifier],
         [stc.STC_C_NUMBER, color.number],
-        [stc.STC_C_OPERATOR, color.operator],
+        [stc.STC_C_OPERATOR, color.operator, "Bold"],
         [stc.STC_C_PREPROCESSOR, color.preprocessor],
         [stc.STC_C_REGEX, color.string],
-        [stc.STC_C_STRING, color.string],
-        [stc.STC_C_STRINGEOL, color.stringeol],
+        [stc.STC_C_STRING, color.string, "Bold"],
+        [stc.STC_C_STRINGEOL, color.stringeol, "Bold"],
         [stc.STC_C_UUID, color.string],
         [stc.STC_C_VERBATIM, color.word1],
-        [stc.STC_C_WORD, color.word],
-        [stc.STC_C_WORD2, color.word2],
+        [stc.STC_C_WORD, color.word, "Bold"],
+        [stc.STC_C_WORD2, color.word2, "Bold"],
     ]
 
     for v in style:
         self.StyleSetForeground(v[0], v[1])
-
+        
+        if len(v) > 2:
+            if v[2] == "Bold" :
+                self.StyleSetBold(v[0], True)
+            
     #--Key words
-    self.SetKeyWords(0, wxT("for while repeat until if else elseif end break return in do struct class switch case"))
-    self.SetKeyWords(1, wxT("void int short char long double float #include #define #typedef"))
+    self.SetKeyWords(0, wxT("for while repeat until if else elseif end break return in do struct class switch case static"))
+    self.SetKeyWords(1, wxT("unsigned signed void int short char long double float #include #define #typedef __at __interrupt"))
     self.SetKeyWords(2, wxT(""))
     self.SetKeyWords(3, wxT("NULL TRUE FALSE None true False"))
 

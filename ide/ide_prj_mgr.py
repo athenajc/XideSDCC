@@ -28,7 +28,7 @@ class Project():
         self.file_list = []
         self.app.proj_history.add_proj_history(file_path)
 
-        self.xml2prj(file_path)
+        self.load_prj(file_path)
  
     #-------------------------------------------------------------------
     def select_file(self, path):
@@ -327,26 +327,25 @@ class Project():
             i += 1
         
     #-------------------------------------------------------------------
-    def xml2prj(self, filename):
+    def load_prj(self, filename):
         xml_tree = ET.parse(filename)
         if not xml_tree:
             return False
         
+        # set file_path and dirname
+        self.file_path = filename
+        self.dirname = os.path.dirname(filename) + os.sep
+        
         # start processing the XML file
         xml_root = xml_tree.getroot()
         lst = []
-       
+        
+        # load xml tree nodes
         for child in xml_root:
             tag = child.tag
-            if tag == 'project':
-                for k in child.attrib:
-                    if k == 'filename':
-                        self.file_path = child.attrib['filename']
-                    elif k == 'path':
-                        self.dirname = child.attrib['path']
-            else:
+            if tag != 'project':
                 self._scan_xml_node_(child, lst)
-
+                
         self.file_list = lst
         self.strip_prj_file_list()
         
@@ -431,7 +430,7 @@ class Project():
     
     #-------------------------------------------------------------------
     def save_project(self):
-        print 'save paroject ' + self.file_path
+        #print 'save paroject ' + self.file_path
         self.gen_prj_xml(self.file_path)
         self.dirty = False
 
@@ -519,7 +518,7 @@ class PrjTree(wx.TreeCtrl):
                 self.full_menu.Enable(self.ID_REMOVE_FILE, True)
                 self.full_menu.SetLabel(self.ID_REMOVE_FILE, "Remove " + path)
             else:
-                log('disable remove file')
+                #log('disable remove file')
                 self.full_menu.Enable(self.ID_REMOVE_FILE, False)
                 self.full_menu.SetLabel(self.ID_REMOVE_FILE, "Remove File")
             self.PopupMenu(self.full_menu, event.GetPosition())
@@ -644,11 +643,11 @@ class PrjTree(wx.TreeCtrl):
         result = False
         if dlg.ShowModal() == wx.ID_OK :
             path = os.path.dirname(dlg.GetPath())
-            log('Add files', path, dlg.GetFilenames())
+            #log('Add files', path, dlg.GetFilenames())
 
             for fn in dlg.GetFilenames():
                 file_path = path + os.sep + fn
-                print 'add file ', file_path, 'to project'
+                #print 'add file ', file_path, 'to project'
                 if self.app.prj.add_file(file_path):
                     self.add_prj_file(file_path)
 
@@ -678,7 +677,7 @@ class PrjTree(wx.TreeCtrl):
             return
         item = event.GetItem()
         path = self.prj.dirname + self.GetItemText(item)
-        log('select', path)
+        #log('select', path)
         if os.path.exists(path):
             self.app.open_file(path)
         
@@ -688,7 +687,7 @@ class PrjTree(wx.TreeCtrl):
             return
         item = self.GetSelection()
         path = self.GetItemText(item)
-        log('remove', item, path)
+        #log('remove', item, path)
         self.prj.remove_file(path)
         self.gen_prj_tree(self.prj.file_path, self.prj.file_list)
         
@@ -700,19 +699,19 @@ class PrjTree(wx.TreeCtrl):
     #-------------------------------------------------------------------
     def OnCompilePrj(self, event):
         if self.prj:
-            log("PrjMgr.OnCompile")
+            #log("PrjMgr.OnCompile")
             self.prj.compile_project()
         
     #-------------------------------------------------------------------
     def OnRunPrj(self, event):
         if self.prj:
-            log("PrjMgr.OnRun")
+            #log("PrjMgr.OnRun")
             self.prj.run_project()
             
     #-------------------------------------------------------------------
     def OnDebugPrj(self, event):
         if self.prj:
-            log("PrjMgr.OnDebug")
+            #log("PrjMgr.OnDebug")
             self.prj.debug_project()
 
 
@@ -821,7 +820,7 @@ class DirTree(wx.GenericDirCtrl):
     def __init__(self, app, frame, notebook):
         wx.GenericDirCtrl.__init__(self, frame, wx.ID_ANY, wx.DirDialogDefaultFolderStr,
                              wx.DefaultPosition, wx.DefaultSize, style=wx.DIRCTRL_SHOW_FILTERS,
-                             filter="Source files (*.c;*.h;*.lua;*.py;*.asm;*.lst;*.rst)|*.c;*.h;*.lua;*.py;*.asm;*.lst;*.rst")
+                             filter="Source files (*.c;*.h;*.lua;*.py;*.asm;*.lst;*.rst;*.sdprj)|*.c;*.h;*.lua;*.py;*.asm;*.lst;*.rst;*.sdprj")
         self.app = app
         self.notebook = notebook
         self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.OnSelectFile)
@@ -1002,7 +1001,7 @@ class PrjMgr(wx.aui.AuiNotebook):
     #-------------------------------------------------------------------
     def compile_project(self):
         if self.prj_tree.prj:
-            log('self.prj_tree.prj.compile_project()')
+            #log('self.prj_tree.prj.compile_project()')
             self.prj_tree.prj.compile_project()
         
     #-------------------------------------------------------------------

@@ -48,7 +48,7 @@ class DocBook(wx.aui.AuiNotebook):
         # check if select prj, if yes compile project
         if file_path.find('sdprj') > 0 and self.app.prj :
             #self.app.prj.compile_project()
-            return None
+            return 'prj'
         
         # get toolbar selected target at first
         if file_path != "":            
@@ -76,6 +76,8 @@ class DocBook(wx.aui.AuiNotebook):
         log("DocBook.OnRun")
         doc = self.get_target_doc()
         if doc is None:
+            return
+        elif doc == 'prj':
             self.app.prj_mgr.run_project()
             return
             
@@ -93,6 +95,8 @@ class DocBook(wx.aui.AuiNotebook):
         self.app.clear_debug()
         doc = self.get_target_doc()
         if doc is None:
+            return
+        elif doc == 'prj':
             self.app.prj.compile_project()
         else:
             doc.compile()
@@ -103,6 +107,8 @@ class DocBook(wx.aui.AuiNotebook):
         log("DocMgr.OnStartDebug")
         doc = self.get_target_doc()
         if doc is None:
+            return
+        elif doc == 'prj':
             self.app.prj_mgr.debug_project()
             return
         
@@ -287,7 +293,7 @@ class DocBook(wx.aui.AuiNotebook):
         for path_key, doc in self.docs :
             if doc is None :
                 continue
-            if doc.debugging :
+            if hasattr(doc, 'debugging') and doc.debugging :
                 doc.send_debug_cmd('quit')
             if doc.modified :
                 return doc.ask_if_save("Save on exit")
