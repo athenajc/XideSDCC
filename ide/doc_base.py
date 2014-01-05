@@ -332,9 +332,9 @@ class DocBase(StyledText):
     def check_file_content_changed(self):
         s = self.read_file()
         if s == self.GetText():
-            return True
-        else:
             return False
+        else:
+            return True
         
     #-------------------------------------------------------------------
     def ask_if_reload(self, msg):
@@ -368,11 +368,14 @@ class DocBase(StyledText):
         path = self.file_path
         if (self.GetModify() == False) :
             log(path + " not modified.")
-        elif (self.SaveFile(path)) :
-            self.set_unmodified()
-            log(path + " saved.")
-        else:
-            log("fail to save " + path)
+            return
+
+        if (self.check_file_content_changed()):
+            if (self.SaveFile(path)) :
+                self.set_unmodified()
+                log(path + " saved.")
+            else:
+                log("fail to save " + path)
             
     #-------------------------------------------------------------------
     def clear_cur_line_marker(self, line):

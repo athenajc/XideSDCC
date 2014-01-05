@@ -356,6 +356,32 @@ class DocBook(wx.aui.AuiNotebook):
         event.Skip()
         
     #-------------------------------------------------------------------
+    def save_as_file(self, doc, file_path):
+        if doc:
+            old_path = doc.file_path
+            i = 0
+            for p, d in self.docs:
+                if d == doc:
+                    self.docs[i] = [file_path, doc]
+                    break
+                i += 1
+                
+            self.open_file(file_path)
+            
+            doc.LoadFile(file_path)
+            doc.set_unmodified()
+            doc.file_path = file_path
+            doc.file_name = os.path.basename(file_path)
+            
+            page = self.GetPageIndex(doc)
+            self.SetPageText(page, doc.file_name)
+            
+            #doc.LoadFile(file_path)
+            #self.app.toolbar.select_file(path)
+            self.app.set_title(file_path)
+            
+        
+    #-------------------------------------------------------------------
     def close_file(self, doc):
         if doc:
             self.save_on_close_file(doc)
@@ -365,7 +391,6 @@ class DocBook(wx.aui.AuiNotebook):
                         
     #-------------------------------------------------------------------
     def OnCloseFile(self, event):
-        doc_book = self
         doc = self.app.get_doc()
         if doc:
             self.close_file(doc)
@@ -375,9 +400,8 @@ class DocBook(wx.aui.AuiNotebook):
         
     #-------------------------------------------------------------------
     def OnCloseAllFile(self, event):
-        doc_book = self
         lst = []
-        for path, doc in doc_book.docs:
+        for path, doc in self.docs:
             lst.append(doc)
             
         for doc in lst:

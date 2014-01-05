@@ -403,6 +403,12 @@ class IdeApp(wx.App):
         self.logger.AppendText(s)
         
     #-------------------------------------------------------------------
+    def warn(self, message, caption='Warning!'):
+        dlg = wx.MessageDialog(self.frame, message, caption, wx.OK | wx.ICON_WARNING)
+        dlg.ShowModal()
+        dlg.Destroy()
+
+    #-------------------------------------------------------------------
     def exit(self):
         if self.debugging and self.doc_debugging is not None:
             doc = self.doc_debugging

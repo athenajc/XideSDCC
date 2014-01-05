@@ -595,13 +595,18 @@ class MenuFile(wx.Menu):
         if fileDialog.ShowModal() == wx.ID_OK :
             file_path = fileDialog.GetPath()
             result = doc.SaveFile(file_path)
+            fileDialog.Destroy()
+            
             if result :
-                self.app.open_file(file_path)
+                self.app.doc_book.save_as_file(doc, file_path)
+                #self.app.open_file(file_path)
                 log(file_path + " saved.")
             else:
                 log("fail to save "+file_path)
-
-        fileDialog.Destroy()
+                self.app.warn('Fail to save as ' + file_path)
+        else:
+            fileDialog.Destroy()
+            
         return result
 
     #-------------------------------------------------------------------
