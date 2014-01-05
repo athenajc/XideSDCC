@@ -137,7 +137,8 @@ class DocBook(wx.aui.AuiNotebook):
         for path, doc in self.docs:
             doc.close()
             print "del", doc
-            del doc            
+            del doc
+            
     #-------------------------------------------------------------------
     def search_doc(self, file_path):
         for path, doc in self.docs:
@@ -335,13 +336,43 @@ class DocBook(wx.aui.AuiNotebook):
         else:
             self.update_function_list()
             doc = self.cur_doc
-            path = doc.file_path
+            if doc:
+                path = doc.file_path
+            else:
+                path = ""
             self.app.toolbar.select_file(path)
             self.app.set_title(path)
 
         self.app.OnDocPageChange(event)
         
         event.Skip()
+        
+    #-------------------------------------------------------------------
+    def close_file(self, doc):
+        if doc:
+            doc_book.save_on_close_file(doc)
+            page = doc_book.GetPageIndex(doc)
+            doc_book.RemovePage(page)
+            del doc
+            
+    #-------------------------------------------------------------------
+    def OnCloseFile(self, event):
+        doc_book = self
+        doc = self.app.get_doc()
+        if doc:
+            self.close_doc(doc)
+            
+    #-------------------------------------------------------------------
+    def OnCloseAllFile(self, event):
+        doc_book = self
+        lst = []
+        for path, doc in doc_book.docs:
+            lst.append(doc)
+            
+        for doc in lst:
+            self.close_doc(doc)
+            
+
         
 
 

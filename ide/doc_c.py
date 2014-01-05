@@ -14,6 +14,7 @@ from doc_base import DocBase
 import doc_lexer
 import sim
 import ide_build_opt
+from ide_menu import Menu
 
 #test_cmd = {"break 30\n", "break 40\n", "run\n", "continue\n", 
 #        "step\n", "step\n",  "step\n", "step\n", "step\n", "step\n", "step\n", "quit\n",}
@@ -44,11 +45,68 @@ def search_file(root_dir, search_name):
     return ""
 
 #---------------------------------------------------------------------------------------------------
+class DocPopMenu(wx.Menu):
+    def __init__(self, frame, doc):
+        menu_lst = [
+            [ID_RUN,       "Run\tF6",         "Run the program simulation"],
+            [ID_COMPILE,   "Compile",         "Compile current file"],
+            [],
+            [ID_DBG_START, "Debug run\tF5",   "Run at debugger mode"],
+            [ID_DBG_STOP,  "Stop Debug",      "Stop and destroy debugger"],
+            [],
+            [ID_UNDO,      "&Undo\tCtrl-Z",       "Undo the editing"],    
+            [ID_REDO,      "&Redo\tCtrl-Y",       "Redo the undo editing"],  
+            [],
+            [ID_CUT,       "Cu&t\tCtrl-X",        "Cut selected text to clipboard"], 
+            [ID_COPY,      "&Copy\tCtrl-C",       "Copy selected text to the clipboard"],
+            [ID_PASTE,     "&Paste\tCtrl-V",      "Paste text from clipboard"],
+            [ID_SELECTALL, "Select A&ll\tCtrl-A", "Select all text"],
+            [],
+            [ID_FIND,      "&Find\tCtrl-F",       "Find string"],
+            [ID_FINDNEXT,  "Find Next\tF3",       "Find next match string"],
+            [ID_REPLACE,   "Replace\tCtrl-H",     "Replace string"],
+            
+            [],
+            [ID_SAVE,    "&Save\tCtrl-S",       "Save the current document"],
+            [ID_SAVEAS,  "Save &As...\tAlt-S",  "Save the current document to a file with a new name"],
+            [ID_SAVEALL, "Save A&ll...\tCtrl-Shift-S", "Save all open documents"], 
+            [],
+            [ID_CLOSE,   "&Close file\tCtrl+W",  "Close the current file"],
+            [ID_CLOSEALL,   "Close all files",  "Close all current opened files"],
+            [],
+            ]
+        wx.Menu.__init__(self)
+        menu = self
+        for m in menu_lst:
+            if m == []:
+                menu.AppendSeparator()
+            else:
+                if type(m[0]) == type('str'):
+                    menu_id = get_id(m[0])
+                else:
+                    menu_id = m[0]
+                menu.Append(menu_id, m[1], m[2])
+
+        self.app = frame.app
+        self.frame = frame
+        self.doc = doc
+        
+    #-------------------------------------------------------------------
+    def popup(self):
+        doc = self.doc
+        self.Enable(ID_UNDO, doc.CanUndo())
+        self.Enable(ID_REDO, doc.CanRedo())
+        self.Enable(ID_PASTE,  doc.CanPaste())
+        
+        
+#---------------------------------------------------------------------------------------------------
 class DocC(DocBase):
     
     def __init__(self, parent, file_path):
         DocBase.__init__(self, parent, file_path)
         doc_lexer.c_lexer(self)
+        self.app = parent.app
+        self.frame = self.app.frame
         self.debugging = False
         self.running = False
         self.cmd_queue = None
@@ -56,23 +114,36 @@ class DocC(DocBase):
         self.s_out = None
         self.process = None
         self.sim_frame = None
-        self.pop_menu = wx.Menu()
-        self.pop_menu.Append(101, '&Open', 'Open a new document')
-        self.pop_menu.Append(102, '&Save', 'Save the document')
+        
         self.config_file = self.file_path.replace('.c', '.sdcfg')
         self.dirname = os.path.dirname(file_path)
         self.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
         self.mcu_name  = ""
         self.mcu_device = ""
         
+        # init pop menu
+        self.pop_menu = DocPopMenu(self.frame, self)
+        # init include file list
+        self.inc_lst = []
+
     #-------------------------------------------------------------------
     def OnRightDown(self, event):
-        #self.PopupMenu(self.pop_menu, event.GetPosition())
-        s = self.GetSelectedTextRaw()
+        # append include file path to pop menu
+        if self.inc_lst == []:
+            self.find_include_file()
+        self.pop_menu.popup()
+        self.PopupMenu(self.pop_menu, event.GetPosition() + wx.Point(10, 0))
+            
+    #-------------------------------------------------------------------
+    def find_include_file(self):
+        self.inc_lst = []
+        s = self.GetText()
         
+        # if select include file
         if s.find("#include") >= 0 :
-            self.inc_lst = []
             m = wx.Menu()
+
+            self.pop_menu.AppendSubMenu(m, "Open include files")
             matches = re.findall(r'\#include\s+\<(.+?)\>', s)
             for name in matches:
                 name = name.strip()
@@ -88,11 +159,11 @@ class DocC(DocBase):
                 self.inc_lst.append([nid, name, 'local'])
                 m.Append(nid, '&Open ' + name, 'Search and Open header file')
                 self.Bind(wx.EVT_MENU, self.OnOpenHeaderFile,  id=nid)
-            self.PopupMenu(m, event.GetPosition() + wx.Point(10, 0))
-    
+  
+
     #-------------------------------------------------------------------
     def OnOpenHeaderFile(self, event):
-        local_path = os.path.dirname(self.file_path)
+        local_path = self.dirname
         
         obj = event.GetEventObject()
         nid = event.GetId()

@@ -70,11 +70,13 @@ class MenuEdit(Menu):
             #[ID_FOLD,      "&Fold/Expand all\tF12", "Fold or Expand all code folds")
             ]
         Menu.__init__(self, frame, menu_lst)
-        menubar.Append(self, "&Edit")
+        if menubar:
+            menubar.Append(self, "&Edit")
 
         self.app = frame.app
         frame.menu_edit = self
         self.latest_pos = 1
+        self.latest_line = 0
         self.find_flags = 0
         self.find_str = ""
         self.frame = frame
@@ -207,7 +209,7 @@ class MenuEdit(Menu):
         self.find_flags = event.GetFlags()
         self.find_str = event.GetFindString()        
         self.find_next_token(self.app.get_doc(), self.find_str, self.find_flags)
-        log(self.find_flags, self.find_str, self.latest_line)
+        #log(self.find_flags, self.find_str, self.latest_line)
         
     #-------------------------------------------------------------------
     def OnFindClose(self, event):
@@ -503,13 +505,14 @@ class MenuFile(wx.Menu):
         
         self.example_menu = MenuExample(self)
         self.AppendSubMenu(self.example_menu, "Examples")
-        self.Append(ID_CLOSE,   "&Close file\tCtrl+W", "Close the current file")
         self.AppendSeparator()
         self.Append(ID_SAVE,    "&Save\tCtrl-S",       "Save the current document")
         self.Append(ID_SAVEAS,  "Save &As...\tAlt-S",  "Save the current document to a file with a new name")
         self.Append(ID_SAVEALL, "Save A&ll...\tCtrl-Shift-S", "Save all open documents")
         self.AppendSeparator()
-        
+        self.Append(ID_CLOSE,   "&Close file\tCtrl+W", "Close the current file")
+        self.Append(ID_CLOSEALL,   "Close all file", "Close all current opened files")
+        self.AppendSeparator()
         self.Append(ID_EXIT,    "E&xit\tAlt-X",        "Exit Program")
         
         menubar.Append(self, ("File"))
@@ -520,6 +523,8 @@ class MenuFile(wx.Menu):
         frame.Bind(wx.EVT_MENU, self.OnSaveFile,  id=ID_SAVE)
         frame.Bind(wx.EVT_MENU, self.OnSaveAsFile,  id=ID_SAVEAS)
         frame.Bind(wx.EVT_MENU, self.OnSaveAllFile,  id=ID_SAVEALL)
+        frame.Bind(wx.EVT_MENU, self.OnCloseFile,  id=ID_CLOSE)
+        frame.Bind(wx.EVT_MENU, self.OnCloseAllFile,  id=ID_CLOSEALL)        
         frame.Bind(wx.EVT_MENU, self.OnExit,  id=ID_EXIT)                
         
         # and a file history
@@ -624,6 +629,14 @@ class MenuFile(wx.Menu):
     def OnNewFile(self, event):
         log("new file")
         self.app.new_file()
+        
+    #-------------------------------------------------------------------
+    def OnCloseFile(self, event):
+        self.app.doc_book.OnCloseFile(event)
+            
+    #-------------------------------------------------------------------
+    def OnCloseAllFile(self, event):
+        self.app.doc_book.OnCloseAllFile(event)
         
     #-------------------------------------------------------------------
     def OnExit(self, event):

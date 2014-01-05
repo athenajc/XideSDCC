@@ -56,6 +56,7 @@ ID_CLOSE_PRJ        = wx.NewId()
 ID_NEW_FILE         = wx.ID_NEW
 ID_OPEN             = wx.ID_OPEN
 ID_CLOSE            = wx.NewId()
+ID_CLOSEALL         = wx.NewId()
 ID_SAVE             = wx.ID_SAVE
 ID_SAVEAS           = wx.ID_SAVEAS
 ID_SAVEALL          = wx.NewId()
