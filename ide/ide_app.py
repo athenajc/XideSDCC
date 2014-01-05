@@ -54,6 +54,8 @@ class IdeApp(wx.App):
         self.SetTopWindow(self.frame)
         self.frame.Show(True)
                 
+        if self.doc_book.get_doc() == None:
+            self.doc_book.new_file()
         return True
             
     #-------------------------------------------------------------------

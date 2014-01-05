@@ -198,6 +198,7 @@ class DocBook(wx.aui.AuiNotebook):
         doc.get_func_list(self.app.functree)
         doc.modified = False
         self.cur_doc = doc
+        return doc
 
     #-------------------------------------------------------------------
     def open_file(self, file_path):
@@ -241,7 +242,9 @@ class DocBook(wx.aui.AuiNotebook):
     def update_current_doc(self):
         #-- get notebook selected page index
         page_i = self.GetSelection()
-
+        if page_i < 0:
+            return None
+        
         #-- get doc by page index
         doc = self.GetPage(page_i)
         if doc is None:
@@ -282,7 +285,7 @@ class DocBook(wx.aui.AuiNotebook):
     def save_on_close_file(self, doc):
         #-- print(self, event)
         result = wx.ID_YES
-        if (doc.modified) :
+        if doc.modified :
             result = doc.ask_if_save("Save on close")
             
         self.remove_doc(doc)
@@ -319,10 +322,13 @@ class DocBook(wx.aui.AuiNotebook):
         if page_text == "Information":
             self.update_current_doc()
         else:
-            print("close", self.GetPage(event.GetSelection()).file_name)
+            log("OnPageClose", self.GetPage(event.GetSelection()).file_name)
             doc = self.cur_doc
             self.save_on_close_file(doc)
-
+            
+        if self.get_doc() == None:
+            self.new_file()
+            
         event.Skip()
 
     #-------------------------------------------------------------------
@@ -338,9 +344,11 @@ class DocBook(wx.aui.AuiNotebook):
             doc = self.cur_doc
             if doc:
                 path = doc.file_path
+                self.app.toolbar.select_file(path)
             else:
-                path = ""
-            self.app.toolbar.select_file(path)
+                doc = self.new_file()
+                path = "untitled"
+            
             self.app.set_title(path)
 
         self.app.OnDocPageChange(event)
@@ -350,18 +358,21 @@ class DocBook(wx.aui.AuiNotebook):
     #-------------------------------------------------------------------
     def close_file(self, doc):
         if doc:
-            doc_book.save_on_close_file(doc)
-            page = doc_book.GetPageIndex(doc)
-            doc_book.RemovePage(page)
+            self.save_on_close_file(doc)
+            page = self.GetPageIndex(doc)
+            self.RemovePage(page)
             del doc
-            
+                        
     #-------------------------------------------------------------------
     def OnCloseFile(self, event):
         doc_book = self
         doc = self.app.get_doc()
         if doc:
-            self.close_doc(doc)
+            self.close_file(doc)
             
+        if self.get_doc() == None:
+            self.new_file()
+        
     #-------------------------------------------------------------------
     def OnCloseAllFile(self, event):
         doc_book = self
@@ -370,8 +381,11 @@ class DocBook(wx.aui.AuiNotebook):
             lst.append(doc)
             
         for doc in lst:
-            self.close_doc(doc)
+            self.close_file(doc)
             
+        self.new_file()
+        
+        
 
         
 
