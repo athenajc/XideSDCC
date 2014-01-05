@@ -375,8 +375,7 @@ class DocBook(wx.aui.AuiNotebook):
             
             page = self.GetPageIndex(doc)
             self.SetPageText(page, doc.file_name)
-            
-            #doc.LoadFile(file_path)
+ 
             #self.app.toolbar.select_file(path)
             self.app.set_title(file_path)
             

@@ -147,6 +147,8 @@ class DocC(DocBase):
             matches = re.findall(r'\#include\s+\<(.+?)\>', s)
             for name in matches:
                 name = name.strip()
+                name = os.path.basename(name)
+                
                 nid = wx.NewId()
                 self.inc_lst.append([nid, name, 'global'])
                 m.Append(nid, '&Open ' + name, 'Search and Open header file')
@@ -155,6 +157,7 @@ class DocC(DocBase):
             matches = re.findall(r'\#include\s+\"(.+?)\"', s)
             for name in matches:
                 name = name.strip()
+                name = os.path.basename(name)
                 nid = wx.NewId()
                 self.inc_lst.append([nid, name, 'local'])
                 m.Append(nid, '&Open ' + name, 'Search and Open header file')
@@ -167,6 +170,7 @@ class DocC(DocBase):
         
         obj = event.GetEventObject()
         nid = event.GetId()
+        
         for t in self.inc_lst:
             if nid == t[0]:
                 inc_name = t[1]
