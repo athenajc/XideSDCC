@@ -8,61 +8,6 @@ from sim_global import *
 import sim_doc_lexer as doc_lexer
 
 import re
-
-
-#---------------------------------------------------------------------------------------------------
-class DocPopMenu(wx.Menu):
-    def __init__(self, frame, doc):
-        menu_lst = [
-            [ID_RUN,       "Run\tF6",         "Run the program simulation"],
-            [ID_COMPILE,   "Compile",         "Compile current file"],
-            [],
-            [ID_DBG_START, "Debug run\tF5",   "Run at debugger mode"],
-            [ID_DBG_STOP,  "Stop Debug",      "Stop and destroy debugger"],
-            [],
-            [ID_UNDO,      "&Undo\tCtrl-Z",       "Undo the editing"],    
-            [ID_REDO,      "&Redo\tCtrl-Y",       "Redo the undo editing"],  
-            [],
-            [ID_CUT,       "Cu&t\tCtrl-X",        "Cut selected text to clipboard"], 
-            [ID_COPY,      "&Copy\tCtrl-C",       "Copy selected text to the clipboard"],
-            [ID_PASTE,     "&Paste\tCtrl-V",      "Paste text from clipboard"],
-            [ID_SELECTALL, "Select A&ll\tCtrl-A", "Select all text"],
-            [],
-            [ID_FIND,      "&Find\tCtrl-F",       "Find string"],
-            [ID_FINDNEXT,  "Find Next\tF3",       "Find next match string"],
-            [ID_REPLACE,   "Replace\tCtrl-H",     "Replace string"],
-            
-            [],
-            [ID_SAVE,    "&Save\tCtrl-S",       "Save the current document"],
-            [ID_SAVEAS,  "Save &As...\tAlt-S",  "Save the current document to a file with a new name"],
-            [ID_SAVEALL, "Save A&ll...\tCtrl-Shift-S", "Save all open documents"], 
-            [],
-            [ID_CLOSE,   "&Close file\tCtrl+W",  "Close the current file"],
-            [ID_CLOSEALL,   "Close all files",  "Close all current opened files"],
-            [],
-            ]
-        wx.Menu.__init__(self)
-        menu = self
-        for m in menu_lst:
-            if m == []:
-                menu.AppendSeparator()
-            else:
-                if type(m[0]) == type('str'):
-                    menu_id = get_id(m[0])
-                else:
-                    menu_id = m[0]
-                menu.Append(menu_id, m[1], m[2])
-
-        self.app = frame.app
-        self.frame = frame
-        self.doc = doc
-        
-    #-------------------------------------------------------------------
-    def popup(self):
-        doc = self.doc
-        self.Enable(ID_UNDO, doc.CanUndo())
-        self.Enable(ID_REDO, doc.CanRedo())
-        self.Enable(ID_PASTE,  doc.CanPaste())
         
         
 #---------------------------------------------------------------------------------------------------
@@ -228,72 +173,6 @@ class DocBase(StyledText):
         
         #self.SetSelectionMode
         self.SetSelBackground(True, wx.Colour(0xff, 0xff, 0))
-
-        # init pop menu
-        self.pop_menu = DocPopMenu(self.frame, self)
-        # init include file list
-        self.inc_lst = []
-        
-        # bind popup menu event
-        self.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
-
-    #-------------------------------------------------------------------
-    def OnRightDown(self, event):
-        # append include file path to pop menu
-        if self.inc_lst == []:
-            self.find_include_file()
-        self.pop_menu.popup()
-        self.PopupMenu(self.pop_menu, event.GetPosition() + wx.Point(10, 0))
-            
-    #-------------------------------------------------------------------
-    def find_include_file(self):
-        self.inc_lst = []
-        s = self.GetText()
-        
-        # if select include file
-        if s.find("#include") >= 0 :
-            m = wx.Menu()
-
-            self.pop_menu.AppendSubMenu(m, "Open include files")
-            matches = re.findall(r'\#include\s+\<(.+?)\>', s)
-            for name in matches:
-                name = name.strip()
-                name = os.path.basename(name)
-                
-                nid = wx.NewId()
-                self.inc_lst.append([nid, name, 'global'])
-                m.Append(nid, '&Open ' + name, 'Search and Open header file')
-                self.Bind(wx.EVT_MENU, self.OnOpenHeaderFile,  id=nid)
-            
-            matches = re.findall(r'\#include\s+\"(.+?)\"', s)
-            for name in matches:
-                name = name.strip()
-                name = os.path.basename(name)
-                nid = wx.NewId()
-                self.inc_lst.append([nid, name, 'local'])
-                m.Append(nid, '&Open ' + name, 'Search and Open header file')
-                self.Bind(wx.EVT_MENU, self.OnOpenHeaderFile,  id=nid)
-  
-
-    #-------------------------------------------------------------------
-    def OnOpenHeaderFile(self, event):
-        local_path = self.dirname
-        
-        obj = event.GetEventObject()
-        nid = event.GetId()
-        
-        for t in self.inc_lst:
-            if nid == t[0]:
-                inc_name = t[1]
-                print inc_name
-                path = search_file(local_path, inc_name)
-                if path == "":
-                    path = search_file(SDCC_inc_path, inc_name)
-                if path == "":
-                    path = search_file('/home/', inc_name)
-                if path != "":
-                    print path
-                    self.app.open_file(path)
                     
     #-------------------------------------------------------------------
     def get_selected_line_text(self):

@@ -591,23 +591,21 @@ class UartTextViewer(wx.Panel):
         sbSizer1.Layout()
         
     #------------------------------------------------------------------------
-    def update_inst(self, sim, sbuf): 
-        self.inst_text.SetValue('')
-        s = "file = " + sim.c_file + "\n"
-        s += "line = " + str(sim.c_line) + "\n\n"
-        
-        s += str(sbuf) + '\n'
+    def update_inst(self, sim, sbuf):
+        lst = []
+        lst.append("file = " + sim.c_file)
+        lst.append("line = %d\n" % sim.c_line) 
+        lst.append(str(sbuf))
         s1 = ''.join(chr(i) for i in sbuf)
-        s += s1 
-        s += 'bank = ' + str(sim.bank_addr) + '\n'
+        lst.append(s1)
+        lst.append('bank = ' + str(sim.bank_addr))
         
         if sim.debug:
             for a in sim.mem_access_list:
-                s += 'mem ' + hex(a) + ' = ' + hex(sim.mem[a]) + '\n'
-            
-        #s += 'sbuf list = ' + str(sim.sbuf_list) + '\n'
-            
-        self.inst_text.WriteText(s)
+                lst.append('mem %02x = %02x' %(a, sim.mem[a]))
+       
+        s = '\n'.join(lst)
+        self.inst_text.SetValue(s)
         
         
 

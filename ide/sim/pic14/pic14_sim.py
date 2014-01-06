@@ -26,7 +26,7 @@ class SimPic():
         self.hex_file = hex_file
         self.inst_addr = 0
         self.bank_addr = 0
-        
+        self.mhz = 2 * 1024 * 1024
         #self.get_mcu_name()
         #print self.mcu_name, self.dev_name
         self.sfr_addr = get_sfr_addr(self.dev_name)
@@ -54,6 +54,10 @@ class SimPic():
         self.c_line = 0
         self.asm_code = ""
         
+        self.fsr = 0
+        self.indf_addr = 0
+        self.indf_bank = 0
+        
         self.stack = []
         self.stack_depth = 0
         self.sp = 0
@@ -69,6 +73,7 @@ class SimPic():
         self.step_mode = None
         self.debug = False
         
+        # initial timer and interrupts
         self.int_enabled = False
         self.int_p_enabled = False
         self.tmr0_mode  = 1 # T0CS = 1:counter, 0:timer
@@ -81,6 +86,12 @@ class SimPic():
         self.tmr0_rate = 0
         self.wdt_rate = 0
         self.ticks = 0
+        
+        # initial usart
+        self.usart_enabled = False
+        self.baud_rate = 9600
+        self.sbuf = []
+        self.usart_rxbuf = []
         
         # for set freg value, table look at value setting handler
         self.init_freg_handler()
@@ -238,6 +249,16 @@ class SimPic():
     def set_freg_status(self, v, bit = None, b = None):
         self.status_reg = v
         
+        if bit == 5 or bit == 6:
+            bank = (v >> 5) & 0x3
+            self.bank_addr = bank * 0x80
+            if bit == 6:
+                if self.debug:
+                    self.log("     select bank %d, %02x" % (bank, self.bank_addr))
+                    
+        elif bit == 7:
+            self.indf_bank = b
+            
     #-------------------------------------------------------------------
     def set_freg_tmr0(self, v, bit = None, b = None):
         self.tmr0_value = v
@@ -269,21 +290,133 @@ class SimPic():
                 self.int_p_enabled = False
                 
     #-------------------------------------------------------------------
+    def set_baud_rate(self, x, brgh):
+        # check TXSTA bit5 BRGH - High Baud Rate Select Bit
+        if brgh: 
+            m = 16
+        else:
+            m = 64
+        self.baud_rate = self.mhz / (m * (x +1))
+        
+    #-------------------------------------------------------------------
+    def set_freg_spbrg(self, v, bit = None, b = None):
+        """ set usart baud rate """
+        #This is the register which holds the baud rate generator value. It can be calculated using the below formula :
+        #Baud Rate Calculation :
+        #Desired Baud Rate = Fosc/(64(X+1)) where X is the SPBRG value.
+        #If we choose BRGH (High baud rate bit in the TXSTA register) bit as high, the formula will be :
+        #Desired Baud Rate = Fosc/(16(X+1))
+        #Let's calculate the SPBRG value for Fosc=4MHz, Baud Rate=9600, BRGH=1 :
+        #9600 = 4000000/(16(X+1))
+        #SPBRG=X=((4000000/9600)-16)/16=25,04167~25
+        #The error will be :
+        #Baud Rate = 4000000/(16(25,04167+1))=9615
+        #Error = (9615-9600)/9600=0,16%        
+        
+        # set baud rate
+        self.set_baud_rate(v, self.freg[self.TXSTA] & BIT5)        
+    
+    #-------------------------------------------------------------------
+    def set_freg_txsta(self, v, bit = None, b = None):
+        """ for usart transmit """
+        #0 CSRC - Clock Source Select Bit : Only works in synchronous mode.
+        #         Selects Master(1)(Clock generated internally)/Slave(0)(Clock from external source)mode.
+        #1 TX9 -  9-bit Transmit Enable Bit :
+        #         This bit enables(1)/disables(0) the 9-bit transmission
+        #2 TXEN - Transmit Enable Bit :
+        #         Transmit Enable(1)/Disable(0) bit
+        #3 SYNC - USART Mode :
+        #         Synchronous(1)/Asynchronous(0)
+        #5 BRGH - High Baud Rate Select Bit :
+        #         Only works in Asynchronous mode. High(1)/Low(0) speed
+        #6 TRMT - Transmit Status Bit :
+        #         TSR empty(1)/full(0)
+        #7 TX9D - 9th bit of transmit data. Can be Parity bit.
+        
+        if v & BIT2: 
+            # set TXEN = 1
+            # check if SPEN == 1
+            if self.freg[self.RCSTA] & BIT0:
+                self.usart_enabled |= 1
+                
+        if bit == 5:
+            self.set_baud_rate(self.freg[self.SPBRG], b)
+    
+    #-------------------------------------------------------------------
+    def set_freg_rcsta(self, v, bit = None, b = None):
+        """ for usart receive """
+        #0 SPEN - Serial Port Enable Bit :
+        #         Enables(1)/Disables(0) serial port
+        #1 RX9  - 9-bit Receive Enable Bit :
+        #         Enables(1)/Disables(0) 9-bit reception
+        #2 SREN - Single Receive Enable Bit :
+        #         Only works in Synchronous Master Mode. Enables(1)/Disables(0)
+        #3 CREN - Continous Receive Enable Bit :
+        #         Enables(1)/Disables(0) continous receive
+        #4 ADEN - Address Detect Enable Bit :
+        #         Only wokrs in 9-bit Asynchronous mode. Enables(1)/Disables(0) address detection
+        #5 FERR - Framing Error Bit :
+        #         Set(1) when framing error occured
+        #6 OERR - Overrun Error Bit :
+        #         Set(1) when overrun error occured
+        #7 RX9D - 9th bit of received data. Can be parity bit.
+        if v & BIT2: 
+            # set SREN = 1
+            # check if SPEN == 1
+            if self.freg[self.RCSTA] & BIT0:
+                self.usart_enabled |= 2
+                
+    #-------------------------------------------------------------------
+    def set_freg_txreg(self, v, bit = None, b = None):
+        """ usart tx """
+        #self.usart_txbuf.append(v)
+        self.sbuf_list.append(v)
+        
+        # set TXIF
+        self.freg[self.PIR1] |= BIT4
+        
+    #-------------------------------------------------------------------
+    def set_freg_rcreg(self, v, bit = None, b = None):
+        """ usart rx """
+        self.usart_rxbuf.append(v)
+        
+    #-------------------------------------------------------------------
+    def set_freg_fsr(self, v, bit = None, b = None):
+        """ set fsr for indirect memory access """
+        self.fsr = v
+        if self.indf_bank:
+            self.indf_addr = 0x100 + v
+        else:
+            self.indf_addr = v
+        
+    #-------------------------------------------------------------------
     def init_freg_handler(self):
         self.freg_handler = {}
         fh = self.freg_handler
-        fh[0x3] = self.set_freg_status
-        fh[self.PCL] = self.set_freg_pcl
-        fh[0x81] = fh[0x181] = self.set_option_reg
         fh[self.TMR0] = fh[0x101] = self.set_freg_tmr0
-        fh[0xB] = self.set_freg_intcon
+        fh[self.STATUS] = self.set_freg_status
+        fh[self.INTCON] = self.set_freg_intcon
+        fh[self.PCL] = self.set_freg_pcl
+        fh[self.OPTION_REG] = fh[0x100 + self.OPTION_REG] = self.set_option_reg
+        fh[self.FSR] = self.set_freg_fsr
         
+        # usart module, not supported for all devices, so have to check exists at first
+        self.usart_supported = False
+        
+        if hasattr(self, 'TXSTA'):
+            self.usart_supported = True
+            fh[self.TXSTA] = self.set_freg_txsta
+            fh[self.RCSTA] = self.set_freg_rcsta
+            fh[self.SPBRG] = self.set_freg_spbrg
+            fh[self.TXREG] = self.set_freg_txreg
+            fh[self.RCREG] = self.set_freg_rcreg
+
     #-------------------------------------------------------------------
     def set_freg(self, addr, v):
         # set bank addr
         if addr == 0:
-            addr = self.freg[self.FSR]
-        if not addr in [2, 3, 4, 0xA, 0xB]:
+            addr = self.indf_addr
+        elif not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
         
         if self.debug:
@@ -300,8 +433,8 @@ class SimPic():
     #-------------------------------------------------------------------
     def set_freg_bit(self, addr, bit, b):
         if addr == 0:
-            addr = self.freg[self.FSR]
-        if not addr in [2, 3, 4, 0xA, 0xB]:
+            addr = self.indf_addr
+        elif not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
         
         if self.debug:
@@ -325,8 +458,8 @@ class SimPic():
     #-------------------------------------------------------------------
     def get_freg(self, addr):
         if addr == 0:
-            addr = self.freg[self.FSR]
-        if not addr in [2, 3, 4, 0xA, 0xB]:
+            addr = self.indf_addr
+        elif not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
 
         v = self.freg[addr]
@@ -477,6 +610,13 @@ class SimPic():
                 if self.debug:
                     self.log("     select bank %d, %02x" % (bank, self.bank_addr))
                     
+        elif bit == 7:
+            self.indf_bank = v
+            if v:
+                self.indf_addr = 0x100 + self.fsr
+            else:
+                self.indf_addr = self.fsr
+                    
     #-------------------------------------------------------------------
     def set_status_flags(self, z, dc=0, c=0):
         v = self.status_reg & 0xf8
@@ -551,7 +691,7 @@ class SimPic():
                 self.freg[self.PORTC] &= ~(1 << bit)
         elif k == 'uart':
             # set RI = 1
-            pass
+            self.set_freg_rcreg(v)
     
     #-------------------------------------------------------------------
     def push(self, v):
