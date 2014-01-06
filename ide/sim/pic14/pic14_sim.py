@@ -82,6 +82,9 @@ class SimPic():
         self.wdt_rate = 0
         self.ticks = 0
         
+        # for set freg value, table look at value setting handler
+        self.init_freg_handler()
+        
     #-------------------------------------------------------------------
     def log(self, *args):
         #if self.c_line == 0:
@@ -152,70 +155,64 @@ class SimPic():
         if self.debug:
             self.log("     set bank")
         
-    #-------------------------------------------------------------------
-    def get_mem(self, addr):
-        v = self.mem[addr]
-        if self.debug:
-            key = self.sfr_name[addr]
-            self.log("     get mem %s %02x is %02x" % (key, addr, v))
-        return v    
-    
-    #-------------------------------------------------------------------
-    def update_pc_from_PCL(self):
-        pch = self.freg[self.PCLATH]
-        pcl = self.freg[self.PCL]
-        v = (pch << 8) | pcl
-        self.set_pc(v)
+    ##-------------------------------------------------------------------
+    #def get_mem(self, addr):
+        #v = self.mem[addr]
+        #if self.debug:
+            #key = self.sfr_name[addr]
+            #self.log("     get mem %s %02x is %02x" % (key, addr, v))
+        #return v    
         
-    #-------------------------------------------------------------------
-    def set_mem(self, addr, v):
+    ##-------------------------------------------------------------------
+    #def set_mem(self, addr, v):
         
-        if self.debug:
-            key = self.sfr_name[addr]
-            self.log("     set mem %s %02x = %02x" % (key, addr, v))
+        #if self.debug:
+            #key = self.sfr_name[addr]
+            #self.log("     set mem %s %02x = %02x" % (key, addr, v))
             
-        if (v > 0xff) :
-            self.log(v, "> 0xff")
-            #v = bits_and(v, 0xff)
-            v = v & 0xff
+        #if (v > 0xff) :
+            #self.log(v, "> 0xff")
+            ##v = bits_and(v, 0xff)
+            #v = v & 0xff
         
-        if not addr in self.mem_access_list:
-            self.mem_access_list.append(addr)
+        #if not addr in self.mem_access_list:
+            #self.mem_access_list.append(addr)
             
-        self.mem[addr] = v
+        #self.mem[addr] = v
 
-        if addr == self.PCL:
-            self.update_pc_from_PCL()
-        elif addr == self.TMR0:
-            self.tmr0_value = v
-        return v
+        #if addr == self.PCL:
+            #self.update_pc_from_PCL()
+        #elif addr == self.TMR0:
+            #self.tmr0_value = v
+        #return v
     
-    #-------------------------------------------------------------------
-    def mem_get_bit(self, addr, bit):       
-        v = self.get_mem(addr)
+    ##-------------------------------------------------------------------
+    #def mem_get_bit(self, addr, bit):       
+        #v = self.get_mem(addr)
 
-        if v & (1 << bit):
-            if self.debug: 
-                self.log("     get bit %d of %02x is 1" % (bit, addr))
-            return 1
-        else:
-            if self.debug: 
-                self.log("     get bit %d of %02x is 0" % (bit, addr))
-            return 0
+        #if v & (1 << bit):
+            #if self.debug: 
+                #self.log("     get bit %d of %02x is 1" % (bit, addr))
+            #return 1
+        #else:
+            #if self.debug: 
+                #self.log("     get bit %d of %02x is 0" % (bit, addr))
+            #return 0
                 
-    #-------------------------------------------------------------------
-    def mem_set_bit(self, addr, bit, b):
-        v = self.get_mem(addr)
+    ##-------------------------------------------------------------------
+    #def mem_set_bit(self, addr, bit, b):
+        #v = self.get_mem(addr)
         
-        if b == 1:
-            v |= 1 << bit
-        else:
-            v &= ~(1 << bit)
+        #if b == 1:
+            #v |= 1 << bit
+        #else:
+            #v &= ~(1 << bit)
             
-        self.set_mem(addr, v)
+        #self.set_mem(addr, v)
                
     #-------------------------------------------------------------------
     def set_reg(self, k, v):
+        """ for watch panel usage """
         addr = self.sfr_addr.get(k, -1)
         if addr == -1:
             self.log("Error set_reg", k)
@@ -224,6 +221,7 @@ class SimPic():
         
     #-------------------------------------------------------------------
     def get_reg(self, k):
+        """ for watch panel usage """
         addr = self.sfr_addr.get(k, -1)
         if addr == -1:
             if k == 'PC':
@@ -237,7 +235,52 @@ class SimPic():
         return v
     
     #-------------------------------------------------------------------
+    def set_freg_status(self, v, bit = None, b = None):
+        self.status_reg = v
+        
+    #-------------------------------------------------------------------
+    def set_freg_tmr0(self, v, bit = None, b = None):
+        self.tmr0_value = v
+    
+    #-------------------------------------------------------------------
+    def set_freg_pcl(self, v, bit = None, b = None):
+        pch = self.freg[self.PCLATH]
+        pcl = self.freg[self.PCL]
+        pc = (pch << 8) | pcl
+        self.set_pc(pc)
+        
+    #-------------------------------------------------------------------
+    def set_freg_intcon(self, v, bit = None, b = None):
+        # 7: GIE, 6:PEIE, 5:T0IE, 4:INTE, 3:RBIE, 2:T0IF, 1:INTF, 0:RBIF
+        if bit == None:
+            if v & BIT7 and self.int_enabled == False:
+                self.int_enabled = True
+                
+        elif bit == 7:
+            if b == 1:
+                self.int_enabled = True
+            else:
+                self.int_enabled = False
+                
+        elif bit == 6:
+            if b == 1:
+                self.int_p_enabled = True
+            else:
+                self.int_p_enabled = False
+                
+    #-------------------------------------------------------------------
+    def init_freg_handler(self):
+        self.freg_handler = {}
+        fh = self.freg_handler
+        fh[0x3] = self.set_freg_status
+        fh[self.PCL] = self.set_freg_pcl
+        fh[0x81] = fh[0x181] = self.set_option_reg
+        fh[self.TMR0] = fh[0x101] = self.set_freg_tmr0
+        fh[0xB] = self.set_freg_intcon
+        
+    #-------------------------------------------------------------------
     def set_freg(self, addr, v):
+        # set bank addr
         if addr == 0:
             addr = self.freg[self.FSR]
         if not addr in [2, 3, 4, 0xA, 0xB]:
@@ -246,17 +289,13 @@ class SimPic():
         if self.debug:
             key = self.sfr_name[addr]
             self.log("     set freg %s %02x = %02x" % (key, addr, v))
-
+        
+        # store freg value
         self.freg[addr] = v
-        if addr == 3:
-            self.status_reg = v
-        elif addr == self.TMR0 or addr == 0x101:
-            self.tmr0_value = v
-        elif addr == 0x81 or addr == 0x181:
-            self.set_option_reg(v)
-        elif addr == self.PCL:
-            #self.log('     set_reg ', key, v)
-            self.update_pc_from_PCL()
+        
+        # call freg handler by addr
+        if addr in self.freg_handler:
+            self.freg_handler[addr](v, None, None)
                        
     #-------------------------------------------------------------------
     def set_freg_bit(self, addr, bit, b):
@@ -278,13 +317,10 @@ class SimPic():
         
         if not addr in self.mem_access_list:
             self.mem_access_list.append(addr)
-        
-        if addr == 3:
-            self.status_reg = v
-        elif addr == 0xB:
-            self.set_intcon(v, bit, b)
-        elif addr == 0x81 or addr == 0x181:
-            self.set_option_reg(v, bit, b)
+            
+        if addr in self.freg_handler:
+            self.freg_handler[addr](v, bit, b)
+
             
     #-------------------------------------------------------------------
     def get_freg(self, addr):
@@ -312,25 +348,7 @@ class SimPic():
         if self.debug:
             self.log("     get w = %02x" % (v))
         return v
-    
-    #-------------------------------------------------------------------
-    def set_intcon(self, v, bit, b):
-        # 7: GIE, 6:PEIE, 5:T0IE, 4:INTE, 3:RBIE, 2:T0IF, 1:INTF, 0:RBIF
-        if bit == 7:
-            if b == 1:
-                self.int_enabled = True
-            else:
-                self.int_enabled = False
-        elif bit == 6:
-            if b == 1:
-                self.int_p_enabled = True
-            else:
-                self.int_p_enabled = False
-                
-        if bit == -1:
-            if v & BIT7 and self.int_enabled == False:
-                self.int_enabled = True
-        
+            
     #-------------------------------------------------------------------
     def set_option_reg(self, v, bit=-1, b=None):
         #bit 7:
