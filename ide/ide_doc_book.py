@@ -326,7 +326,7 @@ class DocBook(wx.aui.AuiNotebook):
             doc = self.cur_doc
             self.save_on_close_file(doc)
             
-        if self.get_doc() == None:
+        if len(self.docs) == 0:
             self.new_file()
             
         event.Skip()
@@ -393,8 +393,8 @@ class DocBook(wx.aui.AuiNotebook):
         doc = self.app.get_doc()
         if doc:
             self.close_file(doc)
-            
-        if self.get_doc() == None:
+        
+        if len(self.docs) == 0:
             self.new_file()
         
     #-------------------------------------------------------------------
