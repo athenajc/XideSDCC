@@ -108,8 +108,6 @@ class PinScope(wx.Panel):
         prev = 0
         w1 = self.grid_size
         for v in self.vlst:
-            s = "%02X" % v
-            gc.DrawText(s, x, 20)
             for i in range(7, -1, -1):
                 bit = (v >> i) & 1
                 if bit:
@@ -128,11 +126,11 @@ class PinScope(wx.Panel):
             
         gc.StrokeLineSegments(begins, ends)   
         
-
     #----------------------------------------------------------------------------
     def draw(self, gc):
         self.draw_grid(gc)
-        self.draw_pin_log(gc)
+        if self.vlst and self.vlst != []:
+            self.draw_pin_log(gc)
         
         gc.SetFont(self.font, "grey")
         w1 = self.grid_size * 8
@@ -141,7 +139,11 @@ class PinScope(wx.Panel):
             s = "%02X" % v
             gc.DrawText(s, x, 2)
             x += w1
-
+            
+    #----------------------------------------------------------------------------
+    def update(self, ischecked):
+        self.draw(self.gc)
+        self.Refresh()
 
 #----------------------------------------------------------------------------------
 class PinScopePanel(wx.Panel):
@@ -149,14 +151,28 @@ class PinScopePanel(wx.Panel):
         wx.Panel.__init__(self, parent, -1)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         
-        self.cb_target = wx.CheckBox(self, -1, label, size=(80, 40))
-        sizer.Add(self.cb_target, 0)
-        scope = PinScope(self, lst)
-        sizer.Add(scope, 1, wx.EXPAND) 
+        self.pin = label
+        self.cbox = wx.CheckBox(self, -1, label, size=(80, 40))
+        sizer.Add(self.cbox, 0)
+        self.scope = PinScope(self, [])
+        sizer.Add(self.scope, 1, wx.EXPAND) 
         
         self.SetSizer(sizer)
         sizer.Layout()
+        self.cbox.Bind(wx.EVT_CHECKBOX, self.OnCheckBox, self.cbox)
+    
+    #-------------------------------------------------------------------
+    def OnCheckBox(self, event):
+        #self.scope.update(False)
+        pass
         
+    #-------------------------------------------------------------------
+    def update(self, sim, n):
+        if self.cbox.Value:
+            lst = sim.get_pin_log(self.pin)
+            n1 = len(lst)
+            self.scope.vlst = lst[n1-n:n1]
+            self.scope.update(True)
         
 #----------------------------------------------------------------------------------
 class TestPanel(wx.Panel):
@@ -178,3 +194,10 @@ class TestPanel(wx.Panel):
         self.SetSizer(sizer)
         sizer.Layout()
 
+    #-------------------------------------------------------------------
+    def update(self, sim):
+        sz = self.scope_lst[0].scope.GetSize()
+        w = sz.GetWidth()
+        n = w / 80
+        for scope in self.scope_lst:
+            scope.update(sim, n)
