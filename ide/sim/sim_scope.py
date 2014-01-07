@@ -87,7 +87,7 @@ class PinScope(wx.Panel):
             ends.append((x, h))
             
         gc.StrokeLineSegments(begins, ends)
-    
+        
     #----------------------------------------------------------------------------
     def draw_pin_log(self, gc):
         gc.SetPen(wx.Pen("yellow", 2))
@@ -97,25 +97,34 @@ class PinScope(wx.Panel):
         h = sz.GetHeight()
         begins = []
         ends = []
-        x = 0
+        
         prev = 0
-        w1 = self.grid_size
-        for v in self.vlst:
-            for i in range(7, -1, -1):
-                bit = (v >> i) & 1
-                if bit:
-                    y = 14
-                else:
-                    y = 34
-                begins.append((x, y))
-                ends.append((x + w1, y))
+        w1 = 3 #self.grid_size
+        x = w 
+        
+        # lst of [time_stamp, bit value]
+        #self.vlst = [[10,1],[1,0],[1,1],[5,0]]
+        for t, t0, bit in self.vlst:
+            t -= t0
+            t >>= 5
+            if bit:
+                y = 14
+            else:
+                y = 34
+            
+            w2 = w1 * t
+            begins.append((x - w2, y))
+            ends.append((x, y))
+            
+            if bit != prev:
+                begins.append((x, 14))
+                ends.append((x, 34))
                 
-                if bit != prev:
-                    begins.append((x, 14))
-                    ends.append((x, 34))
-                    
-                x += w1
-                prev = bit
+            x -= w2
+            if x < 0:
+                break
+            
+            prev = bit
             
         gc.StrokeLineSegments(begins, ends)   
         
@@ -125,13 +134,13 @@ class PinScope(wx.Panel):
         if self.vlst and self.vlst != []:
             self.draw_pin_log(gc)
         
-        gc.SetFont(self.font, "grey")
-        w1 = self.grid_size * 8
-        x = 4
-        for v in self.vlst:
-            s = "%02X" % v
-            gc.DrawText(s, x, 2)
-            x += w1
+        #gc.SetFont(self.font, "grey")
+        #w1 = self.grid_size * 8
+        #x = 4
+        #for v in self.vlst:
+            #s = "%02X" % v
+            #gc.DrawText(s, x, 2)
+            #x += w1
             
     #----------------------------------------------------------------------------
     def update(self, ischecked):
@@ -173,9 +182,9 @@ class PinScopePanel(wx.Panel):
     #-------------------------------------------------------------------
     def update(self, sim, n):
         if self.cbox.Value:
-            lst = sim.get_pin_log(self.pin)
-            n1 = len(lst)
-            self.scope.vlst = lst[n1-n:n1]
+            vlst = sim.get_pin_log(self.pin)
+            #n1 = len(lst)
+            self.scope.vlst = vlst #lst[n1-n:n1]
             self.scope.update(True)
             
         

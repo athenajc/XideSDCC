@@ -21,12 +21,12 @@ void swing_portb()
     for (i = 0; i < 8; i++)
     {
         PORTB = 1 << i;
-        for (j = 0; j < 500; j++) ;
+        for (j = 0; j < 50; j++) ;
     }
     for (i = 7; i >= 0; i--)
     {
         PORTB = 1 << i;
-        for (j = 0; j < 500; j++) ;
+        for (j = 0; j < 50; j++) ;
     }
 }
 

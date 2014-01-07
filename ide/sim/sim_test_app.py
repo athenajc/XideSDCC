@@ -1,11 +1,12 @@
 import wx
 import random
 
-from sim_scope import *
+from sim_scope import ScopePanelList
 
 #----------------------------------------------------------------------------------
 class TestSim():
     def __init__(self):
+        self.time_stamp = 0
         self.pin_logs = {}
         self.pins = ['RA0','RA1','RA2','RA3','RA4','RA5','RA6','RA7',
                         'RB0','RB1','RB2','RB3','RB4','RB5','RB6','RB7',
@@ -27,10 +28,28 @@ class TestSim():
     
     #---------------------------------------------------------------
     def step(self):
-        p = self.pin_logs
-        for name, lst in self.pin_logs.items():
-            lst.append(random.randint(0,256))
-    
+        time = self.time_stamp
+        for i in range(8):
+            bit = random.randint(0,1)
+            s = 'RB' + str(i)
+            lst = self.pin_logs[s]
+            if lst == []:
+                t = []
+                b0 = 0
+                t0 = 0
+            else:
+                t = lst[0]
+                b0 = t[2]
+                t0 = t[0]
+                
+            if bit != b0:
+                lst.insert(0, [time, t0, bit])
+            
+        #for name, lst in self.pin_logs.items():
+        #    lst.append(random.randint(0,256))
+        
+        self.time_stamp += 4 * 1024 
+
 #----------------------------------------------------------------------------------
 class TestFrame(wx.Frame):
     def __init__(self, parent, title):
@@ -60,7 +79,8 @@ class TestFrame(wx.Frame):
     def OnTimer1Timer(self, event):  
         self.sim.step()
         self.scope.update(self.sim)
-            
+
+
 #----------------------------------------------------------------------------------
 class TestApp(wx.App):
     def OnInit(self):

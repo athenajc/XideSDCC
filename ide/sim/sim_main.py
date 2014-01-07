@@ -19,6 +19,7 @@ import pic14
 import sim_doc_lexer as doc_lexer
 import sim_doc_base as doc_base
 from sim_doc_base import StyledText
+from sim_scope import ScopePanelList
 
 #---------------------------------------------------------------------------------------------------
 class AsmView(StyledText):
@@ -197,6 +198,22 @@ class SimFrame (wx.Frame):
         
         self.load_config()
         
+        file_list = self.find_included_source(file_list)
+        self.file_list = file_list
+        self.file_path = file_list[0]
+        for f in file_list:
+            f1 = f.replace('.c', '.ihx')
+            f2 = f.replace('.c', '.hex')
+            if os.path.exists(f1):
+                self.ihx_path = f1
+                break
+            elif os.path.exists(f2):
+                self.ihx_path = f2
+                break        
+            
+        self.command = 'run' 
+        self.sim_run('run')
+
         self.SetSizeHintsSz(wx.Size(640,480), wx.DefaultSize)
         self.mgr = wx.aui.AuiManager()
         self.mgr.SetManagedWindow(self)
@@ -208,11 +225,12 @@ class SimFrame (wx.Frame):
         self.toolbar = SimToolbar(self, self.mgr)
         
         #add doc notebook for source code review
-        self.doc_book = DocBook(app, self)
-        self.doc_book.SetMinSize(wx.Size(120,-1))
+        #self.doc_book = DocBook(app, self)
+        #self.doc_book.SetMinSize(wx.Size(120,-1))
+        self.scope = ScopePanelList(self, self.sim)
         
-        #add doc_book to AuiManager
-        self.mgr.AddPane(self.doc_book, wx.aui.AuiPaneInfo().Right().PinButton(True).Dock().Resizable().FloatingSize(wx.Size(298,206)).DockFixed(False).Layer(0).CentrePane())
+        #add scope to AuiManager
+        self.mgr.AddPane(self.scope, wx.aui.AuiPaneInfo().Right().PinButton(True).Dock().Resizable().FloatingSize(wx.Size(298,206)).DockFixed(False).Layer(0).CentrePane())
 
         #add debug information panel notebook
         nb2 = wx.aui.AuiNotebook(self, wx.ID_ANY, wx.DefaultPosition, wx.Size(300,-1), wx.aui.AUI_NB_DEFAULT_STYLE)
@@ -249,33 +267,17 @@ class SimFrame (wx.Frame):
         self.Bind(wx.EVT_TOOL, self.OnContinue, id=ID_DBG_CONTINUE)
         self.Bind(wx.EVT_TOOL, self.OnPause,   id=ID_DBG_PAUSE)
         self.Bind(wx.EVT_TOOL, self.OnStop,    id=ID_DBG_STOP)
-                
-        file_list = self.find_included_source(file_list)
-        self.file_list = file_list
-        self.file_path = file_list[0]
-        for f in file_list:
-            f1 = f.replace('.c', '.ihx')
-            f2 = f.replace('.c', '.hex')
-            if os.path.exists(f1):
-                self.ihx_path = f1
-                break
-            elif os.path.exists(f2):
-                self.ihx_path = f2
-                break
             
-        self.command = 'run' 
-
+        
         self.debug_mode = False
         self.toolbar.btn_run()
         
         # timer1 to launch simulateion later 800 millisecond
-        self.sim = None
         self.timer1 = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.OnTimer1Timer, self.timer1)
         self.timer1.Start(800)
         self.pause = False
-        
-        
+                
         self.step_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.OnStepTimerTick, self.step_timer)
         #self.step_timer.Start(1)  # 1 milliseconds, 1 second = 1000 millisecond
@@ -315,12 +317,12 @@ class SimFrame (wx.Frame):
     #-------------------------------------------------------------------
     def OnTimer1Timer(self, event):  
         self.SetStatusText(time.asctime())
-        if self.command == 'run':
-            self.timer1.Stop()
-            self.sim_run(self.command)
-            self.pause = False
-            self.running = True
-            self.command = None
+
+        self.timer1.Stop()
+        #self.sim_run(self.command)
+        self.step_timer.Start(10) 
+        self.pause = False
+        self.running = True
                 
     #-------------------------------------------------------------------
     def sim_run(self, command):
@@ -338,7 +340,7 @@ class SimFrame (wx.Frame):
         self.sim.start()
         self.sim.enable_debug(False)
         self.running = True
-        self.step_timer.Start(10) 
+        #self.step_timer.Start(10) 
         
     #-------------------------------------------------------------------
     def sim_stop(self):
@@ -372,6 +374,8 @@ class SimFrame (wx.Frame):
             
         self.reg_panel.update_inst(sim, self.sbuf)
         self.reg_panel.update(sim)
+        self.scope.update(sim)
+        
         if self.pause:
             if sim.stack_depth == 0:
                 self.toolbar.enable_step_out(False)
@@ -474,8 +478,7 @@ class SimFrame (wx.Frame):
         if config.Exists("mcu_name"):
             self.mcu_name = config.Read("mcu_name", "mcs51") 
             self.mcu_device = config.Read("mcu_device", "") 
-            
-        
+
         del config
         
     #-------------------------------------------------------------------
@@ -536,6 +539,6 @@ if __name__ == '__main__':
     frame = SimFrame(app, None, lst, config_file, 'debug')
     
     app.SetTopWindow(frame)
-    frame.Show(True)    
+    frame.Show(True)
     
     app.MainLoop()

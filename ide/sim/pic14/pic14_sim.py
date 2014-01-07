@@ -72,6 +72,7 @@ class SimPic():
         self.status_bits_name = ['C', 'DC', 'Z', 'PD', 'TO', 'RP0', 'RP1', 'IRP']
         self.step_mode = None
         self.debug = False
+        self.stopped = True
         
         # initial timer and interrupts
         self.int_enabled = False
@@ -96,6 +97,32 @@ class SimPic():
         # for set freg value, table look at value setting handler
         self.init_freg_handler()
         
+        
+        self.pin_logs = {}
+        self.pins = ['RA0','RA1','RA2','RA3','RA4','RA5','RA6','RA7',
+                        'RB0','RB1','RB2','RB3','RB4','RB5','RB6','RB7',
+                        'RC0','RC1','RC2','RC3','RC4','RC5','RC6','RC7',]
+        self.pin_out = []
+        p = self.pin_logs
+        for i in range(8):
+            s = 'RB' + str(i)
+            p[s] = [[0,0,0]]
+            self.pin_out.append(s)
+            
+        self.time_stamp = 0
+        
+    #---------------------------------------------------------------
+    def get_pin_log(self, pin):
+        log = self.pin_logs.get(pin, [])
+        return log
+    
+    ##---------------------------------------------------------------
+    #def set_pin_log(self):
+        #p = self.pin_logs
+        #for name, lst in self.pin_logs.items():
+            #addr = self.sfr_addr[name]
+            #lst.append(random.randint(0,256))
+            
     #-------------------------------------------------------------------
     def log(self, *args):
         #if self.c_line == 0:
@@ -388,6 +415,32 @@ class SimPic():
             self.indf_addr = 0x100 + v
         else:
             self.indf_addr = v
+            
+    #-------------------------------------------------------------------
+    def set_freg_port(self, v, bit = None, b = None, name=None):
+        stamp = self.time_stamp
+        if bit:
+            lst = self.pin_logs[name + str(bit)]
+            t0 = lst[0][0]
+                
+            lst.insert(0, [stamp, t0, b])
+        else:
+            for i in range(8):
+                lst = self.pin_logs[name + str(i)]
+                t0 = lst[0][0]
+                lst.insert(0, [stamp, t0, (v >> i) & 1])
+                
+    #-------------------------------------------------------------------
+    def set_freg_porta(self, v, bit = None, b = None):
+        self.set_freg_port(v, bit, b, 'RA')
+                
+    #-------------------------------------------------------------------
+    def set_freg_portb(self, v, bit = None, b = None):
+        self.set_freg_port(v, bit, b, 'RB')
+        
+    #-------------------------------------------------------------------
+    def set_freg_portc(self, v, bit = None, b = None):
+        self.set_freg_port(v, bit, b, 'RC')
         
     #-------------------------------------------------------------------
     def init_freg_handler(self):
@@ -399,6 +452,9 @@ class SimPic():
         fh[self.PCL] = self.set_freg_pcl
         fh[self.OPTION_REG] = fh[0x100 + self.OPTION_REG] = self.set_option_reg
         fh[self.FSR] = self.set_freg_fsr
+        #fh[self.PORTA] = self.set_freg_porta
+        fh[self.PORTB] = self.set_freg_portb
+        #fh[self.PORTC] = self.set_freg_portc
         
         # usart module, not supported for all devices, so have to check exists at first
         self.usart_supported = False
@@ -885,6 +941,7 @@ class SimPic():
         
     #-------------------------------------------------------------------
     def load_inst(self):
+        self.time_stamp += 1
         self.ticks += 1
         if self.tmr0_enabled :
             self.proc_tmr0()
