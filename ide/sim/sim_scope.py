@@ -147,24 +147,35 @@ class PinScope(wx.Panel):
 
 #----------------------------------------------------------------------------------
 class PinScopePanel(wx.Panel):
-    def __init__(self, parent, label, lst):
+    def __init__(self, parent, label, sim, lst):
         wx.Panel.__init__(self, parent, -1)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         
         self.pin = label
-        self.cbox = wx.CheckBox(self, -1, label, size=(80, 40))
+        self.cbox = wx.CheckBox(self, -1, "", size=(25, -1), pos=(10, -1))
         sizer.Add(self.cbox, 0)
+        
+        self.combo = wx.ComboBox(self, -1, label, size=(80, 30), choices=sim.pins)
+        sizer.Add(self.combo, 0)
+        
         self.scope = PinScope(self, [])
         sizer.Add(self.scope, 1, wx.EXPAND) 
         
         self.SetSizer(sizer)
         sizer.Layout()
+        
         self.cbox.Bind(wx.EVT_CHECKBOX, self.OnCheckBox, self.cbox)
+        self.combo.Bind(wx.EVT_COMBOBOX, self.OnSelectPin, self.combo)
     
     #-------------------------------------------------------------------
     def OnCheckBox(self, event):
         #self.scope.update(False)
         pass
+    
+    #-------------------------------------------------------------------
+    def OnSelectPin(self, event):
+        self.pin = event.GetString()
+        
         
     #-------------------------------------------------------------------
     def update(self, sim, n):
@@ -183,8 +194,8 @@ class TestPanel(wx.Panel):
         self.scope_lst = []
         sizer = wx.BoxSizer(wx.VERTICAL)
         for i in range(8):
-            name = 'RB' + str(i)
-            scope = PinScopePanel(self, name, sim.get_pin_log(name))
+            name = 'RA' + str(i)
+            scope = PinScopePanel(self, name, sim, sim.get_pin_log(name))
             sizer.Add(scope, 0, wx.EXPAND, 2)
             self.scope_lst.append(scope)
             
@@ -197,7 +208,7 @@ class TestPanel(wx.Panel):
     #-------------------------------------------------------------------
     def update(self, sim):
         sz = self.scope_lst[0].scope.GetSize()
-        w = sz.GetWidth()
+        w = sz.GetWidth() + 79
         n = w / 80
         for scope in self.scope_lst:
             scope.update(sim, n)

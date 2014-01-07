@@ -7,7 +7,9 @@ from sim_scope import *
 class TestSim():
     def __init__(self):
         self.pin_logs = {}
-        
+        self.pins = ['RA0','RA1','RA2','RA3','RA4','RA5','RA6','RA7',
+                        'RB0','RB1','RB2','RB3','RB4','RB5','RB6','RB7',
+                        'RC0','RC1','RC2','RC3','RC4','RC5','RC6','RC7',]        
         p = self.pin_logs
         for i in range(8):
             p['RB' + str(i)] = []
