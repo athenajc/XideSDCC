@@ -1,13 +1,6 @@
 import wx
 
-BIT0 = 1
-BIT1 = 2
-BIT2 = 4
-BIT3 = 8
-BIT4 = 0x10
-BIT5 = 0x20
-BIT6 = 0x40
-BIT7 = 0x80
+
 #----------------------------------------------------------------------------------
 WINDOWS = ('wxMSW' in wx.PlatformInfo)
 USE_BUFFER = WINDOWS # use buffered drawing on Windows
@@ -145,6 +138,7 @@ class PinScope(wx.Panel):
         self.draw(self.gc)
         self.Refresh()
 
+
 #----------------------------------------------------------------------------------
 class PinScopePanel(wx.Panel):
     def __init__(self, parent, label, sim, lst):
@@ -155,7 +149,7 @@ class PinScopePanel(wx.Panel):
         self.cbox = wx.CheckBox(self, -1, "", size=(25, -1), pos=(10, -1))
         sizer.Add(self.cbox, 0)
         
-        self.combo = wx.ComboBox(self, -1, label, size=(80, 30), choices=sim.pins)
+        self.combo = wx.ComboBox(self, -1, label, size=(80, 30), choices=sim.pin_out)
         sizer.Add(self.combo, 0)
         
         self.scope = PinScope(self, [])
@@ -175,8 +169,7 @@ class PinScopePanel(wx.Panel):
     #-------------------------------------------------------------------
     def OnSelectPin(self, event):
         self.pin = event.GetString()
-        
-        
+                
     #-------------------------------------------------------------------
     def update(self, sim, n):
         if self.cbox.Value:
@@ -184,17 +177,25 @@ class PinScopePanel(wx.Panel):
             n1 = len(lst)
             self.scope.vlst = lst[n1-n:n1]
             self.scope.update(True)
+            
         
 #----------------------------------------------------------------------------------
-class TestPanel(wx.Panel):
+class ScopePanelList(wx.Panel):
     def __init__(self, parent, sim):
         self.log = None
         wx.Panel.__init__(self, parent, -1)
         
-        self.scope_lst = []
         sizer = wx.BoxSizer(wx.VERTICAL)
+
+        # initial scope panel list
+        self.scope_lst = []
+        pins = sim.pin_out
+        pin_n = len(pins)
         for i in range(8):
-            name = 'RA' + str(i)
+            if i < pin_n:
+                name = pins[i]
+            else:
+                name = 'RA' + str(i)
             scope = PinScopePanel(self, name, sim, sim.get_pin_log(name))
             sizer.Add(scope, 0, wx.EXPAND, 2)
             self.scope_lst.append(scope)
@@ -202,6 +203,7 @@ class TestPanel(wx.Panel):
             line = wx.StaticLine(self, -1)
             sizer.Add(line)
                     
+        # set layout
         self.SetSizer(sizer)
         sizer.Layout()
 

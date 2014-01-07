@@ -9,10 +9,13 @@ class TestSim():
         self.pin_logs = {}
         self.pins = ['RA0','RA1','RA2','RA3','RA4','RA5','RA6','RA7',
                         'RB0','RB1','RB2','RB3','RB4','RB5','RB6','RB7',
-                        'RC0','RC1','RC2','RC3','RC4','RC5','RC6','RC7',]        
+                        'RC0','RC1','RC2','RC3','RC4','RC5','RC6','RC7',]
+        self.pin_out = []
         p = self.pin_logs
         for i in range(8):
-            p['RB' + str(i)] = []
+            s = 'RB' + str(i)
+            p[s] = []
+            self.pin_out.append(s)
         #p['RB0'] = [1,2,4,8,0x10,0x20,0x40,0x80,0xff, 0x11, 0x61]
         #p['RB1'] = [0x11, 0x22, 0x33, 0x44, 0x55]
         #p['RB2'] = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
@@ -43,7 +46,7 @@ class TestFrame(wx.Frame):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.frame = self
         self.sim = TestSim()
-        self.scope = p = TestPanel(self, self.sim)
+        self.scope = p = ScopePanelList(self, self.sim)
         self.sizer.Add(p, 1, wx.EXPAND)    
         
         self.SetSizer(self.sizer)
