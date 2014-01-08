@@ -13,6 +13,7 @@ class PinScope(wx.Panel):
         self.back_color = (0, 50, 0)
         self.grid_size = 10
         self.vlst = lst
+        self.enabled = False
         wx.Panel.__init__(self, parent, -1, size=(-1, 40))
         self.SetBackgroundColour(self.back_color)
         self.Bind(wx.EVT_PAINT, self.OnPaint)
@@ -23,6 +24,9 @@ class PinScope(wx.Panel):
         
     #----------------------------------------------------------------------------
     def OnPaint(self, evt):
+        if not self.enabled:
+            return
+        
         if USE_BUFFER:
             # The buffer already contains our drawing, so no need to
             # do anything else but create the buffered DC.  When this
@@ -113,7 +117,10 @@ class PinScope(wx.Panel):
                 y = 34
             
             w2 = w1 * t
-            begins.append((x - w2, y))
+            x1 = x - w2
+            if x1 < 0:
+                x1 = 0
+            begins.append((x1, y))
             ends.append((x, y))
             
             if bit != prev:
@@ -126,42 +133,45 @@ class PinScope(wx.Panel):
             
             prev = bit
             
-        gc.StrokeLineSegments(begins, ends)   
+        gc.StrokeLineSegments(begins, ends)
+        
+    #----------------------------------------------------------------------------
+    def draw_hex(self, gc):        
+        gc.SetFont(self.font, "grey")
+        w1 = self.grid_size * 8
+        x = 4
+        for v in self.vlst:
+            s = "%02X" % v
+            gc.DrawText(s, x, 2)
+            x += w1
         
     #----------------------------------------------------------------------------
     def draw(self, gc):
         self.draw_grid(gc)
         if self.vlst and self.vlst != []:
             self.draw_pin_log(gc)
-        
-        #gc.SetFont(self.font, "grey")
-        #w1 = self.grid_size * 8
-        #x = 4
-        #for v in self.vlst:
-            #s = "%02X" % v
-            #gc.DrawText(s, x, 2)
-            #x += w1
             
     #----------------------------------------------------------------------------
     def update(self, ischecked):
-        self.draw(self.gc)
         self.Refresh()
 
 
 #----------------------------------------------------------------------------------
 class PinScopePanel(wx.Panel):
-    def __init__(self, parent, label, sim, lst):
+    def __init__(self, parent, label, sim, checked):
         wx.Panel.__init__(self, parent, -1)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         
         self.pin = label
         self.cbox = wx.CheckBox(self, -1, "", size=(25, -1), pos=(10, -1))
+        self.cbox.Value = checked
         sizer.Add(self.cbox, 0)
         
         self.combo = wx.ComboBox(self, -1, label, size=(80, 30), choices=sim.pin_out)
         sizer.Add(self.combo, 0)
         
         self.scope = PinScope(self, [])
+        self.scope.enabled = checked
         sizer.Add(self.scope, 1, wx.EXPAND) 
         
         self.SetSizer(sizer)
@@ -172,25 +182,26 @@ class PinScopePanel(wx.Panel):
     
     #-------------------------------------------------------------------
     def OnCheckBox(self, event):
-        #self.scope.update(False)
-        pass
+        self.scope.enabled = self.cbox.Value
     
     #-------------------------------------------------------------------
     def OnSelectPin(self, event):
         self.pin = event.GetString()
                 
     #-------------------------------------------------------------------
-    def update(self, sim, n):
+    def update(self, sim):
         if self.cbox.Value:
-            vlst = sim.get_pin_log(self.pin)
-            #n1 = len(lst)
-            self.scope.vlst = vlst #lst[n1-n:n1]
+            self.scope.vlst = sim.get_pin_log(self.pin)
             self.scope.update(True)
             
+    #-------------------------------------------------------------------
+    def get_pin_config(self):
+        return self.pin, str(self.cbox.Value)
+        
         
 #----------------------------------------------------------------------------------
 class ScopePanelList(wx.Panel):
-    def __init__(self, parent, sim):
+    def __init__(self, parent, sim, pin_configs, pin_checked):
         self.log = None
         wx.Panel.__init__(self, parent, -1)
         
@@ -198,14 +209,15 @@ class ScopePanelList(wx.Panel):
 
         # initial scope panel list
         self.scope_lst = []
-        pins = sim.pin_out
-        pin_n = len(pins)
+        if pin_configs == []:
+            pins = sim.pins
+        else:
+            pins = pin_configs
+            
         for i in range(8):
-            if i < pin_n:
-                name = pins[i]
-            else:
-                name = 'RA' + str(i)
-            scope = PinScopePanel(self, name, sim, sim.get_pin_log(name))
+            name = pins[i]
+
+            scope = PinScopePanel(self, name, sim, pin_checked[i])
             sizer.Add(scope, 0, wx.EXPAND, 2)
             self.scope_lst.append(scope)
             
@@ -218,8 +230,17 @@ class ScopePanelList(wx.Panel):
 
     #-------------------------------------------------------------------
     def update(self, sim):
-        sz = self.scope_lst[0].scope.GetSize()
-        w = sz.GetWidth() + 79
-        n = w / 80
+        #sz = self.scope_lst[0].scope.GetSize()
         for scope in self.scope_lst:
-            scope.update(sim, n)
+            scope.update(sim)
+
+    #-------------------------------------------------------------------
+    def get_pin_config(self):
+        pin_lst = []
+        check_lst = []
+        for scope in self.scope_lst:
+            pin, checked = scope.get_pin_config()
+            pin_lst.append(pin)
+            check_lst.append(checked)
+            
+        return pin_lst, check_lst

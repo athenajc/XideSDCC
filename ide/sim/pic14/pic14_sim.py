@@ -104,8 +104,8 @@ class SimPic():
                         'RC0','RC1','RC2','RC3','RC4','RC5','RC6','RC7',]
         self.pin_out = []
         p = self.pin_logs
-        for i in range(8):
-            s = 'RB' + str(i)
+        
+        for s in self.pins:
             p[s] = [[0,0,0]]
             self.pin_out.append(s)
             

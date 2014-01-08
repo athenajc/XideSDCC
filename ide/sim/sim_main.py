@@ -227,7 +227,7 @@ class SimFrame (wx.Frame):
         #add doc notebook for source code review
         #self.doc_book = DocBook(app, self)
         #self.doc_book.SetMinSize(wx.Size(120,-1))
-        self.scope = ScopePanelList(self, self.sim)
+        self.scope = ScopePanelList(self, self.sim, self.scope_pins, self.scope_pins_checked)
         
         #add scope to AuiManager
         self.mgr.AddPane(self.scope, wx.aui.AuiPaneInfo().Right().PinButton(True).Dock().Resizable().FloatingSize(wx.Size(298,206)).DockFixed(False).Layer(0).CentrePane())
@@ -464,21 +464,59 @@ class SimFrame (wx.Frame):
             for t in lst:
                 new_list.append(t)
         return new_list
-                    
+    
+    #-------------------------------------------------------------------
+    def save_config(self):
+        config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
+        
+        # save breakpoints
+        if hasattr(self, "breakpoints") and self.breakpoints:
+            config.Write("breakpoints", ';'.join(self.breakpoints))
+        
+        # save scope pin configs
+        if hasattr(self, "scope") and self.scope:
+            pin_lst, check_lst = self.scope.get_pin_config()
+            config.Write("scope_pins", ';'.join(pin_lst))
+            config.Write("scope_pins_checked", ';'.join(check_lst))
+        
+        del config
+
     #-------------------------------------------------------------------
     def load_config(self):
-        print("load config - " + self.config_file)
-        config_file = self.config_file
-        if not os.path.exists(config_file):
-            self.app.set_build_option()
-            return
-        
-        config = wx.FileConfig("", "", config_file, "", wx.CONFIG_USE_LOCAL_FILE)
+        config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
 
         if config.Exists("mcu_name"):
-            self.mcu_name = config.Read("mcu_name", "mcs51") 
-            self.mcu_device = config.Read("mcu_device", "") 
-
+            self.mcu_name = config.Read("mcu_name", "mcs51")
+            self.mcu_device = config.Read("mcu_device", "")
+            
+            # load breakpoints
+            s = config.Read("breakpoints", "")
+            if s == "":
+                self.breakpoints = []
+            else:
+                self.breakpoints = s.split(';')
+            
+            # load pin configs of scope
+            s = config.Read("scope_pins", "")
+            if s == "":
+                self.scope_pins = []
+            else:
+                self.scope_pins = s.split(';')
+                
+            # load pins checked or not
+            s = config.Read("scope_pins_checked", "")
+            if s == "":
+                self.scope_pins_checked = [False] * 8
+            else:
+                lst = s.split(';')
+                lst1 = []
+                for t in lst:
+                    if t == "True":
+                        lst1.append(True)
+                    else:
+                        lst1.append(False)
+                self.scope_pins_checked = lst1
+                
         del config
         
     #-------------------------------------------------------------------
@@ -499,6 +537,7 @@ class SimFrame (wx.Frame):
     #-------------------------------------------------------------------
     def close(self):
         self.stop()
+        self.save_config()
         self.Destroy()
         
     #-------------------------------------------------------------------
@@ -513,8 +552,8 @@ class SimFrame (wx.Frame):
     #-------------------------------------------------------------------
     # Virtual event handlers, overide them in your derived class
     def OnClose(self, event):
-        #print "OnClose"
         self.stop()
+        self.save_config()
         event.Skip()
         
         
