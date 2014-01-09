@@ -247,8 +247,21 @@ def array_list(table, n):
         lst[t[0]] = t[1]
     return lst
 
+def get_cur_dir():
+    cur_dir = os.path.dirname(os.path.abspath(__file__))
+    if cur_dir.find('library.zip') > 0:
+        if cur_dir.find('library.zip' + os.sep) > 0:
+            cur_dir = cur_dir.replace('library.zip' + os.sep, '')
+        else:
+            cur_dir = cur_dir.replace('library.zip', '') 
+        if cur_dir.find('ide') < 0:
+            if cur_dir.endswith(os.sep) == False:
+                cur_dir += os.sep
+            cur_dir += 'ide'    
+    return cur_dir
+
 def get_sfr_addr(dev_name):
-    path = os.path.dirname(os.path.realpath(__file__)) 
+    path = get_cur_dir()
     path += os.sep + 'defines' + os.sep + 'p' + dev_name + '.sfr'
     sfr_addr = {}
     if os.path.exists(path):

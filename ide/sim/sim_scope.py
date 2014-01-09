@@ -61,7 +61,7 @@ class PinScope(wx.Panel):
 
         dc = wx.MemoryDC(self._buffer)
         dc.SetTextForeground((220,220,220))
-        dc.SetBackground(self.back_color)
+        dc.SetBackground(wx.Brush(self.back_color))
         dc.Clear()
         self.gc = gc = self.make_gc(dc)
         self.draw(gc)
@@ -73,24 +73,26 @@ class PinScope(wx.Panel):
         sz = self.GetSize()
         w = sz.GetWidth()
         h = sz.GetHeight()
-        begins = []
-        ends = []
+        #begins = []
+        #ends = []
         w1 = self.grid_size
         for x in range(0, w, w1):
-            begins.append((x, 0))
-            ends.append((x, h))
+            #begins.append((x, 0))
+            #ends.append((x, h))
+            gc.StrokeLine(x, 0, x, h)
             
-        gc.StrokeLineSegments(begins, ends)
+        #gc.StrokeLineSegments(begins, ends)
         
         gc.SetPen(wx.Pen("green", 1))
         begins = []
         ends = []
         w1 = self.grid_size
         for x in range(0, w, w1*8):
-            begins.append((x, 0))
-            ends.append((x, h))
+            #begins.append((x, 0))
+            #ends.append((x, h))
+            gc.StrokeLine(x, 0, x, h)
             
-        gc.StrokeLineSegments(begins, ends)
+        #gc.StrokeLineSegments(begins, ends)
         
     #----------------------------------------------------------------------------
     def draw_pin_log(self, gc):
@@ -120,12 +122,14 @@ class PinScope(wx.Panel):
             x1 = x - w2
             if x1 < 0:
                 x1 = 0
-            begins.append((x1, y))
-            ends.append((x, y))
+            #begins.append((x1, y))
+            #ends.append((x, y))
+            gc.StrokeLine(x1, y, x, y)
             
             if bit != prev:
-                begins.append((x, 14))
-                ends.append((x, 34))
+                #begins.append((x, 14))
+                #ends.append((x, 34))
+                gc.StrokeLine(x, 14, x, 34)
                 
             x -= w2
             if x < 0:
@@ -133,7 +137,7 @@ class PinScope(wx.Panel):
             
             prev = bit
             
-        gc.StrokeLineSegments(begins, ends)
+        #gc.StrokeLineSegments(begins, ends)
         
     #----------------------------------------------------------------------------
     def draw_hex(self, gc):
@@ -144,7 +148,7 @@ class PinScope(wx.Panel):
             s = "%02X" % v
             gc.DrawText(s, x, 2)
             x += w1
-        
+
     #----------------------------------------------------------------------------
     def draw(self, gc):
         self.draw_grid(gc)
