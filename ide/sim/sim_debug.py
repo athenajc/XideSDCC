@@ -211,7 +211,7 @@ class DebugFrame (wx.Frame):
         self.mcu_name = "mcs51"
         self.mcu_device = ""
         
-        self.breakpoints = []  #breakpoints
+        self.breakpoints = None  #breakpoints
         self.sbuf = []
         
         self.load_config()
@@ -543,6 +543,46 @@ class DebugFrame (wx.Frame):
             for t in lst:
                 new_list.append(t)
         return new_list
+    
+    #-------------------------------------------------------------------
+    def check_if_with_main(self, file_path):
+        if not os.path.exists(file_path):
+            return False
+        
+        f = open(file_path, 'r')
+        s = f.read()
+        f.close()
+     
+        if s.find('main') < 0:
+            return False
+        
+        #s = c_pre_process(s)
+        s = re.sub("/\*[^\*]*\*/", "[$BC]", s)        # replace block comment
+        s = re.sub("([//][^\n]*[\n])", "[$LC]\n", s)  # replace line comment
+        s = re.sub("\([^\(\)]*\)", " () ", s)         # replace parenthesis
+        s = re.sub("\"[^\"\n]*\"", "[$ST]", s)        # replace string
+        
+        p_blk = "{[^{^}]*}"
+        match = re.search(p_blk, s)
+        if (match):
+            s = re.sub(p_blk, "[$BLK]", s)
+            while (match) :
+                s = re.sub(p_blk, "[$BLK]", s)
+                match = re.search(p_blk, s)
+    
+        s = re.sub(",", " , ", s)
+        s = re.sub("=", " = ", s)
+
+        match = re.findall(r"\w+\s+\(\)\s+[\[]+", s)
+        #log(match)
+        #print match
+        for t in match :
+            t = re.sub("[\[\n\(\)]", "", t)
+            #print '------------', t
+            if t.find('main') == 0:
+                return True
+            
+        return False
             
     #-------------------------------------------------------------------
     def open_file(self, file_path):
@@ -553,10 +593,17 @@ class DebugFrame (wx.Frame):
             
         path, ext = file_path.split('.')
         
-        if os.path.exists(path + '.c'):
-            doc = self.doc_book.open_file(path + '.c')
-            #doc.add_breakpoints(self.breakpoints)
+        c_file = path + '.c'
+        if os.path.exists(c_file):
+            doc = self.doc_book.open_file(c_file)
+            if self.breakpoints:
+                brks = self.breakpoints.get(c_file, None)
+                if brks:
+                    doc.add_breakpoints(brks)
+                    
             self.doc_list.append(doc)
+            if self.check_if_with_main(c_file):
+                self.doc_c = doc
         
         #self.doc_asm = self.doc_book.open_file(path + '.asm')
         if self.mcu_name == 'pic16' or self.mcu_name == 'pic14':
@@ -568,7 +615,7 @@ class DebugFrame (wx.Frame):
             if os.path.exists(path + '.hex'):
                 self.doc_book.open_file(path + '.hex')
                 self.ihx_path = path + '.hex'
-                self.doc_c = doc            
+                
         else:
             if os.path.exists(path + '.rst'):
                 self.doc_book.open_file(path + '.rst')
@@ -580,12 +627,28 @@ class DebugFrame (wx.Frame):
             if os.path.exists(path + '.ihx'):
                 self.doc_book.open_file(path + '.ihx')
                 self.ihx_path = path + '.ihx'
-                self.doc_c = doc
             elif os.path.exists(path + '.hex'):
                 self.doc_book.open_file(path + '.hex')
                 self.ihx_path = path + '.hex'
-                self.doc_c = doc
+           
         self.doc_book.SetSelection(0)
+        
+    #-------------------------------------------------------------------
+    def save_config(self):
+        config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
+        
+        # save breakpoints
+        lst = self.doc_book.get_breakpoints()
+        s = ";".join(lst)
+        config.Write("breakpoints", s)
+        
+        ## save scope pin configs
+        #if hasattr(self, "scope") and self.scope:
+            #pin_lst, check_lst = self.scope.get_pin_config()
+            #config.Write("scope_pins", ';'.join(pin_lst))
+            #config.Write("scope_pins_checked", ';'.join(check_lst))
+        
+        del config
         
     #-------------------------------------------------------------------
     def load_config(self):
@@ -601,6 +664,19 @@ class DebugFrame (wx.Frame):
             self.mcu_name = config.Read("mcu_name", "mcs51") 
             self.mcu_device = config.Read("mcu_device", "") 
 
+        # load breakpoints
+        s = config.Read("breakpoints", "")
+        if s == "":
+            self.breakpoints = None
+        else:
+            lst = s.split(';')
+            self.breakpoints = {}
+            
+            for t in lst:
+                path, b = t.split("=")
+                blst = eval(b)
+                self.breakpoints[path] = blst
+            
         del config
         
     #-------------------------------------------------------------------
@@ -622,11 +698,12 @@ class DebugFrame (wx.Frame):
     #-------------------------------------------------------------------
     def close(self):
         self.stop()
+        self.save_config()
         self.Destroy()
         
     #-------------------------------------------------------------------
     def __del__(self):
-        print "__del__"
+        #print "__del__"
         try:
             if self.parent is not None:
                 self.parent.sim_close()
@@ -636,7 +713,8 @@ class DebugFrame (wx.Frame):
     #-------------------------------------------------------------------
     # Virtual event handlers, overide them in your derived class
     def OnClose(self, event):
-        print "OnClose"
+        #print "OnClose"
         self.stop()
+        self.save_config()
         event.Skip()
         

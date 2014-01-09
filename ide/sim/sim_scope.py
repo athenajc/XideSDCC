@@ -136,7 +136,7 @@ class PinScope(wx.Panel):
         gc.StrokeLineSegments(begins, ends)
         
     #----------------------------------------------------------------------------
-    def draw_hex(self, gc):        
+    def draw_hex(self, gc):
         gc.SetFont(self.font, "grey")
         w1 = self.grid_size * 8
         x = 4

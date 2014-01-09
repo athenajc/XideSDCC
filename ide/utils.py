@@ -66,10 +66,10 @@ def check_if_with_main(file_path):
             
     match = re.findall(r"\w+\s+\(\)\s+[\[]+", s)
     #log(match)
-    print match
+    #print match
     for t in match :
         t = re.sub("[\[\n\(\)]", "", t)
-        print '------------', t
+        #print '------------', t
         if t.find('main') == 0:
             return True
         

@@ -3,6 +3,7 @@ import random
 
 from sim_scope import ScopePanelList
 
+
 #----------------------------------------------------------------------------------
 class TestSim():
     def __init__(self):
@@ -50,6 +51,7 @@ class TestSim():
         
         self.time_stamp += 4 * 1024 
 
+
 #----------------------------------------------------------------------------------
 class TestFrame(wx.Frame):
     def __init__(self, parent, title):
@@ -96,6 +98,7 @@ class TestApp(wx.App):
 def t(v): 
     for bit in bin(v)[2:]: 
         print bit
+        
         
 #----------------------------------------------------------------------------------
 if __name__ == '__main__':

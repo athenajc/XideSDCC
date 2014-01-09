@@ -36,12 +36,19 @@ class Doc(DocBase):
             self.breakpoints = None
 
     #-------------------------------------------------------------------
+    def get_breakpoints(self):
+        if self.breakpoints is None:
+            return None
+        else:
+            return str(self.breakpoints)
+                
+    #-------------------------------------------------------------------
     def add_breakpoints(self, b_lst):
         if self.breakpoints is None:
             return
         for line in b_lst:
             if not line in self.breakpoints:
-                self.MarkerAdd(line, MARKNUM_BREAK_POINT)
+                self.MarkerAdd(line - 1, MARKNUM_BREAK_POINT)
                 self.breakpoints.append(line)
         
     #-------------------------------------------------------------------

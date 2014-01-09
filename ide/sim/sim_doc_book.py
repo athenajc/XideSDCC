@@ -26,76 +26,16 @@ class DocBook(wx.aui.AuiNotebook):
         self.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CLOSE, self.OnPageClose)
         self.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CHANGED, self.OnPageChange)
         
-        #self.Bind(wx.EVT_MENU, self.OnRun,       id=ID_RUN)
-        #self.Bind(wx.EVT_MENU, self.OnCompile,   id=ID_COMPILE)
-        #self.Bind(wx.EVT_MENU, self.OnStartDebug,id=ID_DBG_START)
-        #self.Bind(wx.EVT_MENU, self.OnStep,      id=ID_DBG_STEP)
-        #self.Bind(wx.EVT_MENU, self.OnStepOver,  id=ID_DBG_STEP_OVER)
-        #self.Bind(wx.EVT_MENU, self.OnStepOut,   id=ID_DBG_STEP_OUT)
-        #self.Bind(wx.EVT_MENU, self.OnStopDebug, id=ID_DBG_STOP)
+    #-------------------------------------------------------------------
+    def get_breakpoints(self):
+        lst = []
+        for path, doc in self.docs:
+            s = doc.get_breakpoints()
+            if s:
+                lst.append(path + "=" + s)
+                
+        return lst
         
-    ##-------------------------------------------------------------------
-    #def OnRun(self, event):
-        #log("DocMgr.OnRun")
-        #doc = self.get_doc()
-        #self.app.running = True
-        #self.app.doc_running = doc
-        #self.app.clear_debug()
-        
-        #if doc.modified:
-            #dprint("AutoSave", doc.file_path)
-            #doc.save_file()
-        #dprint("Run", doc.file_path)
-        #doc.run_doc()
-        #self.app.show_debug()
-        
-    ##-------------------------------------------------------------------
-    #def OnCompile(self, event):
-        #log("DocMgr.OnCompile")
-        #self.app.clear_debug()
-        #self.app.get_doc().compile()
-        #self.app.show_debug()
-        
-    ##-------------------------------------------------------------------
-    #def OnStartDebug(self, event):
-        #log("DocMgr.OnStartDebug")
-        #app = self.app
-        #doc = app.get_doc()
-        
-        #if doc.debugging:
-            #doc.send_debug_cmd('continue')
-            #return
-        
-        #app.debugging = True
-        #app.doc_debugging = doc
-        #app.clear_debug()
-        #app.show_debug()
-        #doc.start_debug()
-        
-    ##-------------------------------------------------------------------
-    #def OnStepOut(self, event):
-        #doc = self.app.get_doc()
-        #if doc.debugging:
-            #doc.send_debug_cmd('continue')
-            
-    ##-------------------------------------------------------------------
-    #def OnStepOver(self, event):
-        #doc = self.app.get_doc()
-        #if doc.debugging:
-            #doc.send_debug_cmd('step')
-            
-    ##-------------------------------------------------------------------
-    #def OnStep(self, event):
-        #doc = self.app.get_doc()
-        #doc.send_debug_cmd('run')
-
-    ##-------------------------------------------------------------------
-    #def OnStopDebug(self, event):
-        #self.app.toolbar.disable_debug()
-        #doc = self.app.get_doc()
-        #if doc.debugging:
-            #doc.send_debug_cmd('quit')
-            
     #-------------------------------------------------------------------
     def close(self):
         for path, doc in self.docs:
