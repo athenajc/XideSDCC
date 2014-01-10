@@ -344,10 +344,12 @@ class DocC(DocBase):
         mcu = self.mcu_name
         if mcu == 'pic14' or mcu == 'pic16' :
             flag += ' -c '
-            cmd = '\"' + sdcc_path + '\"' + flag + self.file_path
+            q = '\"'
+            c_file = q + self.file_path + q
+            cmd = q + sdcc_path + q + flag + c_file
             result = self.run_cmd(cmd)
             
-            c_file = self.file_path
+            
             asm_file = c_file.replace('.c', '.asm')
             hex_file = c_file.replace('.c', '.hex')
             obj_file = c_file.replace('.c', '.o')
@@ -366,8 +368,9 @@ class DocC(DocBase):
             
         else:
             # mcs51 and all the others mcu
-            cmd = '\"' + sdcc_path + '\"' + flag + self.file_path 
-    
+            q = '\"'
+            cmd = q + sdcc_path + q + flag + q + self.file_path + q
+            
             dprint("Cmd", cmd)
             result = self.run_cmd(cmd)
             
@@ -384,8 +387,8 @@ class DocC(DocBase):
         sdcc_path = self.get_sdcc_path()
         if sdcc_path == None:
             return False
-                
-        cmd = '\"' + sdcc_path + '\"' + flag + self.file_path 
+        q = '\"'
+        cmd = q + sdcc_path + q + flag + q + self.file_path + q
 
         dprint("Cmd", cmd)
         os.chdir(self.dirname)

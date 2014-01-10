@@ -100,7 +100,8 @@ class Project():
         #-- do the compilation
         # --model-small --code-loc 0x2000 --data-loc 0x30 --stack-after-data --xram
         #flag = " --debug --peep-asm " 
- 
+        q = "\""
+        file_path = q + file_path + q
         rel_file = file_path.replace('.c', '.rel')
         flag = " " + self.app.cflags + inc + " -c " 
         cmd = self.sdcc_path + flag + file_path + ' -o ' + rel_file
@@ -114,6 +115,8 @@ class Project():
     #-------------------------------------------------------------------
     def compile_main_and_link_mcs51(self, file_path, lst):
         #dprint("Compile", file_path)
+        q = "\""
+        file_path = q + file_path + q        
         rel_files = ''
         for f in lst:
             f = f.replace('.c', '.rel')
@@ -138,10 +141,13 @@ class Project():
             return False
                 
         # sdcc compile and gpasm - .asm to .o
+        q = "\""
+        file_path = q + file_path + q
         obj_files = ""
         lst.insert(0, file_path)
         for f in lst:
             if f.find('.c') > 0:
+                f = q + f + q
                 asm_file = f.replace('.c', '.asm')
                 obj_files += f.replace('.c', '.o') + " "
                 dev = self.mcu_device.replace("pic", "")
@@ -169,7 +175,7 @@ class Project():
         sp = " "
         cmd += sp + pic_lib + sp + sdcc_lib + sp + obj_files 
         dprint("Cmd", cmd)
-        self.run_compile_cmd(cmd, self.file_path, True)
+        self.run_compile_cmd(cmd, q + self.file_path + q, True)
             
         return True # return True if it compiled ok
 
