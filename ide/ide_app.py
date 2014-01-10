@@ -6,6 +6,58 @@ from ide_global import *
 from ide_frame import IdeFrame
 from ide_build_opt import BuildOptionDialog
 
+VERSION = "v0.1.0"
+
+#---------------------------------------------------------------------------------------------------
+class IdeConfig(wx.FileConfig):
+    def __init__(self, file_path):
+        wx.FileConfig.__init__(self, '', '', file_path, '', wx.CONFIG_USE_LOCAL_FILE)
+        
+    #-------------------------------------------------------------------
+    def save_lst(self, name, lst):
+        self.Write(name, ';'.join(lst))
+    
+    #-------------------------------------------------------------------
+    def load_lst(self, name):
+        s = self.Read(name, '')
+        if s == '':
+            return []
+        else:
+            lst = s.split(';')
+            return lst
+    
+    #-------------------------------------------------------------------
+    def save_lst_int(self, name, lst):
+        self.Write(name, str(lst))
+    
+    #-------------------------------------------------------------------
+    def load_lst_int(self, name):
+        s = self.Read(name, '')
+        if s == '':
+            return []
+        else:
+            lst = eval(s)
+            return lst
+        
+    #-------------------------------------------------------------------
+    def save_dict(self, name, dict):
+        lst = dict.keys() 
+        self.save_lst(name + '_keys', lst)
+        for k, v in dict.items():
+            self.Write(name + '_' + k, str(v))
+    
+    #-------------------------------------------------------------------
+    def load_dict(self, name):
+        lst = self.load_lst(name)
+        if lst == []:
+            return {}
+        else:
+            dict = {}
+            for k in lst:
+                s = self.Read(name + '_' + k, "")
+                dict[k] = s
+            return dict
+
 
 #---------------------------------------------------------------------------------------------------
 class IdeApp(wx.App):
@@ -13,7 +65,8 @@ class IdeApp(wx.App):
     def OnInit(self):
         set_app(self)
         
-        self.name = 'Xide SDCC'
+        self.version = VERSION
+        self.name = 'Xide SDCC ' + VERSION
         
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         if cur_dir.find('library.zip') > 0:
@@ -35,6 +88,7 @@ class IdeApp(wx.App):
         self.ldflags = ""
         
         self.work_dir = upper_dir + 'examples'
+        self.load_pre_config()
         self.logger = None
         self.debugging = False
         self.doc_debugging = None
@@ -44,9 +98,7 @@ class IdeApp(wx.App):
         self.project_dirty = False
         self.prj = None
         self.last_file_count = 0
-        self.frame = None
-        self.load_frame_config()
-        
+          
         self.frame = IdeFrame(self)
         
         self.load_config()
@@ -181,117 +233,86 @@ class IdeApp(wx.App):
             
         dlg.Destroy()
 
+
     #-------------------------------------------------------------------
     def save_config(self):
-        log("save config - " + self.config_file)
-        config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
+        #log("save config - " + self.config_file)
+        config = IdeConfig(self.config_file)
+        
+        # Save IDE version
+        config.Write("XideVersion", self.version)
+        
+        # Save working path
+        config.Write("WorkDir", self.work_dir)
+        
+        # Save last opened project file path
+        if self.prj:
+            config.Write("LastProject", self.prj.file_path)
+        else:
+            config.Write("LastProject", "")
+            
+        # Save opened file path
         doc_lst = self.doc_book.docs
-        #print(doc_lst)
-        i = 0
+        doc_path_lst = [] 
         for path, doc in doc_lst:
-            #print(path, doc)
-            config.Write("LastFile" + str(i), path)
-            i += 1
-
-        config.WriteInt("LastFileCount", i)
-
-        perspective_all = self.frame.mgr.SavePerspective()
-        config.Write("Perspective", perspective_all)
+            doc_path_lst.append(path)
+        config.save_lst("LastOpenFiles", doc_path_lst)
         
-        config.Write("LastWorkPath", self.work_dir)
-        
+        # Save File History
         n = self.file_history.GetCount()
         config.WriteInt("HistoryFileCount", self.file_history.GetCount())
         for i in range(n):
             #print self.file_history.GetHistoryFile(i)
             config.Write("HistoryFile" + str(i), self.file_history.GetHistoryFile(i))
+                
+        # Save external tool path
+        config.save_dict('ToolPath', self.tool_path)
         
-        if self.prj:
-            config.Write("LastProject", self.prj.file_path)
-        else:
-            config.Write("LastProject", "")
-        
-        # save external tool path
-        tp = self.tool_path
-        
-        i = 0
-        lst = []
-        for k in tp:
-            config.Write("tool_path_" + str(i), k + ';' + tp[k])
-            i += 1
-            lst.append(k)
-            
-        n = len(tp)
-        config.WriteInt("tool_path_count", n)
-        config.Write("tool_path_keys", ';'.join(lst))
-            
-        config.WriteInt("left_panel_width", self.prj_mgr.GetSize().GetWidth())
-        config.WriteInt("bottom_panel_height", self.log_nb.GetSize().GetHeight())
-        
-        #config.Write("cflags",  self.cflags)
-        #config.Write("ldflags", self.ldflags)
         del config
         
     #-------------------------------------------------------------------
+    def load_pre_config(self):
+        # Open Config File
+        config = IdeConfig(self.config_file)
+
+        if config and config.Exists("WorkDir"):
+            
+            # Load working path
+            s = config.Read("WorkDir", "")
+            if s != "":
+                self.work_dir = s
+                
+    #-------------------------------------------------------------------
     def load_config(self):
+        # Open Config File
+        config = IdeConfig(self.config_file)
 
-        log("load config - " + self.config_file)
-        config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
-
-        if config.Exists("LastFileCount"):
+        if config and config.Exists("XideVersion"):
+                
+            # Load latest opened project file
             path = config.Read("LastProject", "")
             if path != "" and os.path.exists(path):
                 self.open_project(path)
                 
-            #--log("config exists")
-            self.last_file_count = config.Read("LastFileCount", "0")
-            
-            n = int(self.last_file_count)
-            for i in range(n):
-                file_name = config.Read("LastFile" + str(i), "")
-                if file_name != "":
-                    self.open_file(file_name)
-                
-            self.work_dir = config.Read("LastWorkPath", "")
-                        
+            # Load latest open files 
+            lst = config.load_lst("LastOpenFiles")
+            for path in lst:
+                if os.path.exists(path):
+                    self.open_file(path)
+                    
+            # Load File History
             n = int(config.Read("HistoryFileCount", "0"))
             for i in range(n):
                 path = config.Read("HistoryFile" + str(i), "")
                 self.file_history.AddFileToHistory(path)
                 
-            # read external tool path setting, get count at first 
-            n = int(config.Read("tool_path_count", "0"))
-            if n > 0:
-                # get all tool_path-* settings
-                for i in range(n):
-                    s = config.Read("tool_path_" + str(i), "")
-                    # check if empty
-                    if s != "":
-                        k, v = s.split(';')
-                        # check if path exists, otherwise remain the default ssetting
-                        if os.path.exists(v):
-                            self.tool_path[k] = v
-                #print self.tool_path
-                
-
-        
-        #self.cflags = config.Read("cflags", "")
-        #self.ldflags = config.Read("ldflags", "")
+            # Read external tool path setting
+            dict = config.load_dict('ToolPath')
+            if dict != {}:
+                self.tool_path = dict
+                       
         del config
-        
-    #-------------------------------------------------------------------
-    def load_frame_config(self):
-        config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
-        
-        self.left_panel_width = config.ReadInt("left_panel_width", 0)
-        self.bottom_panel_height = config.ReadInt("bottom_panel_height", 0)
-        #perspactive = config.Read("Perspective", "")
-        #if perspactive != "":
-            ##print("load perspective")
-            #self.frame.mgr.LoadPerspective(perspactive, True)
-                
-        del config
-         
+                 
     #-------------------------------------------------------------------
     def set_tool_path(self):
         if wx.Platform == '__WXMSW__' :

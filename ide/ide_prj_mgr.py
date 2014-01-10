@@ -826,7 +826,7 @@ class DirTree(wx.GenericDirCtrl):
     def __init__(self, app, frame, notebook):
         wx.GenericDirCtrl.__init__(self, frame, wx.ID_ANY, wx.DirDialogDefaultFolderStr,
                              wx.DefaultPosition, wx.DefaultSize, style=wx.DIRCTRL_SHOW_FILTERS,
-                             filter="Source files (*.c;*.h;*.lua;*.py;*.asm;*.lst;*.rst;*.sdprj)|*.c;*.h;*.lua;*.py;*.asm;*.lst;*.rst;*.sdprj")
+                             filter="Source files (*.c;*.h;*.lua;*.py;*.sdprj)|*.c;*.h;*.lua;*.py;*.sdprj")
         self.app = app
         self.notebook = notebook
         self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.OnSelectFile)
@@ -839,6 +839,7 @@ class DirTree(wx.GenericDirCtrl):
             self.app.open_file(path)
         else:
             self.ExpandPath(path)
+            self.app.work_dir = path
             
             
 #----------------------------------------------------------------------------------------------

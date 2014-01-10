@@ -425,10 +425,8 @@ class DocBase(StyledText):
             return
         
         ft = os.path.getmtime(self.file_path)
-        #log(ft, dt)
         if ft > dt :
-            log(ft, dt)
-            if (self.check_file_content_changed()):
+            if self.check_file_content_changed():
                 self.ask_if_reload("Save on modified outside")
                 
     #-------------------------------------------------------------------
@@ -474,7 +472,7 @@ class DocBase(StyledText):
         dlg = wx.MessageDialog(self, strs, msg, wx.YES_NO)
         result = dlg.ShowModal()
         dlg.Destroy()
-        log("ask if reload %x, %x, %x, %x" % (result, wx.ID_YES, wx.ID_CANCEL, wx.ID_NO))
+        #log("ask if reload %x, %x, %x, %x" % (result, wx.ID_YES, wx.ID_CANCEL, wx.ID_NO))
         if result == wx.ID_YES :
             #--print("load ", self.file_path)
             self.save_file()
@@ -488,7 +486,7 @@ class DocBase(StyledText):
         dlg = wx.MessageDialog(self, strs, msg, wx.YES_NO)
         result = dlg.ShowModal()
         dlg.Destroy()
-        log("ask_if_save return=", result, "yes=", wx.ID_YES, "no=", wx.ID_NO)
+        #log("ask_if_save return=", result, "yes=", wx.ID_YES, "no=", wx.ID_NO)
         if result == wx.ID_YES :
             self.save_file()
             return wx.ID_YES
