@@ -117,7 +117,18 @@ class SimPic():
         self.tmr0_rate = 0
         self.wdt_rate = 0
         self.ticks = 0
-
+        
+        self.pin_logs = {}
+        self.pins = ['RA0','RA1','RA2','RA3','RA4','RA5','RA6','RA7',
+                        'RB0','RB1','RB2','RB3','RB4','RB5','RB6','RB7',
+                        'RC0','RC1','RC2','RC3','RC4','RC5','RC6','RC7',]
+        self.pin_out = []        
+        
+    #---------------------------------------------------------------
+    def get_pin_log(self, pin):
+        log = self.pin_logs.get(pin, [])
+        return log
+    
     #-------------------------------------------------------------------
     def log(self, *args):
         #if self.c_line == 0:

@@ -179,12 +179,23 @@ class Sim():
         for k, v in self.sfr_map.items():
             self.addr_sfr[v] = k
             
+        self.pin_logs = {}
+        self.pins = ['P0_0','P0_1','P0_2','P0_3','P0_4','P0_5','P0_6','P0_7',
+                        'P1_0','P1_1','P1_2','P1_3','P1_4','P1_5','P1_6','P1_7',
+                        'P2_0','P2_1','P2_2','P2_3','P2_4','P2_5','P2_6','P2_7',]
+        self.pin_out = []        
+            
         text = read_whole_file(self.hex_path)
         self.log(self.hex_path + "\n")
 
         self.code_map = hex_scan_to_map(self.hex_path, text, self.mcu_name)
         self.load_code(text)
         
+    #---------------------------------------------------------------
+    def get_pin_log(self, pin):
+        log = self.pin_logs.get(pin, [])
+        return log
+    
     #-------------------------------------------------------------------
     def disassembly(self):
         return hex_scan(self.hex_path, self.mcu_name)
