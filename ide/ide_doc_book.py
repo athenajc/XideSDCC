@@ -273,24 +273,30 @@ class DocBook(wx.aui.AuiNotebook):
 
     #-------------------------------------------------------------------
     def remove_doc(self, doc):
-        log("remove doc  ", doc, len(self.docs))
+        #log("remove doc  ", doc, len(self.docs))
         i = 0
         for path, d in self.docs :
             if path == doc.file_path:
                 self.docs.pop(i)
+                break
             i += 1
-        log("after remove", len(self.docs))
+        #log("after remove", len(self.docs))
 
     #-------------------------------------------------------------------
     def save_on_close_file(self, doc):
         #-- print(self, event)
-        result = wx.ID_YES
-        if doc.modified :
-            result = doc.ask_if_save("Save on close")
+        result = doc.save_on_close_file()
             
         self.remove_doc(doc)
         return result
-
+    
+    #-------------------------------------------------------------------
+    def if_doc_modified(self):
+        for path, doc in self.docs :
+            if doc.modified :
+                return True
+        return False
+    
     #-------------------------------------------------------------------
     def save_on_exit(self, event):
         #print(self, "save_on_exit")
@@ -300,7 +306,7 @@ class DocBook(wx.aui.AuiNotebook):
             if hasattr(doc, 'debugging') and doc.debugging :
                 doc.send_debug_cmd('quit')
             if doc.modified :
-                return doc.ask_if_save("Save on exit")
+                return doc.save_on_exit("Save on exit")
 
         return wx.ID_YES
 
@@ -322,7 +328,7 @@ class DocBook(wx.aui.AuiNotebook):
         if page_text == "Information":
             self.update_current_doc()
         else:
-            log("OnPageClose", self.GetPage(event.GetSelection()).file_name)
+            #log("OnPageClose", self.GetPage(event.GetSelection()).file_name)
             doc = self.cur_doc
             self.save_on_close_file(doc)
             
@@ -390,7 +396,7 @@ class DocBook(wx.aui.AuiNotebook):
                         
     #-------------------------------------------------------------------
     def OnCloseFile(self, event):
-        doc = self.app.get_doc()
+        doc = self.get_doc()
         if doc:
             self.close_file(doc)
         

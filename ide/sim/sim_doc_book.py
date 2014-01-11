@@ -40,8 +40,7 @@ class DocBook(wx.aui.AuiNotebook):
     def close(self):
         for path, doc in self.docs:
             doc.close()
-            print "del", doc
-            del doc            
+            del doc
             
     #-------------------------------------------------------------------
     def search_doc(self, file_path):
@@ -54,8 +53,8 @@ class DocBook(wx.aui.AuiNotebook):
     def create_doc_editor(self, file_path):
         doc = Doc(self, file_path)
 
-        print("load", doc, doc.file_path)
-        print(os.path.dirname(file_path))
+        #print("load", doc, doc.file_path)
+        #print(os.path.dirname(file_path))
         if file_path == "":
             file_path = "untitled"
 
@@ -82,7 +81,7 @@ class DocBook(wx.aui.AuiNotebook):
         page_i = doc.page_index
         self.SetSelection(page_i)
 
-        print("Open", file_path, page_i)
+        #print("Open", file_path, page_i)
         doc.LoadFile(file_path)
         #print("LoadFile" + doc.GetText())
         doc.SetReadOnly(True)
@@ -123,25 +122,10 @@ class DocBook(wx.aui.AuiNotebook):
 
     #-------------------------------------------------------------------
     def OnPageClose(self, event):
-        i = event.GetSelection()
-        page_text = self.GetPageText(i)
-
-        if page_text == "Information":
-            self.update_current_doc()
-        else:
-            print("close", self.GetPage(event.GetSelection()).file_name)
-            doc = self.cur_doc
-            self.save_on_close_file(doc)
-
+        self.update_current_doc()
         event.Skip()
 
     #-------------------------------------------------------------------
     def OnPageChange(self, event):
-        i = event.GetSelection()
-        page_text = self.GetPageText(i)
-
-        if page_text == "Information":
-            self.cur_doc = None
-        else:
-            self.update_current_doc()
+        self.update_current_doc()
 

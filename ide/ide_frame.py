@@ -139,29 +139,38 @@ class IdeFrame (wx.Frame):
     #-------------------------------------------------------------------
     # Virtual event handlers, override them in your derived class
     def OnClose(self, event):
+        # Save frame config
         self.save_config()
-        self.app.save_config()
-        self.doc_book.close()
-        self.app.exit()
         
-        if self.app.doc_modified :
-            ans = self.app.save_on_exit(event)
+        # Save app config
+        self.app.save_config()
+        
+        # Check if any doc modified
+        if self.doc_book.if_doc_modified() :
+            
+            # If yes, ask if save 
+            ans = self.doc_book.save_on_exit(event)
             if ans == wx.ID_CANCEL:
+                # If user press Cancel, skip close application frame
                 return
+            
             elif ans == wx.ID_NO or ans == wx.ID_YES :
+                self.doc_book.close()
                 self.Destroy()
             else:
                 if not event.CanVeto():  # Test if we can veto this deletion
+                    self.doc_book.close()
                     self.Destroy()
                 else:
                     event.Veto()  # Notify the calling code that we didn't delete the frame.
 
-        #-- ensure the event is skipped to allow the frame to close
+        # Ensure the event is skipped to allow the frame to close
         event.Skip()
         
     #-------------------------------------------------------------------
     def load_config(self):
         config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
+        
         if config:
             # Load Frame Rect
             s = config.Read("ide_frame_rect", "")
@@ -177,11 +186,7 @@ class IdeFrame (wx.Frame):
             # Load panel width and height
             self.left_panel_width = config.ReadInt("left_panel_width", 0)
             self.bottom_panel_height = config.ReadInt("bottom_panel_height", 0)
-            
-            #perspactive = config.Read("Perspective", "")
-            #if perspactive != "":
-                ##print("load perspective")
-                #self.frame.mgr.LoadPerspective(perspactive, True)
+
         else:
             self.left_panel_width = 0
             self.bottom_panel_height = 0
@@ -194,11 +199,6 @@ class IdeFrame (wx.Frame):
         config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
         
         if config:
-            # Save pespective
-            #if hasattr(self, "mgr") and self.mgr:
-                #perspective_all = self.mgr.SavePerspective()
-                #config.Write("Perspective", perspective_all)
-
             # Get frame rect
             rect = self.GetRect()
             x = rect.GetLeft()
@@ -229,9 +229,5 @@ class IdeFrame (wx.Frame):
             
         del config
                 
-    #-------------------------------------------------------------------
-    def __del__(self):
-        #print "del ide frame"
-        pass
-        #self.mgr.UnInit()
+
         

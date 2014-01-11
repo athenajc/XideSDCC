@@ -83,7 +83,7 @@ class IdeApp(wx.App):
         self.dirname = cur_dir + os.sep
         
         self.set_tool_path()
-        self.config_file = upper_dir + 'xide.cfg'
+        self.config_file = upper_dir + 'xide.ini'
         self.cflags = ""
         self.ldflags = ""
         
@@ -94,7 +94,7 @@ class IdeApp(wx.App):
         self.doc_debugging = None
         self.running = False
         self.doc_running = None
-        self.doc_modified = False
+
         self.project_dirty = False
         self.prj = None
         self.last_file_count = 0
@@ -177,20 +177,7 @@ class IdeApp(wx.App):
         doc = self.doc_book.open_file(file_path)
         if doc:
             doc.goto_line(line)
-            
-    #-------------------------------------------------------------------
-    def remove_doc(self, doc):
-        self.doc_book.remove_doc()
-        
-    #-------------------------------------------------------------------
-    def save_on_close_file(self, event):
-        return self.doc_book.save_on_close_file(event)
-    
-    #-------------------------------------------------------------------
-    def save_on_exit(self, event):    
-        if self.doc_modified:
-            return self.doc_book.save_on_exit(event)
-        
+
     #-------------------------------------------------------------------
     def set_last_file(self, file_name):
         self.config.Write("LastFile", file_name)
@@ -233,9 +220,26 @@ class IdeApp(wx.App):
             
         dlg.Destroy()
 
-
+    #-------------------------------------------------------------------
+    def get_opened_files(self):
+        """ For save config, get latest opend file path list """
+        lst = [] 
+        for path, doc in self.doc_book.docs:
+            lst.append(path)
+        return lst
+        
+    #-------------------------------------------------------------------
+    def get_history_files(self):
+        """ For save config, get history file list """
+        lst = [] 
+        n = self.file_history.GetCount()
+        for i in range(n):
+            lst.append(self.file_history.GetHistoryFile(i))
+        return lst
+    
     #-------------------------------------------------------------------
     def save_config(self):
+        """ Save config to xide.ini """
         #log("save config - " + self.config_file)
         config = IdeConfig(self.config_file)
         
@@ -252,18 +256,10 @@ class IdeApp(wx.App):
             config.Write("LastProject", "")
             
         # Save opened file path
-        doc_lst = self.doc_book.docs
-        doc_path_lst = [] 
-        for path, doc in doc_lst:
-            doc_path_lst.append(path)
-        config.save_lst("LastOpenFiles", doc_path_lst)
+        config.save_lst("LastOpenFiles", self.get_opened_files())
         
         # Save File History
-        n = self.file_history.GetCount()
-        config.WriteInt("HistoryFileCount", self.file_history.GetCount())
-        for i in range(n):
-            #print self.file_history.GetHistoryFile(i)
-            config.Write("HistoryFile" + str(i), self.file_history.GetHistoryFile(i))
+        config.save_lst("HistoryFiles", self.get_history_files())
                 
         # Save external tool path
         config.save_dict('ToolPath', self.tool_path)
@@ -272,6 +268,7 @@ class IdeApp(wx.App):
         
     #-------------------------------------------------------------------
     def load_pre_config(self):
+        """ Load config from xide.ini, before frame created """
         # Open Config File
         config = IdeConfig(self.config_file)
 
@@ -284,6 +281,7 @@ class IdeApp(wx.App):
                 
     #-------------------------------------------------------------------
     def load_config(self):
+        """ Save config to xide.ini, after frame created """
         # Open Config File
         config = IdeConfig(self.config_file)
 
@@ -414,8 +412,7 @@ class IdeApp(wx.App):
         
     #-------------------------------------------------------------------
     def OnDocPageChange(self, event):
-        self.goto_line_combo.OnDocPageChange()
-        
+        self.goto_line_combo.OnDocPageChange()        
         
     #-------------------------------------------------------------------
     def log(self, s):
@@ -429,13 +426,3 @@ class IdeApp(wx.App):
         dlg.ShowModal()
         dlg.Destroy()
 
-    #-------------------------------------------------------------------
-    def exit(self):
-        if self.debugging and self.doc_debugging is not None:
-            doc = self.doc_debugging
-            doc.stop()
-            wx.MilliSleep(100) 
-                
-        if self.running and self.doc_running is not None:
-            doc = self.doc_running
-            doc.stop()

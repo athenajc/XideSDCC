@@ -322,11 +322,16 @@ class DocBase(StyledText):
                     
     #-------------------------------------------------------------------
     def stop(self):
+        """ stop debug - doc types will overwrite it"""
         pass
     
     #-------------------------------------------------------------------
     def close(self):
+        # Stop play and debug
         self.stop()
+        
+        # Check if modified, if yes save it
+        #self.save_on_close_file()
 
     #-------------------------------------------------------------------
     def drop_file(self, x, y, file_name):
@@ -478,20 +483,33 @@ class DocBase(StyledText):
             self.save_file()
             return wx.ID_YES
         else:
-            return wx.ID_NO
-
+            return result
+        
     #-------------------------------------------------------------------
     def ask_if_save(self, msg):
         strs = self.file_path+ " is modified. Do you want to save?"
         dlg = wx.MessageDialog(self, strs, msg, wx.YES_NO)
         result = dlg.ShowModal()
         dlg.Destroy()
-        #log("ask_if_save return=", result, "yes=", wx.ID_YES, "no=", wx.ID_NO)
+
         if result == wx.ID_YES :
             self.save_file()
             return wx.ID_YES
         else:
-            return wx.ID_NO
+            return result
+        
+    #-------------------------------------------------------------------
+    def save_on_exit(self, msg):
+        strs = self.file_path+ " is modified. Do you want to save? Press cancel to cancel exit."
+        dlg = wx.MessageDialog(self, strs, msg, wx.YES_NO | wx.CANCEL)
+        result = dlg.ShowModal()
+        dlg.Destroy()
+
+        if result == wx.ID_YES :
+            self.save_file()
+            return wx.ID_YES
+        else:
+            return result
         
     #-------------------------------------------------------------------
     def save_if_modified(self):
@@ -506,7 +524,14 @@ class DocBase(StyledText):
                 log(path + " saved.")
             else:
                 log("fail to save " + path)
-            
+                
+    #-------------------------------------------------------------------
+    def save_on_close_file(self):
+        result = wx.ID_YES
+        if self.modified :
+            result = self.ask_if_save("Save on close")
+        return result
+    
     #-------------------------------------------------------------------
     def clear_cur_line_marker(self, line):
         self.MarkerDelete(line, MARKNUM_CURRENT_LINE)
@@ -545,8 +570,6 @@ class DocBase(StyledText):
         m = self.modified
         self.modified = self.GetModify()
         if self.modified :
-            self.app.doc_modified = True
-            
             # means first modified
             if m == False:
                 doc_book = self.app.doc_book
