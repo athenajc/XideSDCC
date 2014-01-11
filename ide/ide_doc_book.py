@@ -131,8 +131,8 @@ class DocBook(wx.aui.AuiNotebook):
     #-------------------------------------------------------------------
     def OnStopDebug(self, event):
         """ Stop all doc debugging """
-        if self.doc_running:
-            self.doc_running.stop()
+        if self.doc_debugging:
+            self.doc_debugging.stop()
             
         self.app.debugging = False
         self.app.running = False
