@@ -11,3 +11,4 @@ cflags=-mmcs51   -I. -I/usr/local/share/sdcc/include
 ldflags="  -L. -L/usr/local/share/sdcc/lib"
 scope_pins=P0_0;P0_1;P0_2;P0_3;P0_4;P0_5;P0_6;P0_7
 scope_pins_checked=False;False;False;False;False;False;False;False
+breakpoints=C:\\git\\XideSDCC\\examples\\mcs51\\blink\\blink.c=[]

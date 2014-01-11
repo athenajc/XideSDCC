@@ -91,9 +91,8 @@ class IdeApp(wx.App):
         self.load_pre_config()
         self.logger = None
         self.debugging = False
-        self.doc_debugging = None
         self.running = False
-        self.doc_running = None
+
 
         self.project_dirty = False
         self.prj = None

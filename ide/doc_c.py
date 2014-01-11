@@ -203,7 +203,7 @@ class DocC(DocBase):
         os.chdir(os.path.dirname(self.file_path))
         name, ext = self.file_name.split('.')
 
-        self.app.debugging = True
+        self.app.running = True
         self.sim_frame = sim.SimFrame(self.app, self, 
                                   [self.file_path], 
                                   self.config_file)
@@ -215,6 +215,7 @@ class DocC(DocBase):
     #-------------------------------------------------------------------
     def sim_close(self):
         self.sim_frame = None
+        self.app.running = False
         self.app.debugging = False
         
     #-------------------------------------------------------------------

@@ -215,7 +215,8 @@ class TargetToolBar(wx.ToolBar):
 class DebugToolBar(ToolBar):
     def __init__(self, parent, frame, aui_mgr):
         self.app = frame.app
-        self.debugging = None
+        self.debugging = True
+        self.running = True
         id_build_option = self.app.id('BUILD_OPTION')
         p = self.app.dirname
         debug_lst = [
@@ -230,21 +231,19 @@ class DebugToolBar(ToolBar):
         ToolBar.__init__(self, parent, frame, aui_mgr, "debug toolbar", debug_lst)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdate)
         
-
     #-------------------------------------------------------------------
     def OnUpdate(self, event):
-        if self.debugging == self.app.debugging :
-            return
-        self.debugging = self.app.debugging
-
-        if self.debugging:
-            self.EnableTool(ID_DBG_START, False)
-            self.EnableTool(ID_DBG_STOP, True)             
-        else:
-            self.EnableTool(ID_DBG_START, True) 
-            self.EnableTool(ID_DBG_STOP, False)            
+        if self.debugging != self.app.debugging :
+            self.debugging = self.app.debugging
+            self.EnableTool(ID_DBG_START, not self.debugging)
+            self.EnableTool(ID_DBG_STOP, self.running | self.debugging)
                 
-        
+        if self.running != self.app.running :
+            self.running = self.app.running
+            self.EnableTool(ID_RUN, not self.running)
+            self.EnableTool(ID_DBG_STOP, self.running | self.debugging)
+
+                        
 #---------------------------------------------------------------------------------------------------
 class EditToolBar(ToolBar):
     def __init__(self, parent, frame, aui_mgr):
