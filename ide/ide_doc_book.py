@@ -43,30 +43,38 @@ class DocBook(wx.aui.AuiNotebook):
         
     #-------------------------------------------------------------------
     def get_target_doc(self):
+        """ Get compile, run, debug target """
         log("DocBook.get_target_doc")
+        
+        # Get current selection of target combo
         file_path = self.app.toolbar.get_target()
+        if file_path == "":
+            return None
         #log('compile', file_path)
         
-        # check if select prj, if yes compile project
+        # Check if select prj, if yes, compile project
         if file_path.find('sdprj') > 0 and self.app.prj :
             #self.app.prj.compile_project()
             return 'prj'
         
-        # get toolbar selected target at first
-        if file_path != "":            
-            doc = self.search_doc(file_path)
-            if doc != self.get_doc():
-                self.open_file(file_path)
+        # Get toolbar selected target at first
+        doc = self.search_doc(file_path)
+        if doc != self.get_doc():
+            self.open_file(file_path)
                 
-        # try current open doc
+        # Try current open doc
         if doc is None:
-            doc = self.app.get_doc()
+            doc = self.get_doc()
+            if doc is None:
+                return None
+            
+            # Check if c file
             if doc.file_path.find(".c") < 0:
-                strs = doc.file_path + " not a valid C file, can't be compiled."
-                dlg = wx.MessageDialog(self.app.frame, strs, msg, wx.YES_NO)
-                result = dlg.ShowModal()
-                dlg.Destroy()
+                msg = doc.file_path + " not a valid C file, can't be compiled."
+                self.app.warn(msg)
+                return None
                 
+        # If modified, auto save it
         if doc.modified:
             dprint("AutoSave", doc.file_path)
             doc.save_file()
@@ -78,6 +86,7 @@ class DocBook(wx.aui.AuiNotebook):
         log("DocBook.OnRun")
         doc = self.get_target_doc()
         if doc is None:
+            self.app.warn("No target file to run.")
             return
         elif doc == 'prj':
             self.app.prj_mgr.run_project()
@@ -97,6 +106,7 @@ class DocBook(wx.aui.AuiNotebook):
         self.app.clear_debug()
         doc = self.get_target_doc()
         if doc is None:
+            self.app.warn("No target file to compile.")
             return
         elif doc == 'prj':
             self.app.prj.compile_project()
@@ -109,6 +119,7 @@ class DocBook(wx.aui.AuiNotebook):
         log("DocMgr.OnStartDebug")
         doc = self.get_target_doc()
         if doc is None:
+            self.app.warn("No target file to debug.")
             return
         elif doc == 'prj':
             self.app.prj_mgr.debug_project()
