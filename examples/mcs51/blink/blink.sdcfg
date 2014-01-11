@@ -3,12 +3,12 @@ mcu_device=
 custom_flag_only=False
 custom_cflags=
 custom_ldflags=
-inc_pathes=-I. -I/usr/local/share/sdcc/include
-lib_pathes=-L. -L/usr/local/share/sdcc/lib
+inc_pathes=-I. -I"C:\\Program Files\\SDCC\\include"
+lib_pathes=-L. -L"C:\\Program Files\\SDCC\\lib"
 cflag_lst=
 ldflag_lst=
-cflags=-mmcs51   -I. -I/usr/local/share/sdcc/include
-ldflags="  -L. -L/usr/local/share/sdcc/lib"
+cflags=-mmcs51   -I. -I"C:\\Program Files\\SDCC\\include"
+ldflags="  -L. -L\"C:\\Program Files\\SDCC\\lib\""
 scope_pins=P0_0;P0_1;P0_2;P0_3;P0_4;P0_5;P0_6;P0_7
 scope_pins_checked=False;False;False;False;False;False;False;False
 breakpoints=C:\\git\\XideSDCC\\examples\\mcs51\\blink\\blink.c=[]

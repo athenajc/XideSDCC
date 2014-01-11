@@ -360,7 +360,37 @@ class IdeApp(wx.App):
                     return path
     
         return ""
+    
+    #-------------------------------------------------------------------
+    def get_sdcc_inc_path(self):
+        if wx.Platform == '__WXMSW__' :
+            sdcc_path = self.get_path('sdcc')
+            path = sdcc_path + os.sep + "include"
+        else:
+            path = "/usr/local/share/sdcc/include"
+            
+        if path.find(' ') > 0:
+            q = "\""
+            path = q + path + q
+            
+        self.tool_path['sdcc_inc'] = path
+        return path
 
+    #-------------------------------------------------------------------
+    def get_sdcc_lib_path(self):
+        if wx.Platform == '__WXMSW__' :
+            sdcc_path = self.get_path('sdcc')
+            path = sdcc_path + os.sep + "lib" 
+        else:
+            path = "/usr/local/share/sdcc/lib"
+            
+        if path.find(' ') > 0:
+            q = "\""
+            path = q + path + q
+            
+        self.tool_path['sdcc_lib'] = path
+        return path
+            
     #-------------------------------------------------------------------
     def get_path(self, name, path_lst=None, file_name=None):
         if wx.Platform == '__WXMSW__' :
@@ -378,6 +408,10 @@ class IdeApp(wx.App):
                 path = search_sdcc_bin()
                 if os.path.exists(path):
                     self.tool_path['sdcc_bin'] = path
+            elif name == 'sdcc_inc' :
+                return self.get_sdcc_inc_path()
+            elif name == 'sdcc_lib' :
+                return self.get_sdcc_lib_path()
             else:
                 path = self.search_path(name, path)
                 if os.path.exists(path):

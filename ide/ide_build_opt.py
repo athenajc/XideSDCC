@@ -89,6 +89,7 @@ class LabelButtonTextCtrl(wx.TextCtrl):
         
         sizer.Add(box, 0, flag, 5)
         
+        
 #---------------------------------------------------------------------------
 class CheckBox(wx.CheckBox):
     def __init__(self, parent, sizer, id, label):
@@ -910,6 +911,7 @@ class PageMcuOptions(OptionPanel):
         s = self.option.mcu.devices[index]
         self.option.select_mcu_device(s)
         
+        
 #---------------------------------------------------------------------------
 class PageMajorOption(wx.Panel):
     """
@@ -947,22 +949,52 @@ class PageMajorOption(wx.Panel):
         StaticLine(self, main_sizer)
         self.cb_ignore = CheckBox(self, main_sizer, -1, 'Ignore other cflags and ldflags')        
         
-        option.custom_cflags_text = LabelButtonTextCtrl(self, main_sizer, "Add CFLAGS :", "", option.custom_cflags, 'Enter')
-        option.custom_ldflags_text = LabelButtonTextCtrl(self, main_sizer, "Add LDFLAGS :", "", option.custom_ldflags, 'Enter')
+        option.custom_cflags_text = LabelTextCtrl(self, main_sizer, "Add CFLAGS :", "", option.custom_cflags)
+        option.custom_ldflags_text = LabelTextCtrl(self, main_sizer, "Add LDFLAGS :", "", option.custom_ldflags)
 
         self.update_flags()
         self.SetSizer(main_sizer)
         self.Layout()
         
+        # Bind event handler
         self.Bind(wx.EVT_COMBOBOX, self.OnSelectMcuItem, self.mcu_cbox)
-        self.Bind(wx.EVT_BUTTON, self.OnCflagButton, option.custom_cflags_text.btn)
+        #self.Bind(wx.EVT_BUTTON, self.OnCflagButton, option.custom_cflags_text.btn)
         self.Bind(wx.EVT_CHECKBOX, self.OnIgnoreFlagCheckBox, self.cb_ignore)
                 
         self.Bind(wx.EVT_BUTTON, self.OnIncPathButton, self.inc_path_text.btn)
         self.Bind(wx.EVT_BUTTON, self.OnLibPathButton, self.lib_path_text.btn)
+        
+        self.Bind(wx.EVT_TEXT, self.OnIncPathText, self.inc_path_text)
+        self.Bind(wx.EVT_TEXT, self.OnLibPathText, self.lib_path_text)
             
+        self.Bind(wx.EVT_TEXT, self.OnCustomCFlagText, option.custom_cflags_text)
+        self.Bind(wx.EVT_TEXT, self.OnCustomLdFlagText, option.custom_ldflags_text)
+        
         self.inited = True
 
+    #-------------------------------------------------------------------
+    def OnCustomCFlagText(self, event):
+        self.option.custom_cflags = event.GetString()
+        self.option.update_cflags()
+        self.option.dirty = True
+    
+    #-------------------------------------------------------------------
+    def OnCustomLdFlagText(self, event):
+        self.option.custom_ldflags = event.GetString()
+        self.option.update_ldflags()
+        self.option.dirty = True
+        
+    #-------------------------------------------------------------------
+    def OnIncPathText(self, event):
+        self.option.inc_pathes = event.GetString()
+        self.option.update_cflags()
+        self.option.dirty = True
+        
+    #-------------------------------------------------------------------
+    def OnLibPathText(self, event):
+        self.option.lib_pathes = event.GetString()
+        self.option.update_ldflags()
+        self.option.dirty = True
         
     #-------------------------------------------------------------------
     def update_flags(self):
@@ -990,7 +1022,10 @@ class PageMajorOption(wx.Panel):
         # we destroy it. 
         if dlg.ShowModal() == wx.ID_OK:
             #self.log.WriteText('You selected: %s\n' % dlg.GetPath())
-            self.inc_path_text.write(' -I' + dlg.GetPath())
+            p = dlg.GetPath()
+            if p.find(' ') > 0:
+                p = '\"' + p + '\"'
+            self.inc_path_text.write(' -I' + p)
             self.option.set_inc_pathes(self.inc_path_text.GetValue())
             self.option.dirty = True
 
@@ -1011,7 +1046,10 @@ class PageMajorOption(wx.Panel):
         # we destroy it. 
         if dlg.ShowModal() == wx.ID_OK:
             #self.log.WriteText('You selected: %s\n' % dlg.GetPath())
-            self.lib_path_text.write(' -L' + dlg.GetPath())
+            p = dlg.GetPath()
+            if p.find(' ') > 0:
+                p = '\"' + p + '\"'    
+            self.lib_path_text.write(' -L' + p)
             self.option.set_lib_pathes(self.lib_path_text.GetValue())
             self.option.dirty = True
 
@@ -1068,7 +1106,7 @@ class BuildOption():
             self.target_type = ext.replace('.', '')
             self.config_file = file_path.replace(ext, '.sdcfg')
             
-        print self.config_file
+        #print self.config_file
         
         self.mcu = None
         self.mcu_page = None
@@ -1102,8 +1140,8 @@ class BuildOption():
         self.cflags_text = None
         self.ldflags_text = None
         
-        self.set_inc_pathes('-I. -I' + SDCC_inc_path)
-        self.set_lib_pathes('-L. -L' + SDCC_lib_path)
+        self.set_inc_pathes('-I' + self.app.get_path('sdcc_inc'))
+        self.set_lib_pathes('-L' + self.app.get_path('sdcc_lib'))
         
         self.select_mcu(self.mcu_name)
                 
@@ -1191,17 +1229,42 @@ class BuildOption():
         
     #-------------------------------------------------------------------
     def set_inc_pathes(self, p):
-        self.inc_pathes = p
-        lst = self.inc_pathes.split('-I')
-        lst.remove('')
-        self.inc_path_lst = lst
+        if p == "":
+            lst1 = []
+        else:    
+            lst = p.split('-I')
+            lst1 = []
+            for s in lst:
+                s = s.strip()
+                s1 = s.replace("\"", "")
+                if os.path.exists(s1):
+                    lst1.append(s)
+                
+        self.inc_path_lst = lst1
+        if lst1 == []:
+            self.inc_pathes = ""
+        else:
+            self.inc_pathes = '-I' + ' -I'.join(lst1)
         
     #-------------------------------------------------------------------
     def set_lib_pathes(self, p):
-        self.lib_pathes = p
-        lst = self.lib_pathes.split('-L')
-        lst.remove('')
-        self.lib_path_lst = lst
+        if p == "":
+            lst1 = []
+        else:
+            q = "\""
+            lst = p.split('-L')
+            lst1 = []
+            for s in lst:
+                s = s.strip()
+                s1 = s.replace("\"", "")
+                if os.path.exists(s1):
+                    lst1.append(s)
+                    
+        self.lib_path_lst = lst1
+        if lst1 == []:
+            self.lib_pathes = ""
+        else:
+            self.lib_pathes = '-L' + ' -L'.join(lst1)
             
     #-------------------------------------------------------------------
     def update_flags(self):
@@ -1220,7 +1283,7 @@ class BuildOption():
             self.cflags = mcu_flag + self.custom_cflags + ' ' + ' '.join(self.cflag_lst)
             
         if self.cflags_text:
-            self.cflags_text.SetValue(self.cflags)
+            self.cflags_text.SetValue(self.cflags + ' ' + self.inc_pathes)
             
     #-------------------------------------------------------------------
     def update_ldflags(self):
@@ -1230,7 +1293,7 @@ class BuildOption():
             self.ldflags = self.custom_ldflags + ' ' + ' '.join(self.ldflag_lst)
         
         if self.ldflags_text:
-            self.ldflags_text.SetValue(self.ldflags)
+            self.ldflags_text.SetValue(self.ldflags + ' ' + self.lib_pathes)
             
     #-------------------------------------------------------------------
     def remove_cflag(self, key, value=None):
@@ -1435,8 +1498,10 @@ class BuildOption():
             self.custom_cflags = config.Read("custom_cflags", "")
             self.custom_ldflags = config.Read("custom_ldflags", "")
             
-            self.inc_pathes = config.Read("inc_pathes", "")
-            self.lib_pathes = config.Read("lib_pathes", "")
+            p = config.Read("inc_pathes", "")
+            self.set_inc_pathes(p)
+            p = config.Read("lib_pathes", "")
+            self.set_lib_pathes(p)
             
             s = config.Read("cflag_lst", "")
             self.load_cflags(s)
