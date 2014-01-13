@@ -19,6 +19,6 @@ led_p0=RA0
 led_p1=RA1
 led_p2=RA2
 led_p3=RA3
-scope_pins=RB0;RB1;RB3;RA3;RA4;RA5;RA6;RA7
+scope_pins=RB0;RB1;RB2;RA3;RA4;RA5;RA6;RA7
 scope_pins_checked=True;True;True;False;False;False;False;False
 breakpoints=C:\\git\\XideSDCC\\examples\\pic14\\blink\\blink.c=[]

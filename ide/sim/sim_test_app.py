@@ -53,6 +53,57 @@ class TestSim():
 
 
 #----------------------------------------------------------------------------------
+class TestSliderPanel(wx.Panel):
+    
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent, -1)
+        self.count = 0
+
+        wx.StaticText(self, -1, "This is a wx.Slider.", (45, 15))
+        #"""
+        #__init__(self, Window parent, int id=-1, int value=0, int minValue=0, 
+            #int maxValue=100, Point pos=DefaultPosition, 
+            #Size size=DefaultSize, long style=SL_HORIZONTAL, 
+            #Validator validator=DefaultValidator, 
+            #String name=SliderNameStr) -> Slider
+        #"""
+        # id, value, min, max, pos, size, style
+        slider = wx.Slider(
+            self, -1, 25, 1, 100, (30, 60), (250, -1), 
+            wx.SL_HORIZONTAL | wx.SL_AUTOTICKS | wx.SL_LABELS 
+            )
+
+        slider.SetTickFreq(5, 1)
+
+        slider.Bind(wx.EVT_SCROLL_CHANGED, self.onChanged)
+
+    def onChanged(self, evt):
+        print('changed: %d' % evt.EventObject.GetValue())
+        
+
+#----------------------------------------------------------------------------------
+class TestFrame1(wx.Frame):
+    def __init__(self, parent, title):
+        sz = wx.GetDisplaySize() 
+        w = sz.GetWidth() * 3 / 4
+        h = sz.GetHeight() / 2
+        x = (sz.GetWidth() - w) / 2
+        y = (sz.GetHeight() - h) / 2
+        wx.Frame.__init__(self, parent, title=title, size=(w, h), pos=(x, 80),
+                          style=wx.DEFAULT_FRAME_STYLE|wx.NO_FULL_REPAINT_ON_RESIZE)
+        self.SetMinSize(wx.Size(300,100))
+
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.frame = self
+        p = TestSliderPanel(self)
+        self.sizer.Add(p, 1, wx.EXPAND)    
+        
+        self.SetSizer(self.sizer)
+        self.sizer.Layout()
+
+        
+
+#----------------------------------------------------------------------------------
 class TestFrame(wx.Frame):
     def __init__(self, parent, title):
         sz = wx.GetDisplaySize() 
@@ -86,7 +137,7 @@ class TestFrame(wx.Frame):
 #----------------------------------------------------------------------------------
 class TestApp(wx.App):
     def OnInit(self):
-        frame = TestFrame(None, 'Test Frame')
+        frame = TestFrame1(None, 'Test Frame')
         self.SetTopWindow(frame)
         frame.Show(True)
         return True

@@ -295,6 +295,8 @@ class SimFrame (wx.Frame):
     # about 10 times per second
     def OnStepTimerTick(self, event):
         if self.pause :
+            self.step_timer.Stop() 
+            self.toolbar.btn_pause()
             return
 
         self.in_tick = True
@@ -404,6 +406,7 @@ class SimFrame (wx.Frame):
     #-------------------------------------------------------------------
     def OnContinue(self, event):
         self.pause = False
+        self.step_timer.Start(10) 
                     
     #-------------------------------------------------------------------
     def OnStop(self, event):

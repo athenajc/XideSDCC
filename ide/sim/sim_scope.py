@@ -6,12 +6,19 @@ WINDOWS = ('wxMSW' in wx.PlatformInfo)
 USE_BUFFER = WINDOWS # use buffered drawing on Windows
 
 
+
 #----------------------------------------------------------------------------------
 class PinScope(wx.Panel):
+    """ Pin Scope View """
     def __init__(self, parent, lst):
         self._buffer = None
         self.back_color = (0, 50, 0)
-        self.grid_size = 10
+        self.grid_size = 3
+        self.scale = 128
+
+        self.tmin = -1
+        self.tmax = -1
+        self.time_len = 1000
         self.vlst = lst
         self.enabled = False
         wx.Panel.__init__(self, parent, -1, size=(-1, 40))
@@ -24,6 +31,7 @@ class PinScope(wx.Panel):
         
     #----------------------------------------------------------------------------
     def OnPaint(self, evt):
+        """ """
         if not self.enabled:
             return
         
@@ -54,6 +62,7 @@ class PinScope(wx.Panel):
     
     #----------------------------------------------------------------------------
     def init_buffer(self):
+        """ """
         sz = self.GetClientSize()
         sz.width = max(1, sz.width)
         sz.height = max(1, sz.height)
@@ -68,67 +77,57 @@ class PinScope(wx.Panel):
                         
     #----------------------------------------------------------------------------
     def draw_grid(self, gc):
+        """ Draw background green line grid of scope """
         gc.SetPen(wx.Pen((0,80,0), 1))
         
         sz = self.GetSize()
         w = sz.GetWidth()
         h = sz.GetHeight()
-        #begins = []
-        #ends = []
-        w1 = self.grid_size
+
+        w1 = self.grid_size * 8
         for x in range(0, w, w1):
-            #begins.append((x, 0))
-            #ends.append((x, h))
             gc.StrokeLine(x, 0, x, h)
-            
-        #gc.StrokeLineSegments(begins, ends)
         
         gc.SetPen(wx.Pen("green", 1))
-        begins = []
-        ends = []
-        w1 = self.grid_size
-        for x in range(0, w, w1*8):
-            #begins.append((x, 0))
-            #ends.append((x, h))
+        w1 *= 8
+        for x in range(0, w, w1):
             gc.StrokeLine(x, 0, x, h)
             
-        #gc.StrokeLineSegments(begins, ends)
-        
+    #----------------------------------------------------------------------------
+    def set_scale(self, scale):
+        """ Change the view scale of scope """
+        self.scale = scale
+    
     #----------------------------------------------------------------------------
     def draw_pin_log(self, gc):
+        """ Normal play, draw pin log """
         gc.SetPen(wx.Pen("yellow", 2))
         #gc.SetBrush(wx.Brush("black"))
-        sz = self.GetSize()
-        w = sz.GetWidth()
-        h = sz.GetHeight()
-        begins = []
-        ends = []
+        w = self.GetSize().GetWidth()
         
         prev = 0
-        w1 = 3 #self.grid_size
+        w1 = self.grid_size
         x = w 
         
         # lst of [time_stamp, bit value]
         #self.vlst = [[10,1],[1,0],[1,1],[5,0]]
+        scale = self.scale
         for t, t0, bit in self.vlst:
-            t -= t0
-            t >>= 5
+            t1 = t - t0
+            
             if bit:
                 y = 14
             else:
                 y = 34
             
-            w2 = w1 * t
+            w2 = (w1 * t1) / scale
             x1 = x - w2
             if x1 < 0:
                 x1 = 0
-            #begins.append((x1, y))
-            #ends.append((x, y))
+
             gc.StrokeLine(x1, y, x, y)
             
             if bit != prev:
-                #begins.append((x, 14))
-                #ends.append((x, 34))
                 gc.StrokeLine(x, 14, x, 34)
                 
             x -= w2
@@ -136,11 +135,62 @@ class PinScope(wx.Panel):
                 break
             
             prev = bit
+
+
+    #----------------------------------------------------------------------------
+    def draw_pin_log_range(self, gc, tmin, tmax):
+        """ User change view range - draw pin log by range """
+        # Set line color
+        gc.SetPen(wx.Pen("yellow", 2))
+
+        # Get Scope view width
+        w = self.GetSize().GetWidth()
+        
+        # Init prev bit value
+        prev = 0
+        
+        # Get grid size
+        w1 = self.grid_size
+        
+        # Get view scale 
+        scale = self.scale
+        
+        # Caculate x max - right, min - left
+        right = (tmax * w1) / scale
+        left = (tmin * w1) / scale
+        x = right
+        
+        # Start to draw, from right-most draw to left-most
+        # vlst is a list of [time_stamp, bit value]
+        for t, t0, bit in self.vlst:
+            # Get time offset
+            t1 = t - t0
             
-        #gc.StrokeLineSegments(begins, ends)
+            if bit:
+                y = 14
+            else:
+                y = 34
+            
+            # Get pos offset
+            d = (w1 * t1) / scale
+            x1 = x - d
+            
+            if x1 < 0:
+                x1 = 0
+            gc.StrokeLine(x1, y, x, y)
+            
+            if bit != prev:
+                gc.StrokeLine(x, 14, x, 34)
+                
+            x -= d
+            if x < 0:
+                break
+            
+            prev = bit
         
     #----------------------------------------------------------------------------
     def draw_hex(self, gc):
+        """ Draw text in gc """
         gc.SetFont(self.font, "grey")
         w1 = self.grid_size * 8
         x = 4
@@ -151,66 +201,150 @@ class PinScope(wx.Panel):
 
     #----------------------------------------------------------------------------
     def draw(self, gc):
+        """ Call by OnPaint """
         self.draw_grid(gc)
         if self.vlst and self.vlst != []:
-            self.draw_pin_log(gc)
+            if self.tmax < 0:
+                self.draw_pin_log(gc)
+            else:
+                self.draw_pin_log_range(gc, self.tmin, self.tmax)
             
     #----------------------------------------------------------------------------
-    def update(self, ischecked):
+    def update(self, scale, tmin, tmax):
+        """ Call by sim.step() -> ScopePanelList.update """
+        self.scale = scale
+        self.tmin = tmin
+        self.tmax = tmax
         self.Refresh()
+        
+    #----------------------------------------------------------------------------
+    def get_time_len(self):
+        """ Get visible time length """
+        self.time_len = (self.GetSize().GetWidth() * self.scale) / self.grid_size
+        return self.time_len
 
 
 #----------------------------------------------------------------------------------
 class PinScopePanel(wx.Panel):
+    """ Pin Scope Panel, include checkbox and pin config combo and scope view """
     def __init__(self, parent, label, sim, checked):
         wx.Panel.__init__(self, parent, -1)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         
+        # Default pin config
         self.pin = label
+        
+        # Checkbox set pin view enable/disable
         self.cbox = wx.CheckBox(self, -1, "", size=(25, -1), pos=(10, -1))
         self.cbox.Value = checked
         sizer.Add(self.cbox, 0)
         
+        # Pin config combobox
         self.combo = wx.ComboBox(self, -1, label, size=(80, 30), choices=sim.pin_out)
         sizer.Add(self.combo, 0)
         
+        # Scope view 
         self.scope = PinScope(self, [])
         self.scope.enabled = checked
         sizer.Add(self.scope, 1, wx.EXPAND) 
         
+        # Set sizer and layout
         self.SetSizer(sizer)
         sizer.Layout()
         
+        # Connect the event 
         self.cbox.Bind(wx.EVT_CHECKBOX, self.OnCheckBox, self.cbox)
         self.combo.Bind(wx.EVT_COMBOBOX, self.OnSelectPin, self.combo)
     
     #-------------------------------------------------------------------
     def OnCheckBox(self, event):
+        """ Set scope view enable or disable """
         self.scope.enabled = self.cbox.Value
     
     #-------------------------------------------------------------------
     def OnSelectPin(self, event):
+        """ Event handler of select pin config combobox """
         self.pin = event.GetString()
                 
     #-------------------------------------------------------------------
-    def update(self, sim):
+    def update(self, sim, scale, tmin, tmax):
+        """ Call by sim.step() -> ScopePanelList.update """
         if self.cbox.Value:
             self.scope.vlst = sim.get_pin_log(self.pin)
-            self.scope.update(True)
+            self.scope.update(scale, tmin, tmax)
             
     #-------------------------------------------------------------------
     def get_pin_config(self):
+        """ Before sim close, save pin config, called by sim.save_config -> ScopePanelList.get_pin_config -> this """
         return self.pin, str(self.cbox.Value)
         
         
 #----------------------------------------------------------------------------------
-class ScopePanelList(wx.Panel):
-    def __init__(self, parent, sim, pin_configs, pin_checked):
+class ControlPanel(wx.Panel):
+    """ Control items to control scope view """
+    def __init__(self, parent):
         self.log = None
         wx.Panel.__init__(self, parent, -1)
         
+        self.parent = parent
         sizer = wx.BoxSizer(wx.VERTICAL)
+        
+        # Time Slider for time searching
+        sizer1 = wx.BoxSizer(wx.HORIZONTAL)
+        txt = wx.StaticText(self, -1, "     Time", size=(100, -1))
+        sizer1.Add(txt, 0, wx.ALIGN_CENTRE)
+        self.time_slider = t = wx.Slider(self, -1, 0, 1, 100, (0, 0), (800, -1),  wx.SL_HORIZONTAL | wx.SL_AUTOTICKS | wx.SL_LABELS)
+        t.SetTickFreq(8, 1)
+        t.Bind(wx.EVT_SCROLL_CHANGED, self.OnTimeChanged)
+        sizer1.Add(t, 1, wx.EXPAND | wx.GROW | wx.ALIGN_RIGHT)
+        sizer.Add(sizer1, 1, wx.EXPAND | wx.GROW)
+        
+        # Scale Slider for scale setting
+        sizer2 = wx.BoxSizer(wx.HORIZONTAL)
+        txt = wx.StaticText(self, -1, "     Scale", size=(100, -1))
+        sizer2.Add(txt, 0, wx.ALIGN_CENTRE)
+        self.scale_slider = s = wx.Slider(self, -1, 128, 1, 512, (30, 60), (400, -1),  wx.SL_HORIZONTAL | wx.SL_AUTOTICKS | wx.SL_LABELS)
+        s.SetTickFreq(8, 1)
+        s.Bind(wx.EVT_SCROLL_CHANGED, self.OnScaleChanged)
+        sizer2.Add(s, 0)
+        sizer.Add(sizer2, 1, wx.EXPAND | wx.GROW)
 
+        # Set sizer and layout
+        self.SetSizer(sizer)
+        sizer.Layout()
+        
+    #--------------------------------------------------------
+    def OnScaleChanged(self, evt):
+        """ Event handler of scale slider """
+        #print('changed: %d' % evt.EventObject.GetValue())
+        self.parent.set_scale(evt.EventObject.GetValue())
+            
+    #--------------------------------------------------------
+    def OnTimeChanged(self, evt):
+        """ Event handler of time slider """
+        #print('changed: %d' % evt.EventObject.GetValue())
+        self.parent.set_time(evt.EventObject.GetValue())
+        
+    #--------------------------------------------------------
+    def set_time_stamp(self, max_v):
+        """ Set sim time total length, sim.step() -> ScopePanelList update -> this function """
+        #self.time_slider.SetValue(value)
+        self.time_slider.SetMax(max_v)
+        
+
+#----------------------------------------------------------------------------------
+class ScopePanelList(wx.Panel):
+    """  """
+    def __init__(self, parent, sim, pin_configs, pin_checked):
+
+        wx.Panel.__init__(self, parent, -1)
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        
+        self.sim = sim
+        self.sim_frame = parent
+        self.scale = 128
+        
         # initial scope panel list
         self.scope_lst = []
         if pin_configs == []:
@@ -218,6 +352,7 @@ class ScopePanelList(wx.Panel):
         else:
             pins = pin_configs
             
+        # Create PinScopePanel list and add to sizer
         for i in range(8):
             name = pins[i]
 
@@ -227,19 +362,68 @@ class ScopePanelList(wx.Panel):
             
             line = wx.StaticLine(self, -1)
             sizer.Add(line)
-                    
-        # set layout
+        
+        self.scope0 = self.scope_lst[0].scope
+        
+        # Add control panel - with scale, time settings
+        self.ctrl = ControlPanel(self)
+        sizer.Add(self.ctrl)
+        
+        # Set sizer and layout
         self.SetSizer(sizer)
         sizer.Layout()
 
     #-------------------------------------------------------------------
     def update(self, sim):
-        #sz = self.scope_lst[0].scope.GetSize()
-        for scope in self.scope_lst:
-            scope.update(sim)
-
+        """ Call by sim step """
+        self.sim = sim
+        tlen = self.scope0.get_time_len()
+        t = sim.time_stamp - tlen
+        if t < 100:
+            t = 100
+        for obj in self.scope_lst:
+            obj.update(sim, self.scale, -1, -1)
+            
+    #-------------------------------------------------------------------
+    def set_scale(self, scale):
+        """ User click scale_slider, to change scope view scale """
+        #sz = self.scope0.GetSize()
+        self.scale = scale
+        
+        # Update scope drawing
+        for obj in self.scope_lst:
+            obj.scope.scale = scale
+            obj.update(self.sim, scale, -1, -1)
+            
+    #-------------------------------------------------------------------
+    def set_time(self, time):
+        """ User click time_slider, forward and backward """
+        #sz = self.scope0.GetSize()
+        sim = self.sim
+        
+        # Pause sim 
+        self.sim_frame.pause = True
+        
+        # get visible time length
+        tlen = self.scope0.get_time_len()
+        t = sim.time_stamp
+        if t < 100:
+            t = 100
+        self.ctrl.set_time_stamp(t)
+        
+        # time_stamp is latest current time
+        ts = sim.time_stamp
+        t1 = -time + 1
+        t2 = t1 + ts
+        
+        # Update scope drawing
+        scale = self.scale
+        for obj in self.scope_lst:
+            obj.update(sim, scale, t1, t2)
+            
     #-------------------------------------------------------------------
     def get_pin_config(self):
+        """ Before sim close, save pin config, called by sim.save_config """
         pin_lst = []
         check_lst = []
         for scope in self.scope_lst:

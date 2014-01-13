@@ -17,7 +17,7 @@ from pic14_devices import *
 
 
 #----------------------------------------------------------------------------
-class SimPic():    
+class SimPic():
     def __init__(self, frame, hex_file, source_list, mcu_name, mcu_device):
         self.frame = frame
         self.mcu_name = mcu_name
