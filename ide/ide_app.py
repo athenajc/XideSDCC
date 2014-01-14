@@ -9,65 +9,16 @@ from ide_build_opt import BuildOptionDialog
 VERSION = "v0.1.0"
 
 #---------------------------------------------------------------------------------------------------
-class IdeConfig(wx.FileConfig):
-    def __init__(self, file_path):
-        wx.FileConfig.__init__(self, '', '', file_path, '', wx.CONFIG_USE_LOCAL_FILE)
-        
-    #-------------------------------------------------------------------
-    def save_lst(self, name, lst):
-        self.Write(name, ';'.join(lst))
-    
-    #-------------------------------------------------------------------
-    def load_lst(self, name):
-        s = self.Read(name, '')
-        if s == '':
-            return []
-        else:
-            lst = s.split(';')
-            return lst
-    
-    #-------------------------------------------------------------------
-    def save_lst_int(self, name, lst):
-        self.Write(name, str(lst))
-    
-    #-------------------------------------------------------------------
-    def load_lst_int(self, name):
-        s = self.Read(name, '')
-        if s == '':
-            return []
-        else:
-            lst = eval(s)
-            return lst
-        
-    #-------------------------------------------------------------------
-    def save_dict(self, name, dict):
-        lst = dict.keys() 
-        self.save_lst(name + '_keys', lst)
-        for k, v in dict.items():
-            self.Write(name + '_' + k, str(v))
-    
-    #-------------------------------------------------------------------
-    def load_dict(self, name):
-        lst = self.load_lst(name)
-        if lst == []:
-            return {}
-        else:
-            dict = {}
-            for k in lst:
-                s = self.Read(name + '_' + k, "")
-                dict[k] = s
-            return dict
-
-
-#---------------------------------------------------------------------------------------------------
 class IdeApp(wx.App):
     
     def OnInit(self):
         set_app(self)
         
+        # Set version and name for Title and about
         self.version = VERSION
         self.name = 'Xide SDCC ' + VERSION
         
+        # Get current path - cur_dir
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         if cur_dir.find('library.zip') > 0:
             if cur_dir.find('library.zip' + os.sep) > 0:
@@ -79,35 +30,62 @@ class IdeApp(wx.App):
                     cur_dir += os.sep
                 cur_dir += 'ide'
             
+        # Get upper path
         upper_dir = os.path.dirname(cur_dir) + os.sep
         self.dirname = cur_dir + os.sep
         
-        self.set_tool_path()
-        self.config_file = upper_dir + 'xide.ini'
-        self.cflags = ""
-        self.ldflags = ""
+        # Get user data dir
+        sp = wx.StandardPaths.Get()
+        self.config_dir = p = sp.GetUserDataDir()
+        if not os.path.exists(p) :
+            os.mkdir(p)
+        self.config_file = self.config_dir + 'xide.ini'
         
-        self.work_dir = upper_dir + 'examples'
-        self.load_pre_config()
+        # Initial tool path
+        self.set_tool_path()
+                
+        # Check and create examples folder
+        self.data_dir = sp.GetDocumentsDir() + os.sep + "XideSDCC"
+        if not os.path.exists(self.data_dir):
+            os.mkdir(self.data_dir)
+        dst = self.data_dir + os.sep + 'examples'
+        if not os.path.exists(dst):
+            src = upper_dir + 'examples'
+            copy_dir(src, dst)
+        
+        # Setup examples path
+        self.work_dir = dst #upper_dir + 'examples'
+        
+        # Init variables
         self.logger = None
         self.debugging = False
         self.running = False
-
-
         self.project_dirty = False
         self.prj = None
         self.last_file_count = 0
-          
+        self.cflags = ""
+        self.ldflags = ""
+        
+        # Load config before frame creation, load items - work_dir
+        self.load_pre_config()
+        
+        # Create IDE main frame
         self.frame = IdeFrame(self)
         
+        # Load config after frame creation
         self.load_config()
         
+        # Show frame on the top 
         self.SetTopWindow(self.frame)
         self.frame.Show(True)
                 
+        # If no opened doc, create a new untitled file
         if self.doc_book.get_doc() == None:
             self.doc_book.new_file()
+
+        # Return
         return True
+            
             
     #-------------------------------------------------------------------
     def OnExit(self):
@@ -459,3 +437,54 @@ class IdeApp(wx.App):
         dlg.ShowModal()
         dlg.Destroy()
 
+
+
+#---------------------------------------------------------------------------------------------------
+class IdeConfig(wx.FileConfig):
+    def __init__(self, file_path):
+        wx.FileConfig.__init__(self, '', '', file_path, '', wx.CONFIG_USE_LOCAL_FILE)
+        
+    #-------------------------------------------------------------------
+    def save_lst(self, name, lst):
+        self.Write(name, ';'.join(lst))
+    
+    #-------------------------------------------------------------------
+    def load_lst(self, name):
+        s = self.Read(name, '')
+        if s == '':
+            return []
+        else:
+            lst = s.split(';')
+            return lst
+    
+    #-------------------------------------------------------------------
+    def save_lst_int(self, name, lst):
+        self.Write(name, str(lst))
+    
+    #-------------------------------------------------------------------
+    def load_lst_int(self, name):
+        s = self.Read(name, '')
+        if s == '':
+            return []
+        else:
+            lst = eval(s)
+            return lst
+        
+    #-------------------------------------------------------------------
+    def save_dict(self, name, dict):
+        lst = dict.keys() 
+        self.save_lst(name + '_keys', lst)
+        for k, v in dict.items():
+            self.Write(name + '_' + k, str(v))
+    
+    #-------------------------------------------------------------------
+    def load_dict(self, name):
+        lst = self.load_lst(name)
+        if lst == []:
+            return {}
+        else:
+            dict = {}
+            for k in lst:
+                s = self.Read(name + '_' + k, "")
+                dict[k] = s
+            return dict

@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "XideSDCC"
-#define MyAppVersion "0.0.1"
+#define MyAppVersion "0.1.1"
 #define MyAppPublisher "Athena Chuang"
 #define MyAppURL "http://athenajc.github.io/XideSDCC"
 #define MyAppExeName "xide_sdcc.exe"
@@ -24,7 +24,7 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 LicenseFile=C:\git\XideSDCC\LICENSE
 InfoBeforeFile=C:\git\XideSDCC\README.md
-OutputDir=C:\git\XideSDCC\installer
+OutputDir=C:\git\XideSDCC-Setup
 OutputBaseFilename=setup
 SetupIconFile=C:\git\XideSDCC\installer\setup.ico
 Compression=lzma

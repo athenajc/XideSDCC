@@ -153,6 +153,8 @@ id_defines = {
     'dbg_break':ID_DBG_BREAK,
 }
 
+
+        
 def copy_to_clipboard(text):
     # Write some text to the clipboard
     if wx.TheClipboard.Open():
@@ -349,3 +351,15 @@ def MsgDlg_Warn(parent, message, caption = 'Warning!'):
     dlg = wx.MessageDialog(parent, message, caption, wx.OK | wx.ICON_WARNING)
     dlg.ShowModal()
     dlg.Destroy()
+
+import shutil
+ 
+def copy_dir(src, dest):
+    try:
+        shutil.copytree(src, dest)
+    # Directories are the same
+    except shutil.Error as e:
+        MsgDlg_Warn('Directory not copied. Error: %s' % e)
+    # Any error saying that the directory doesn't exist
+    except OSError as e:
+        MsgDlg_Warn('Directory not copied. Error: %s' % e)

@@ -16,36 +16,7 @@ import sim
 import ide_build_opt
 from ide_menu import Menu
 
-#test_cmd = {"break 30\n", "break 40\n", "run\n", "continue\n", 
-#        "step\n", "step\n",  "step\n", "step\n", "step\n", "step\n", "step\n", "quit\n",}
 
-def temp_remove_sdcc_gsinit_startup(fn):
-    f = open(fn, 'r')
-    text = f.read()
-    f.close()
-    text = text.replace('pagesel', ';pagesel')
-    text = text.replace('goto\t__sdcc_gsinit_startup', 'goto _main')
-    f = open(fn, 'w')
-    f.write(text)
-    f.close()
-
-def search_file(root_dir, search_name):
-    #print root_dir
-    for root, dirnames, filenames in os.walk(root_dir):
-        for file_name in filenames :
-            if file_name == search_name:
-                path = root + os.sep + file_name
-                print "found at ", path
-                return path
-        for dir_name in dirnames:
-            path = search_file(root_dir + dir_name, search_name)
-            if path != "":
-                return path
-            
-    return ""
-
-        
-        
 #---------------------------------------------------------------------------------------------------
 class DocC(DocBase):
     

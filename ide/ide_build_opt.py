@@ -1475,8 +1475,8 @@ class BuildOption():
         
         del config
         
-        if self.config_file != 'sdcc.cfg':
-            utils.copy_file(self.config_file, self.app.dirname + 'sdcc.cfg')
+        #if self.config_file != 'sdcc.cfg':
+        #    utils.copy_file(self.config_file, self.app.dirname + 'sdcc.cfg')
             
         self.dirty = False
         
