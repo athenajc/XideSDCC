@@ -102,8 +102,8 @@ def hex8(v):
 
 def val8(v):
     if v & 0x80:
-        v = comp8(v - 1)
-        return -v
+        # -comp8(v - 1) => -(0xff - (v - 1)) => -(0xff -v + 1) => -(0x100 - v) => v - 0x100
+        return v - 0x100
     else:
         return v
     

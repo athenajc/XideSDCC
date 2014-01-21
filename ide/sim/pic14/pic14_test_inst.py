@@ -88,6 +88,7 @@ def test_subwf(sim, full_test):
         [6, 0xfe, 0xf7, 0],
         [13, 0x80, 0x81, 0],
         [14, 0x81, 0x80, 1],
+        [14, 1, 120, 1],
     ]
     if full_test:
         for w in range(256):
@@ -115,9 +116,19 @@ def test_subwf(sim, full_test):
         func = inst_handler[msb]
         func(sim, msb, lsb)
                
-        w1 = sim.get_wreg()
-        v1 = sim.get_freg(f)
-        fv1 = (v0 + 0x100 - w0) & 0xff
+        w1 = (sim.get_wreg())
+        v1 = (sim.get_freg(f))
+        ww = val8(w0)
+        ff = val8(v0)
+        fv0 = (ff - ww) #(v0 + 0x100 - w0) & 0xff
+
+        if fv0 < 0:
+            fv1 = comp8(-fv0) + 1
+        else:
+            fv1 = fv0
+            
+        print "\n0x%02x - 0x%02x = 0x%02x" % (v0, w0, fv1)
+        print "%4d - %4d = %4d \n" % (ff, ww, fv0)
         
         if d == 0:
             if w1 != fv1:
@@ -1461,10 +1472,10 @@ def test_all(full_test):
 #-----------------------------------------------------------------------------------
 def pic14_test_inst(sim):
     full_test = True
-    #full_test = False
+    full_test = False
     if full_test:
         sys.stdout = open('/home/athena/ttt/inst_test.log', 'w')
-
+        
     test_subwf(sim, full_test)    
     #test_val8()
 
@@ -1561,7 +1572,7 @@ def test_import():
     
 #---- for testing -------------------------------------------------------------
 if __name__ == '__main__':    
-    #test_sim()
-    convert_header_files()
+    test_sim()
+    #convert_header_files()
     #set_pic14_inst_table()
     #test_import()

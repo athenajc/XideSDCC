@@ -60,7 +60,7 @@ class Sim():
             
         self.addr_map_lst = rst.rst_scan(source_list)
         #print source_list
-        print self.addr_map_lst
+        #print self.addr_map_lst
         
         self.c_line = 0
         self.asm_code = ""
@@ -187,7 +187,8 @@ class Sim():
             
         text = read_whole_file(self.hex_path)
         self.log(self.hex_path + "\n")
-
+        
+        self.time_stamp = 0
         self.code_map = hex_scan_to_map(self.hex_path, text, self.mcu_name)
         self.load_code(text)
         

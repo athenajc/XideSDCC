@@ -482,6 +482,9 @@ class SimPic():
         # store freg value
         self.freg[addr] = v
         
+        if not addr in self.mem_access_list:
+            self.mem_access_list.append(addr)
+            
         # call freg handler by addr
         if addr in self.freg_handler:
             self.freg_handler[addr](v, None, None)

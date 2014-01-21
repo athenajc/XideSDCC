@@ -121,28 +121,39 @@ def inst_subwf(sim, msb, lsb):
     # C=0, Z=0 ( Result is negative )
     
     d = (lsb >> 7) & 1
-    f = lsb & 0x7f
-    fv = sim.get_freg(f)
+    fi = lsb & 0x7f
+    f = sim.get_freg(fi)
     w = sim.get_wreg()
-    v = fv + comp8(w) + 1
+    
+    # check if negative
+    if f & 0x80:
+        f -= 0x100
+        
+    # check if negative
+    if w & 0x80:
+        w -= 0x100
+    
+    # do subtract action
+    v = f - w 
     
     c = dc = z = 0
-    if v > 0xff:
+    if v > 0:
+        # z = 0
         c = 1
-        v = v & 0xff
-        
-    if (v & 0xf) + (w & 0xf) > 0xf:
-        dc = 1
-        
-    if v == 0:
-        z = 1
-
+    elif v == 0:
+        c = z = 1
+    else:
+        c = 0
+        # c = z = 0
+        # comp8(-v) + 1 => 0xff - (-v) + 1 => 0xff + v + 1 => v + 0x100
+        v += 0x100 
+    sim.log("f %d, w %d, v %d, c %d, z %d\n" % (f, w, v, c, z))
     sim.set_status_flags(z, dc, c)
     
     if d == 0:
         sim.set_wreg(v)
     else:
-        sim.set_freg(f, v)
+        sim.set_freg(fi, v)
 
 #----------------------------------------------------------------------------
 def inst_decf(sim, msb, lsb):
@@ -203,7 +214,7 @@ def inst_andwf(sim, msb, lsb):
     #When the result is 0, it sets 1 to the Z flag.
     #When the result is not 0, it sets 0 to the Z flag.    
     #d = 0 : store result in W
-    #d = 1 : store result in f    
+    #d = 1 : store result in f
     d = (lsb >> 7) & 1
     f = lsb & 0x7f
     v = sim.get_freg(f)
@@ -503,6 +514,10 @@ def inst_btfsc(sim, msb, lsb):
     f = lsb & 0x7f
     v = sim.get_freg(f)
     b = v & (1 << bit)
+    if bit == 0:
+        sim.log("get c", b)
+    elif bit == 2:
+        sim.log("get z", b)
     #print 'inst_btfsc', b
     if b == 0:
         sim.skip_next_inst()
@@ -514,6 +529,10 @@ def inst_btfss(sim, msb, lsb):
     f = lsb & 0x7f
     v = sim.get_freg(f)
     b = v & (1 << bit)
+    if bit == 0:
+        sim.log("get c", b)
+    elif bit == 2:
+        sim.log("get z", b)    
     #sim.log('inst_btfss ', f, bit, v, b)
     if b != 0:
         sim.skip_next_inst()
