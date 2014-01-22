@@ -169,20 +169,86 @@ class PanelSplitter (wx.Panel):
 
         
 #---------------------------------------------------------------------------------------------------
-class MemViewer(wx.StaticBoxSizer):
+class MemViewer(wx.Panel):
     def __init__(self, parent):
-        wx.StaticBoxSizer.__init__(self, wx.StaticBox(self, wx.ID_ANY, u"Memory"), wx.VERTICAL)
+        wx.Panel.__init__ (self, parent, id = wx.ID_ANY, pos = wx.DefaultPosition, size = wx.Size(300,200), style = wx.TAB_TRAVERSAL)
+        
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
         self.mem_text = wx.TextCtrl(self, -1, style = wx.TE_MULTILINE|wx.HSCROLL)
-        self.Add(self.mem_text, 1, wx.EXPAND, 5)
+        
+        if wx.Platform == '__WXMSW__':
+            font_name = u'Courier New'
+        else:
+            font_name = u'Courier 10 Pitch'
+            
+        font1 = wx.Font(10, wx.MODERN, wx.NORMAL, wx.NORMAL, False, font_name)
+        self.mem_text.SetFont(font1)
+        
+        sizer.Add(self.mem_text, 1, wx.EXPAND, 5)
+        
+        self.SetSizer(sizer)
+        self.Layout()
+        
+        self.bins = []
+        for i in range(256):
+            s = bin(i)
+            s = '0000000' + s[2:]
+            s = s[-8:]
+            self.bins.append(s)
         
     #------------------------------------------------------------------------
-    def update(self, sim):       
-        s = ""
-        for i in range(256):
-            s = s + tohex(sim.mem[i], 2) + " "
-            if i % 16 == 15:
-                s += "\n"
-                        
+    def update(self, sim):
+        lst = []
+        lst.append("ADDR  00 01 02 03  04 05 06 07")
+        
+        hor_line = "--------------------------------"
+        lst.append(hor_line)
+        sz = len(sim.mem)
+        if sz > 0x200:
+            sz = 0x200
+        m = sim.mem
+        i = 0
+        for a in range(0, sz, 8):
+            lst.append('%04X  %02X %02X %02X %02X  %02X %02X %02X %02X' % 
+                       (a, m[a], m[a+1], m[a+2], m[a+3], m[a+4], m[a+5], m[a+6], m[a+7]))
+            
+            if i == 7:
+                i = 0
+                lst.append(hor_line)
+            else:
+                i += 1
+       
+        s = '\n'.join(lst)
+        self.mem_text.SetValue(s)
+        
+
+#---------------------------------------------------------------------------------------------------
+class SfrViewer(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__ (self, parent, id = wx.ID_ANY, pos = wx.DefaultPosition, size = wx.Size(300,200), style = wx.TAB_TRAVERSAL)
+        
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        self.mem_text = wx.TextCtrl(self, -1, style = wx.TE_MULTILINE|wx.HSCROLL)
+        
+        if wx.Platform == '__WXMSW__':
+            font_name = u'Courier New'
+        else:
+            font_name = u'Courier 10 Pitch'
+            
+        font1 = wx.Font(10, wx.MODERN, wx.NORMAL, wx.NORMAL, False, font_name)
+        self.mem_text.SetFont(font1)
+        
+        sizer.Add(self.mem_text, 1, wx.EXPAND, 5)
+        
+        self.SetSizer(sizer)
+        self.Layout()
+                
+        
+    #------------------------------------------------------------------------
+    def update(self, sim):
+        s = sim.get_sfr_view_text()
         self.mem_text.SetValue(s)
         
     
@@ -246,6 +312,12 @@ class DebugFrame (wx.Frame):
         else:
             panel = self.reg_panel = mcs51.WatchPanel(nb2)
         nb2.AddPage(panel, u"Watches")
+        
+        self.mem_view = MemViewer(nb2)
+        nb2.AddPage(self.mem_view, u"Memory")
+        
+        self.sfr_view = SfrViewer(nb2)
+        nb2.AddPage(self.sfr_view, u"SFR")
         
         self.mgr.AddPane(nb2, wx.aui.AuiPaneInfo() .Left() .PinButton(True).Dock().Resizable().FloatingSize(wx.Size(93,102)).DockFixed(False))
 
@@ -422,6 +494,9 @@ class DebugFrame (wx.Frame):
             
         self.reg_panel.update_inst(sim, self.sbuf)
         self.reg_panel.update(sim)
+        self.mem_view.update(sim)
+        self.sfr_view.update(sim)
+        
         if self.pause:
             if sim.stack_depth == 0:
                 self.toolbar.enable_step_out(False)

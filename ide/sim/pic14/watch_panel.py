@@ -413,8 +413,8 @@ class PcDptrTextCtrlList(WatchPane):
         sizer = wx.BoxSizer(wx.HORIZONTAL)
             
         self.pc_text = LabelTextCtrl(panel, sizer, 'PC ', '', '00', size=(60, -1))
-        self.dptr_text = LabelTextCtrl(panel, sizer, '  FSR0 ', '', '00', size=(60, -1))
-        self.sp_text = LabelTextCtrl(panel, sizer, '  SP ', '', '00', size=(30, -1))
+        self.wreg_text = LabelTextCtrl(panel, sizer, '  W ', '', '00', size=(30, -1))
+        self.freg_text = LabelTextCtrl(panel, sizer, '  F ', '', '00', size=(30, -1))
         panel.SetSizer(sizer)
         panel.Layout()
         self.Expand()
@@ -426,8 +426,8 @@ class PcDptrTextCtrlList(WatchPane):
         if sim is None:
             return
         self.pc_text.set_value(sim.get_reg('PC'), 4)
-        self.dptr_text.set_value(sim.get_reg('FSR0'), 4)
-        self.sp_text.set_value(sim.get_reg('SP'), 2)
+        self.wreg_text.set_value(sim.get_reg('W'), 2)
+        self.freg_text.set_value(sim.get_reg('F'), 2)
         
 
         
@@ -574,6 +574,42 @@ class InputCtrlList(WatchPane):
 
         self.Expand()
 
+
+#---------------------------------------------------------------------------------------------------
+class MemWatcher(WatchPane):
+    def __init__(self, parent, parent_sizer):
+        WatchPane.__init__(self, parent, parent_sizer, "Memory Watcher")
+        panel = self.GetPane()
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        panel.SetMinSize(wx.Size(300,100))
+        self.text = wx.TextCtrl(panel, -1, style = wx.TE_MULTILINE|wx.HSCROLL)
+        if wx.Platform == '__WXMSW__':
+            font_name = u'Courier New'
+        else:
+            font_name = u'Courier 10 Pitch'
+        font1 = wx.Font(10, wx.MODERN, wx.NORMAL, wx.NORMAL, False, font_name)
+        self.text.SetFont(font1)
+        self.text.SetMinSize(wx.Size(300,400))
+        sizer.Add(self.text, 1, wx.ALL|wx.EXPAND|wx.GROW, 2)
+        
+        panel.SetSizer(sizer)
+        panel.Layout()
+
+        self.Expand()
+        
+    #------------------------------------------------------------------------
+    def update(self, sim):
+        lst = []
+        lst.append("ADDR HEX INT     BIN")
+            
+        for a in range(0x200):
+            v = a #sim.mem[a]
+            lst.append('%04x  %02x %03d  %s' % (a, v, v, bin(v)))
+       
+        s = '\n'.join(lst)
+        self.text.SetValue(s)
+                
         
         
 #---------------------------------------------------------------------------------------------------
@@ -607,6 +643,7 @@ class UartTextViewer(wx.Panel):
         s = '\n'.join(lst)
         self.inst_text.SetValue(s)
         
+
         
 
 #---------------------------------------------------------------------------------------------------
@@ -637,9 +674,12 @@ class WatchPanel (wx.Panel):
         self.pc_dptr_viewer = PcDptrTextCtrlList(self, sizer)
         self.port_panel = PortTextCtrlList(self, sizer)
         self.watch_led = WatchLed(self, sizer)
+        
         InputCtrlList(self, sizer)
+        #self.mem_watch = MemWatcher(self, sizer)
         #watch_panel = self.sfr_watch = SfrWatchPanel(self)
         text_view = self.uart_text_view = UartTextViewer(self)
+        
         
         #sizer.Add(watch_panel, 0, wx.EXPAND, 5)
         sizer.Add(text_view, 1, wx.EXPAND, 5)
@@ -712,7 +752,7 @@ class WatchPanel (wx.Panel):
             n = len(s)
             c = s[n-1:n]
             if c != '':
-                print c, hex(ord(c))
+                #print c, hex(ord(c))
                 self.sim.set_input('uart', ord(c))
                 
     #------------------------------------------------------------------------
@@ -726,7 +766,7 @@ class WatchPanel (wx.Panel):
         self.pc_dptr_viewer.update(sim)
         self.port_panel.update(sim)
         self.watch_led.update(sim)
-        #self.sfr_watch.update(sim)
+        #self.mem_watch.update(sim)
         
     #------------------------------------------------------------------------
     def update_inst(self, sim, sbuf): 

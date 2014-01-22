@@ -924,7 +924,9 @@ class SimPic():
     def stop(self):
         self.stopped = True
         
-        
+    #-------------------------------------------------------------------
+    def get_sfr_view_text(self):
+        return ""
         
         
 

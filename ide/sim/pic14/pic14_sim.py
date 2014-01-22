@@ -53,6 +53,9 @@ class SimPic():
         self.pc = 0
         self.c_line = 0
         self.asm_code = ""
+        self.f = 0
+        self.f_addr = 0
+        self.wreg = 0
         
         self.fsr = 0
         self.indf_addr = 0
@@ -110,6 +113,8 @@ class SimPic():
             self.pin_out.append(s)
             
         self.time_stamp = 0
+        
+        self.init_sfr_view_text()
         
     #---------------------------------------------------------------
     def get_pin_log(self, pin):
@@ -264,8 +269,10 @@ class SimPic():
         if addr == -1:
             if k == 'PC':
                 return self.pc
-            elif k == 'SP':
-                return self.sp
+            elif k == 'W':
+                return self.wreg
+            elif k == 'F':
+                return self.f
             else:
                 return 0xFF
         v = self.mem[addr]
@@ -480,7 +487,8 @@ class SimPic():
             self.log("     set freg %s %02x = %02x" % (key, addr, v))
         
         # store freg value
-        self.freg[addr] = v
+        self.f_addr = addr
+        self.f = self.freg[addr] = v
         
         if not addr in self.mem_access_list:
             self.mem_access_list.append(addr)
@@ -505,7 +513,8 @@ class SimPic():
             v &= ~(1 << bit)
         else:
             v |= 1 << bit
-        self.freg[addr] = v
+        self.f_addr = addr
+        self.f = self.freg[addr] = v
         
         if not addr in self.mem_access_list:
             self.mem_access_list.append(addr)
@@ -520,8 +529,9 @@ class SimPic():
             addr = self.indf_addr
         elif not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
-
-        v = self.freg[addr]
+        
+        self.f_addr = addr
+        self.f = v = self.freg[addr]
         if self.debug:
             key = self.sfr_name[addr]
             self.log("     get freg %s %02x is %02x" % (key, addr, v))
@@ -1085,8 +1095,80 @@ class SimPic():
     #-------------------------------------------------------------------
     def stop(self):
         self.stopped = True
+
+    #-------------------------------------------------------------------
+    def init_sfr_view_text(self):
+        self.sfr_strs = []
+        self.sfr_str_addrs = []
+        for a in range(512):
+            sfr = self.sfr_name[a]
+            if sfr == "":
+                continue
+            if sfr == "OPTION_REG":
+                sfr = "OPTION"
+            sfr += "        "
+            sfr = sfr[:8]
+            self.sfr_strs.append([a, sfr])
+            self.sfr_str_addrs.append(a)
+            
+        # init binary convert table
+        self.bins = []
+        for i in range(256):
+            s = bin(i)
+            s = '0000000' + s[2:]
+            s = s[-8:]
+            self.bins.append(s)
+        
+    #-------------------------------------------------------------------
+    def get_sfr_view_text(self):
+        lst = []
+        lst.append("    SFR     HEX  INT    BIN")
+        
+        hor_line = "-------------------------------"
+        lst.append(hor_line)
+        
+        for (a, sfr) in self.sfr_strs:
+            v = self.mem[a] 
+            if v < 256:
+                s = self.bins[v]
+            else:
+                s = bin(v)
+            lst.append(' %02X  %7s%02X  %03d  %s' % (a, sfr, v, v, s))
+            if a % 16 == 15:
+                lst.append(hor_line)
                 
+        #lst.append(hor_line)
+        v = self.wreg
+        lst.append('     W       %02X  %03d  %s' % (v, v, self.bins[v&0xff]))
+        lst.append(' %03X F       %02X  %03d  %s' % (self.f_addr, v, v, self.bins[self.f&0xff]))
+        lst.append(hor_line)
         
+        status = self.mem[3]
+        c =  status & 1
+        z =  (status >> 2) & 1
+        dc = (status >> 1) & 1
+        lst.append(' Status bit 0 C  %X' % (c))
+        lst.append(' Status bit 1 DC %X' % (dc))
+        lst.append(' Status bit 2 Z  %X' % (z))
+        lst.append(hor_line)
         
+        lst.append(' Status bit 5-6 %X%X  Bank %d' % ((status >> 5) & 1, (status >> 6) & 1, (status >> 5) & 3) )
+        
+        lst.append(hor_line)
+        
+        klst = self.sfr_str_addrs
+        lst1 = []
+        i = 0
+        for a in self.mem_access_list:
+            if a in klst:
+                continue
+            lst1.append('%03X=%02X   ' %(a, self.mem[a]))
+            i += 1
+            if i == 4:
+                i = 0
+                lst1.append("\n")
+        lst.append(''.join(lst1))
+        s = '\n'.join(lst)
+        return s
     
     
