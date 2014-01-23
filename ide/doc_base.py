@@ -538,7 +538,7 @@ class DocBase(StyledText):
 
     #-------------------------------------------------------------------
     def toggle_breakpoint(self, line):
-        markers = self.MarkerGet(line)
+        #markers = self.MarkerGet(line)
 
         if not line in self.breakpoints:
             self.MarkerAdd(line, MARKNUM_BREAK_POINT)
@@ -549,6 +549,18 @@ class DocBase(StyledText):
 
         #--print(self.breakpoints)
         
+    #-------------------------------------------------------------------
+    def update_breakpoints(self):
+        #n = self.GetLineCount()
+        #for line in range(n):
+            #markers = self.MarkerGet(line)
+            #if markers != 0:
+                #self.MarkerDelete(line, MARKNUM_BREAK_POINT)
+
+        for line in self.breakpoints:
+            self.MarkerAdd(line, MARKNUM_BREAK_POINT)
+        #self.Update()
+            
     #-------------------------------------------------------------------
     def OnDocMarginClick(self, event):
         line = self.LineFromPosition(event.GetPosition())

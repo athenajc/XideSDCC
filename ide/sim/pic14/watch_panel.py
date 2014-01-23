@@ -12,6 +12,7 @@ class WatchPane(wx.CollapsiblePane):
     def __init__(self, parent, parent_sizer, title):
         self.sim = None
         self.parent = parent
+        self.title = title
         self.label1 = "Click here to Show " + title
         self.label2 = "Click here to Hide " + title
         
@@ -24,6 +25,17 @@ class WatchPane(wx.CollapsiblePane):
         parent_sizer.Add(self, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
         
     #------------------------------------------------------------------------
+    def expand(self):
+        s = self.parent.get_setting(self.title)
+        if s == "":
+            self.Expand()
+            self.parent.set_setting(self.title, True)
+        elif s == "True":
+            self.Expand()
+        else:
+            self.Collapse()
+            
+    #------------------------------------------------------------------------
     def OnPaneChanged(self, evt=None):
         # redo the layout
         self.parent.Layout()
@@ -31,9 +43,10 @@ class WatchPane(wx.CollapsiblePane):
         # and also change the labels
         if self.IsExpanded():
             self.SetLabel(self.label2)
+            self.parent.set_setting(self.title, True)
         else:
             self.SetLabel(self.label1)
-            
+            self.parent.set_setting(self.title, False)
 
 
 #----------------------------------------------------------------------------------
@@ -245,7 +258,8 @@ class WatchLed(WatchPane):
         
         panel.SetSizer(sizer)
         panel.Layout()
-        self.Expand()
+        
+        self.expand()
         
     #------------------------------------------------------------------------
     def update(self, sim):
@@ -310,72 +324,6 @@ class WatchLed(WatchPane):
         self.update_select_pins()
         
         
-#---------------------------------------------------------------------------------------------------
-class SfrTextCtrl(wx.TextCtrl):
-    def __init__(self, parent, sizer, label_str, help_str="", default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, sz1=(40,-1), sz2=(35,-1)):
-        wx.TextCtrl.__init__(self, parent, -1, "", size=sz2, style=wx.TE_READONLY)
-        box = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.label = wx.StaticText(parent, -1, label_str, pos=(0,0), size=sz1, style=wx.ALIGN_RIGHT)
-        box.Add(self.label, 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 0)
-        
-        text = self
-        text.SetValue(default_str)
-        text.SetHelpText(help_str)
-        text.SetBackgroundColour((185,185,185))
-        box.Add(text, 1, wx.ALIGN_CENTRE|wx.RIGHT, 0)
-
-        sizer.Add(box, 0, flag, 0)
-        
-    def set_value(self, v):
-        self.SetValue(tohex(v, 2))
-        if v == 0:
-            self.SetBackgroundColour((185,185,185))
-        else:
-            self.SetBackgroundColour((235,235,235))   
-            
-            
-#---------------------------------------------------------------------------------------------------
-class SfrTextCtrlList(wx.StaticBoxSizer):
-    def __init__(self, parent, parent_sizer, title, lst):
-        box = wx.StaticBox(parent, wx.ID_ANY, title)
-        wx.StaticBoxSizer.__init__(self, box, wx.HORIZONTAL)
-        box_sizer = self
-                    
-        panel = wx.Panel(parent,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
-        p_sizer = wx.BoxSizer(wx.VERTICAL)
-        
-        self.text_list = []
-        h = 0
-        for t in lst:
-            obj = SfrTextCtrl(panel, p_sizer, t[0], hex(t[1]), '00')
-            self.text_list.append([t[0], t[1], obj])
-            
-        panel.SetSizer(p_sizer)
-        panel.Layout()
-         
-        box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
-        parent_sizer.Add(box_sizer, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
-        
-    #------------------------------------------------------------------------
-    def update(self, sim):
-        if sim is None:
-            return
-        
-        for t in self.text_list:
-            i = t[1]
-            v = sim.get_reg(t[0].lower())
-            text = t[2]
-            if type(v) == type(u'a'):
-                text.SetValue(v)
-            else:
-                text.SetValue(tohex(v, 2))
-            if v == 0:
-                text.SetBackgroundColour((185,185,185))
-            else:
-                text.SetBackgroundColour((235,235,235))
-
-
 #---------------------------------------------------------------------------
 class LabelTextCtrl(wx.TextCtrl):
     def __init__(self, parent, sizer, label_str, help_str="", default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, size=(-1,-1)):
@@ -401,7 +349,7 @@ class LabelTextCtrl(wx.TextCtrl):
 
 
 #---------------------------------------------------------------------------------------------------
-class PcDptrTextCtrlList(WatchPane):
+class SfrTextCtrlList(WatchPane):
     def __init__(self, parent, parent_sizer):
         WatchPane.__init__(self, parent, parent_sizer, "PC ADDR")
         #title = ''
@@ -419,7 +367,8 @@ class PcDptrTextCtrlList(WatchPane):
         self.z_text = LabelTextCtrl(panel, sizer, ' Z ', '', '0', size=(18, -1))
         panel.SetSizer(sizer)
         panel.Layout()
-        self.Expand()
+        
+        self.expand()
         #box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
         #parent_sizer.Add(box_sizer, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
         
@@ -527,7 +476,7 @@ class PortTextCtrlList(WatchPane):
         panel.SetSizer(sizer)
         panel.Layout()
 
-        self.Expand()
+        self.expand()
 
     #------------------------------------------------------------------------
     def update(self, sim):
@@ -579,43 +528,43 @@ class InputCtrlList(WatchPane):
         panel.SetSizer(sizer)
         panel.Layout()
 
-        self.Expand()
+        self.expand()
 
 
-#---------------------------------------------------------------------------------------------------
-class MemWatcher(WatchPane):
-    def __init__(self, parent, parent_sizer):
-        WatchPane.__init__(self, parent, parent_sizer, "Memory Watcher")
-        panel = self.GetPane()
+##---------------------------------------------------------------------------------------------------
+#class MemWatcher(WatchPane):
+    #def __init__(self, parent, parent_sizer):
+        #WatchPane.__init__(self, parent, parent_sizer, "Memory Watcher")
+        #panel = self.GetPane()
 
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        panel.SetMinSize(wx.Size(300,100))
-        self.text = wx.TextCtrl(panel, -1, style = wx.TE_MULTILINE|wx.HSCROLL)
-        if wx.Platform == '__WXMSW__':
-            font_name = u'Courier New'
-        else:
-            font_name = u'Courier 10 Pitch'
-        font1 = wx.Font(10, wx.MODERN, wx.NORMAL, wx.NORMAL, False, font_name)
-        self.text.SetFont(font1)
-        self.text.SetMinSize(wx.Size(300,400))
-        sizer.Add(self.text, 1, wx.ALL|wx.EXPAND|wx.GROW, 2)
+        #sizer = wx.BoxSizer(wx.VERTICAL)
+        #panel.SetMinSize(wx.Size(300,100))
+        #self.text = wx.TextCtrl(panel, -1, style = wx.TE_MULTILINE|wx.HSCROLL)
+        #if wx.Platform == '__WXMSW__':
+            #font_name = u'Courier New'
+        #else:
+            #font_name = u'Courier 10 Pitch'
+        #font1 = wx.Font(10, wx.MODERN, wx.NORMAL, wx.NORMAL, False, font_name)
+        #self.text.SetFont(font1)
+        #self.text.SetMinSize(wx.Size(300,400))
+        #sizer.Add(self.text, 1, wx.ALL|wx.EXPAND|wx.GROW, 2)
         
-        panel.SetSizer(sizer)
-        panel.Layout()
+        #panel.SetSizer(sizer)
+        #panel.Layout()
 
-        self.Expand()
+        #self.expand()
         
-    #------------------------------------------------------------------------
-    def update(self, sim):
-        lst = []
-        lst.append("ADDR HEX INT     BIN")
+    ##------------------------------------------------------------------------
+    #def update(self, sim):
+        #lst = []
+        #lst.append("ADDR HEX INT     BIN")
             
-        for a in range(0x200):
-            v = a #sim.mem[a]
-            lst.append('%04x  %02x %03d  %s' % (a, v, v, bin(v)))
+        #for a in range(0x200):
+            #v = a #sim.mem[a]
+            #lst.append('%04x  %02x %03d  %s' % (a, v, v, bin(v)))
        
-        s = '\n'.join(lst)
-        self.text.SetValue(s)
+        #s = '\n'.join(lst)
+        #self.text.SetValue(s)
                 
                 
 #---------------------------------------------------------------------------------------------------
@@ -633,8 +582,8 @@ class UartWatcher(WatchPane):
         
         panel.SetSizer(sizer)
         panel.Layout()
-
-        self.Expand()
+        
+        self.expand()
         
     #------------------------------------------------------------------------
     def update_inst(self, sim, sbuf):
@@ -672,14 +621,37 @@ class MemViewer(wx.Panel):
     #------------------------------------------------------------------------
     def update(self, sim):
         lst = []
-        lst.append("file = " + sim.c_file)
-        lst.append("line = %d\n" % sim.c_line) 
-        lst.append('bank = %d' % sim.bank_addr)
+        #lst.append("File = " + sim.c_file)
+        #lst.append("Line = %d\n" % sim.c_line) 
         
         if sim.debug:
+            bins = sim.bins
+            m = sim.mem
+            status = sim.get_reg('STATUS')
+            bank = (status >> 5) & 3
+            lst.append(' Bank   %d' % (bank))
+            lst.append(' Status %s\n' % (bins[status]))
+            c =  status & 1
+            z =  (status >> 2) & 1
+            dc = (status >> 1) & 1
+            lst.append(' Status bit 0 C  %X' % (c))
+            lst.append(' Status bit 1 DC %X' % (dc))
+            lst.append(' Status bit 2 Z  %X' % (z))
+            sim.mem_access_list.sort()
             for a in sim.mem_access_list:
-                lst.append('%03X = %02X' % (a, sim.mem[a]))
+                v = m[a]
                 
+                if v < 256:
+                    s = bins[v]
+                else:
+                    s = bin(v)
+                    
+                sfr = sim.sfr_name[a]
+                if sfr == "":
+                    lst.append(' %03X = %02X' % (a, v))
+                else:
+                    lst.append(' %03X = %02X %s' % (a, v, sfr))
+                            
         s = '\n'.join(lst)
         self.text.SetValue(s)
         
@@ -710,47 +682,52 @@ class WatchPanel (wx.Panel):
         self.load_config()
         
         sizer = wx.BoxSizer(wx.VERTICAL)
-        self.pc_dptr_viewer = PcDptrTextCtrlList(self, sizer)
+        
         self.port_panel = PortTextCtrlList(self, sizer)
         self.watch_led = WatchLed(self, sizer)
-        
-        InputCtrlList(self, sizer)
+        self.input_pane = InputCtrlList(self, sizer)
         self.uart_watch = UartWatcher(self, sizer)
-        #self.mem_watch = MemWatcher(self, sizer)
-        #watch_panel = self.sfr_watch = SfrWatchPanel(self)
+        self.sfr_view = SfrTextCtrlList(self, sizer)
         self.mem_view = MemViewer(self)
                 
-        #sizer.Add(watch_panel, 0, wx.EXPAND, 5)
         sizer.Add(self.mem_view, 1, wx.EXPAND, 5)
         
         self.SetSizer(sizer)
         self.Layout()
         
     #-------------------------------------------------------------------
+    def get_setting(self, k):
+        if k.find(' ') >= 0:
+            k = k.replace(' ', '_')
+        v = self.settings.get(k, "")
+        return v
+        
+    #-------------------------------------------------------------------
     def set_setting(self, k, v):
-        self.settings[k] = v
+        if k.find(' ') >= 0:
+            k = k.replace(' ', '_')
+        self.settings[k] = str(v)
         
     #-------------------------------------------------------------------
     def save_config(self):
         config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
-        
-        config.Write("pic14_watch_settings", "True")
+                
+        lst = self.settings.keys()
+        s = ";".join(lst)
+        config.Write("pic14_watch_settings", s)
         for k, v in self.settings.items():
             config.Write(k, str(v))
-
+        
         del config
 
     #-------------------------------------------------------------------
     def load_config(self):
         config = wx.FileConfig("", "", self.config_file, "", wx.CONFIG_USE_LOCAL_FILE)
         
-        if config.Exists("pic14_watch_settings"):
-            for k, v in self.settings.items():
-                s = config.Read(k, str(v))
-                if type(v) == str:
-                    self.settings[k] = s
-                else:
-                    self.settings[k] = int(s)
+        settings = config.Read("pic14_watch_settings", "")
+        if settings != "":
+            for k in settings.split(";"):
+                self.settings[k] = config.Read(k, "")
 
         del config
 
@@ -802,7 +779,7 @@ class WatchPanel (wx.Panel):
     def update(self, sim):
         if self.sim == None:
             self.sim = sim
-        self.pc_dptr_viewer.update(sim)
+        self.sfr_view.update(sim)
         self.port_panel.update(sim)
         self.watch_led.update(sim)
         self.mem_view.update(sim)

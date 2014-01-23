@@ -147,7 +147,8 @@ def inst_subwf(sim, msb, lsb):
         # c = z = 0
         # comp8(-v) + 1 => 0xff - (-v) + 1 => 0xff + v + 1 => v + 0x100
         v += 0x100 
-    sim.log("f %d, w %d, v %d, c %d, z %d\n" % (f, w, v, c, z))
+    if sim.debug:
+        sim.log("subwf - f %d, w %d, f-w %d, c %d, z %d\n" % (f, w, f-w, c, z))
     sim.set_status_flags(z, dc, c)
     
     if d == 0:

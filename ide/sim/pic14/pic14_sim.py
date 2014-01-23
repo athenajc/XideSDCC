@@ -479,7 +479,7 @@ class SimPic():
         # set bank addr
         if addr == 0:
             addr = self.indf_addr
-        elif not addr in [2, 3, 4, 0xA, 0xB]:
+        elif not addr in [2, 3, 4, 0xA, 0xB, 0x7C, 0x7D, 0x7E, 0x7F]:
             addr += self.bank_addr
         
         if self.debug:
@@ -516,8 +516,9 @@ class SimPic():
         self.f_addr = addr
         self.f = self.freg[addr] = v
         
-        if not addr in self.mem_access_list:
-            self.mem_access_list.append(addr)
+        if self.debug:
+            if not addr in self.mem_access_list:
+                self.mem_access_list.append(addr)
             
         if addr in self.freg_handler:
             self.freg_handler[addr](v, bit, b)
@@ -527,12 +528,14 @@ class SimPic():
     def get_freg(self, addr):
         if addr == 0:
             addr = self.indf_addr
-        elif not addr in [2, 3, 4, 0xA, 0xB]:
+        elif not addr in [2, 3, 4, 0xA, 0xB, 0x7C, 0x7D, 0x7E, 0x7F]:
             addr += self.bank_addr
         
         self.f_addr = addr
         self.f = v = self.freg[addr]
         if self.debug:
+            if not addr in self.mem_access_list:
+                self.mem_access_list.append(addr)
             key = self.sfr_name[addr]
             self.log("     get freg %s %02x is %02x" % (key, addr, v))
             

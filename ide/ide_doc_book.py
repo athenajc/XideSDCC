@@ -196,7 +196,7 @@ class DocBook(wx.aui.AuiNotebook):
 
         # store page index for selection
         doc.page_index = self.GetPageIndex(doc)
-
+        
         return doc
 
     #-------------------------------------------------------------------
@@ -244,7 +244,7 @@ class DocBook(wx.aui.AuiNotebook):
             doc.SetText("")
 
         self.cur_doc = doc
-
+        #doc.update_breakpoints()
         return doc
 
     #-------------------------------------------------------------------

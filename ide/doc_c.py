@@ -39,6 +39,7 @@ class DocC(DocBase):
         self.mcu_name  = ""
         self.mcu_device = ""
         
+        self.load_config()
         
     #-------------------------------------------------------------------
     def OnIdle(self, event):
@@ -263,6 +264,20 @@ class DocC(DocBase):
             self.app.ldflags = config.Read("ldflags", "")
             self.mcu_name  = config.Read("mcu_name", "")
             self.mcu_device = config.Read("mcu_device", "")
+            
+            # load breakpoints
+            s = config.Read("breakpoints", "")
+            if s == "":
+                self.breakpoints = None
+            else:
+                lst = s.split(';')
+                
+                for t in lst:
+                    path, b = t.split("=")
+                    if path == self.file_path:
+                        blst = eval(b)
+                        self.breakpoints = blst
+
         else:
             del config
             self.app.set_build_option()
