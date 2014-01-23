@@ -412,9 +412,11 @@ class PcDptrTextCtrlList(WatchPane):
         panel = self.GetPane() #wx.Panel(parent,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
             
-        self.pc_text = LabelTextCtrl(panel, sizer, 'PC ', '', '00', size=(60, -1))
+        self.pc_text = LabelTextCtrl(panel, sizer, 'PC ', '', '00', size=(50, -1))
         self.wreg_text = LabelTextCtrl(panel, sizer, '  W ', '', '00', size=(30, -1))
         self.freg_text = LabelTextCtrl(panel, sizer, '  F ', '', '00', size=(30, -1))
+        self.c_text = LabelTextCtrl(panel, sizer, ' C ', '', '0', size=(18, -1))
+        self.z_text = LabelTextCtrl(panel, sizer, ' Z ', '', '0', size=(18, -1))
         panel.SetSizer(sizer)
         panel.Layout()
         self.Expand()
@@ -429,6 +431,11 @@ class PcDptrTextCtrlList(WatchPane):
         self.wreg_text.set_value(sim.get_reg('W'), 2)
         self.freg_text.set_value(sim.get_reg('F'), 2)
         
+        status = sim.get_reg('STATUS')
+        c = status & 1
+        z = (status >> 2) & 1
+        self.freg_text.set_value(sim.get_reg('C'), 1)
+        self.freg_text.set_value(sim.get_reg('Z'), 1)
 
         
 #---------------------------------------------------------------------------
@@ -610,41 +617,73 @@ class MemWatcher(WatchPane):
         s = '\n'.join(lst)
         self.text.SetValue(s)
                 
-        
-        
-#---------------------------------------------------------------------------------------------------
-class UartTextViewer(wx.Panel):
-    def __init__(self, parent):
-        wx.Panel.__init__ (self, parent, id = wx.ID_ANY, pos = wx.DefaultPosition, size = wx.Size(300,200), style = wx.TAB_TRAVERSAL)
                 
-        self.SetMinSize(wx.Size(300,100))
-        sbSizer1 = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, u"Uart Viewer"), wx.VERTICAL)
+#---------------------------------------------------------------------------------------------------
+class UartWatcher(WatchPane):
+    def __init__(self, parent, parent_sizer):
+        WatchPane.__init__(self, parent, parent_sizer, "Uart Watcher")
+        panel = self.GetPane()
 
-        self.inst_text = wx.TextCtrl(self, -1, style = wx.TE_MULTILINE|wx.HSCROLL)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        panel.SetMinSize(wx.Size(300,100))
+        self.text = wx.TextCtrl(panel, -1, style = wx.TE_MULTILINE|wx.HSCROLL)
+
+        self.text.SetMinSize(wx.Size(300,100))
+        sizer.Add(self.text, 1, wx.ALL|wx.EXPAND|wx.GROW, 2)
         
-        sbSizer1.Add(self.inst_text, 1, wx.EXPAND, 5)
-        self.SetSizer(sbSizer1)
-        sbSizer1.Layout()
+        panel.SetSizer(sizer)
+        panel.Layout()
+
+        self.Expand()
         
     #------------------------------------------------------------------------
     def update_inst(self, sim, sbuf):
         lst = []
-        lst.append("file = " + sim.c_file)
-        lst.append("line = %d\n" % sim.c_line) 
+        #lst.append("file = " + sim.c_file)
+        #lst.append("line = %d\n" % sim.c_line) 
         lst.append(str(sbuf))
         s1 = ''.join(chr(i) for i in sbuf)
         lst.append(s1)
-        lst.append('bank = ' + str(sim.bank_addr))
+               
+        s = '\n'.join(lst)
+        self.text.SetValue(s)
+        
+        
+#---------------------------------------------------------------------------------------------------
+class MemViewer(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__ (self, parent, id = wx.ID_ANY, pos = wx.DefaultPosition, size = wx.Size(300,200), style = wx.TAB_TRAVERSAL)
+                
+        self.SetMinSize(wx.Size(300,100))
+        sbSizer1 = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, u"Memory Viewer"), wx.VERTICAL)
+
+        self.text = wx.TextCtrl(self, -1, style = wx.TE_MULTILINE|wx.HSCROLL)
+        if wx.Platform == '__WXMSW__':
+            font_name = u'Courier New'
+        else:
+            font_name = u'Courier 10 Pitch'
+        font1 = wx.Font(10, wx.MODERN, wx.NORMAL, wx.NORMAL, False, font_name)
+        self.text.SetFont(font1)
+        
+        sbSizer1.Add(self.text, 1, wx.EXPAND, 5)
+        self.SetSizer(sbSizer1)
+        sbSizer1.Layout()
+        
+    #------------------------------------------------------------------------
+    def update(self, sim):
+        lst = []
+        lst.append("file = " + sim.c_file)
+        lst.append("line = %d\n" % sim.c_line) 
+        lst.append('bank = %d' % sim.bank_addr)
         
         if sim.debug:
             for a in sim.mem_access_list:
-                lst.append('mem %02x = %02x' %(a, sim.mem[a]))
-       
+                lst.append('%03X = %02X' % (a, sim.mem[a]))
+                
         s = '\n'.join(lst)
-        self.inst_text.SetValue(s)
+        self.text.SetValue(s)
         
 
-        
 
 #---------------------------------------------------------------------------------------------------
 class WatchPanel (wx.Panel):
@@ -676,13 +715,13 @@ class WatchPanel (wx.Panel):
         self.watch_led = WatchLed(self, sizer)
         
         InputCtrlList(self, sizer)
+        self.uart_watch = UartWatcher(self, sizer)
         #self.mem_watch = MemWatcher(self, sizer)
         #watch_panel = self.sfr_watch = SfrWatchPanel(self)
-        text_view = self.uart_text_view = UartTextViewer(self)
-        
-        
+        self.mem_view = MemViewer(self)
+                
         #sizer.Add(watch_panel, 0, wx.EXPAND, 5)
-        sizer.Add(text_view, 1, wx.EXPAND, 5)
+        sizer.Add(self.mem_view, 1, wx.EXPAND, 5)
         
         self.SetSizer(sizer)
         self.Layout()
@@ -766,12 +805,12 @@ class WatchPanel (wx.Panel):
         self.pc_dptr_viewer.update(sim)
         self.port_panel.update(sim)
         self.watch_led.update(sim)
-        #self.mem_watch.update(sim)
+        self.mem_view.update(sim)
         
     #------------------------------------------------------------------------
     def update_inst(self, sim, sbuf): 
         #print 'update_inst ', sim.c_line
-        self.uart_text_view.update_inst(sim, sbuf)
+        self.uart_watch.update_inst(sim, sbuf)
         
     #------------------------------------------------------------------------
     def OnIdle(self, event):
