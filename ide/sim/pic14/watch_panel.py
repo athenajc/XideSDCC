@@ -6,7 +6,12 @@ WINDOWS = ('wxMSW' in wx.PlatformInfo)
 USE_BUFFER = WINDOWS # use buffered drawing on Windows
 
 
-
+#---------------------------------------------------------------------------
+class StaticLine(wx.StaticLine):
+    def __init__(self, parent, sizer):
+        wx.StaticLine.__init__(self, parent, -1, size=(20,-1), style=wx.LI_HORIZONTAL)
+        sizer.Add(self, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5)
+        
 #---------------------------------------------------------------------------------------------------
 class WatchPane(wx.CollapsiblePane):
     def __init__(self, parent, parent_sizer, title):
@@ -351,26 +356,27 @@ class LabelTextCtrl(wx.TextCtrl):
 #---------------------------------------------------------------------------------------------------
 class SfrTextCtrlList(WatchPane):
     def __init__(self, parent, parent_sizer):
-        WatchPane.__init__(self, parent, parent_sizer, "PC ADDR")
-        #title = ''
-        #box = wx.StaticBox(parent, wx.ID_ANY, title)
-        #wx.StaticBoxSizer.__init__(self, box, wx.HORIZONTAL)
-        #box_sizer = self
+        WatchPane.__init__(self, parent, parent_sizer, "SFR Viewer")
                     
-        panel = self.GetPane() #wx.Panel(parent,style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
-            
-        self.pc_text = LabelTextCtrl(panel, sizer, 'PC ', '', '00', size=(50, -1))
-        self.wreg_text = LabelTextCtrl(panel, sizer, '  W ', '', '00', size=(30, -1))
-        self.freg_text = LabelTextCtrl(panel, sizer, '  F ', '', '00', size=(30, -1))
-        self.c_text = LabelTextCtrl(panel, sizer, ' C ', '', '0', size=(18, -1))
-        self.z_text = LabelTextCtrl(panel, sizer, ' Z ', '', '0', size=(18, -1))
+        panel = self.GetPane() 
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer1 = wx.BoxSizer(wx.HORIZONTAL)
+        
+        self.pc_text = LabelTextCtrl(panel, sizer1, 'PC ', '', '00', size=(50, -1))
+        self.wreg_text = LabelTextCtrl(panel, sizer1, '  W ', '', '00', size=(30, -1))
+        self.freg_text = LabelTextCtrl(panel, sizer1, '  F ', '', '00', size=(30, -1))
+        self.c_text = LabelTextCtrl(panel, sizer1, ' C ', '', '0', size=(18, -1))
+        self.z_text = LabelTextCtrl(panel, sizer1, ' Z ', '', '0', size=(18, -1))
+        sizer.Add(sizer1)
+        
+        StaticLine(panel, sizer)
+        
+        self.s_text = PortTextCtrl(panel, sizer, 'STATUS', '', '00', size=(30, -1))
+               
         panel.SetSizer(sizer)
         panel.Layout()
-        
         self.expand()
-        #box_sizer.Add(panel, 1, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
-        #parent_sizer.Add(box_sizer, 0, wx.EXPAND|wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 2)
+
         
     #------------------------------------------------------------------------
     def update(self, sim):
@@ -385,7 +391,55 @@ class SfrTextCtrlList(WatchPane):
         z = (status >> 2) & 1
         self.freg_text.set_value(sim.get_reg('C'), 1)
         self.freg_text.set_value(sim.get_reg('Z'), 1)
+        
+        self.s_text.set_value(sim.get_reg('STATUS'))
+        
+        
 
+#---------------------------------------------------------------------------------------------------
+class MemTextCtrlList(WatchPane):
+    def __init__(self, parent, parent_sizer):
+        WatchPane.__init__(self, parent, parent_sizer, "Memory Viewer")
+        self.parent = parent
+        panel = self.GetPane() 
+        panel.parent = self
+        
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        
+        StaticLine(panel, sizer)
+        
+        self.plst = []
+        
+        for i in range(4):
+            s = parent.get_setting("p" + str(i) + "_addr")
+            if s != "":
+                v = int(s, 16)
+            else:
+                v = 0x12C +i
+            p = SpinTextCtrl(panel, sizer, v, '00', size=(30, -1))
+            self.plst.append(p)
+            
+        StaticLine(panel, sizer)
+        
+        panel.SetSizer(sizer)
+        panel.Layout()
+        self.expand()
+        
+        
+        
+    #------------------------------------------------------------------------
+    def update(self, sim):
+        if sim is None:
+            return
+        for p in self.plst:
+            p.update(sim)
+            
+    #------------------------------------------------------------------------
+    def spin_change_addr(self):
+        i = 0
+        for p in self.plst:
+            self.parent.set_setting("p" + str(i) + "_addr", p.addr_str)
+            i += 1
         
 #---------------------------------------------------------------------------
 class PortTextCtrl():
@@ -420,8 +474,104 @@ class PortTextCtrl():
             t = self.bit_text_list[i]
             t.SetValue(str(b))
             t.SetBackgroundColour(c[b])
+
         
+#---------------------------------------------------------------------------
+class SpinTextCtrl():
+    def __init__(self, panel, sizer, default_addr, default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, size=(-1,-1)):
         
+        self.parent = panel.parent
+        self.addr = default_addr
+        self.addr_str = ""
+        box = wx.BoxSizer(wx.HORIZONTAL)
+        
+        txt = self.addr_text = wx.TextCtrl(panel, -1, "1", (30, 50), (60, -1))
+        h = txt.GetSize().height
+        w = txt.GetSize().width + txt.GetPosition().x + 2
+        self.set_addr(default_addr)
+        
+        self.spin = wx.SpinButton(panel, -1, (w, 50), (h*2/3, h),  wx.SP_VERTICAL)
+        self.spin.SetRange(1, 512)
+        self.spin.SetValue(default_addr)
+
+        box.Add(txt, 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 1)
+        box.Add(self.spin, 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 1)
+        
+        self.text = wx.TextCtrl(panel, -1, default_str, size = size)
+
+        box.Add(self.text, 0, wx.ALIGN_CENTRE|wx.RIGHT, 1)
+        
+        self.bit_text_list = []
+        c = panel.GetBackgroundColour()
+        for i in range(8):
+            t = wx.TextCtrl(panel, -1, "0", size=(20, -1),style=wx.BORDER_STATIC|wx.ALIGN_CENTER|wx.TE_PASSWORD)
+            t.SetBackgroundColour(c)
+            self.bit_text_list.append(t)
+            box.Add(t, 0, wx.ALIGN_CENTRE, 1)
+
+        #self.btn = wx.Button(parent, -1, '+', size=(30,-1))
+        #box.Add(self.btn, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+
+        sizer.Add(box, 0, flag, 0)
+
+        self.spin.Bind(wx.EVT_SPIN, self.OnSpin, self.spin)
+        self.addr_text.Bind(wx.EVT_TEXT, self.OnAddrText, self.addr_text)
+
+    #------------------------------------------------------------------------
+    def OnSpin(self, event):
+        self.set_addr(event.GetPosition())
+        
+    #------------------------------------------------------------------------
+    def OnAddrText(self, event):
+        s = event.GetString()
+        if self.addr_str == s:
+            return
+        pos = self.addr_text.GetInsertionPoint() + 1
+        
+        s = s.lower()
+        s = s[:pos] + s[(pos+1):]
+        s = s.replace("0x", "")
+        lst = ["0x0"]
+        i = 0
+        for c in s:
+            if c in "0123456789abcdef":
+                lst.append(c)
+                i += 1
+                if i > 2:
+                    break
+                
+        s = "".join(lst)
+        addr = int(s, 16)
+        self.spin.SetValue(addr)
+        self.set_addr(addr)
+        
+    #------------------------------------------------------------------------
+    def set_addr(self, a):
+        self.addr = a
+        s = "0x%03X" % (a)
+        self.addr_str = s
+        self.addr_text.SetValue(s)
+        self.parent.spin_change_addr()
+                
+    #------------------------------------------------------------------------
+    def set_value(self, v):
+        self.text.SetValue(tohex(v, 2))
+        c = [(180, 180, 180), (255, 255, 100)]
+        for i in range(8):
+            b = (v >> (7 - i)) & 1
+            t = self.bit_text_list[i]
+            t.SetValue(str(b))
+            t.SetBackgroundColour(c[b])
+            
+    #------------------------------------------------------------------------
+    def update(self, sim):
+        if self.addr < 512:
+            v = sim.mem[self.addr]
+            self.set_value(v)
+        else:
+            self.set_value(0xff)
+            
+
 #---------------------------------------------------------------------------
 class TrisCtrl():
     def __init__(self, parent, sizer, label_str, help_str="", default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, size=(-1,-1)):
@@ -444,9 +594,13 @@ class TrisCtrl():
             box.Add(t, 0, wx.ALIGN_CENTRE, 0)
 
         sizer.Add(box, 0, flag, 0)
+        self.value = None
         
     #------------------------------------------------------------------------
     def set_value(self, v):
+        if self.value == v:
+            return
+        
         self.text.SetValue(tohex(v, 2))
         c = [(180, 180, 180), (255, 255, 100)]
         for i in range(8):
@@ -455,7 +609,7 @@ class TrisCtrl():
             t.SetValue(b)
             #t.SetBackgroundColour(c[b])
             
-        
+        self.value = v
 
 #---------------------------------------------------------------------------------------------------
 class PortTextCtrlList(WatchPane):
@@ -463,35 +617,52 @@ class PortTextCtrlList(WatchPane):
         WatchPane.__init__(self, parent, parent_sizer, "Port Data")
         
         panel = self.GetPane()
-
         sizer = wx.BoxSizer(wx.VERTICAL)
-
+        
         self.p0_text = PortTextCtrl(panel, sizer, 'PORTA ', '', '00', size=(30, -1))
         self.p1_text = PortTextCtrl(panel, sizer, 'PORTB ', '', '00', size=(30, -1))
         self.p2_text = PortTextCtrl(panel, sizer, 'PORTC ', '', '00', size=(30, -1))
-        self.t0_text = TrisCtrl(panel, sizer, 'TRISA ', '', '00', size=(30, -1))
-        self.t1_text = TrisCtrl(panel, sizer, 'TRISB ', '', '00', size=(30, -1))
-        self.t2_text = TrisCtrl(panel, sizer, 'TRISC ', '', '00', size=(30, -1))     
         
         panel.SetSizer(sizer)
         panel.Layout()
-
         self.expand()
 
     #------------------------------------------------------------------------
     def update(self, sim):
         if sim is None:
             return
-
+        
         self.p0_text.set_value(sim.get_reg('PORTA'))
         self.p1_text.set_value(sim.get_reg('PORTB'))
         self.p2_text.set_value(sim.get_reg('PORTC'))
+              
+
+#---------------------------------------------------------------------------------------------------
+class TrisTextCtrlList(WatchPane):
+    def __init__(self, parent, parent_sizer):
+        WatchPane.__init__(self, parent, parent_sizer, "Tris Data")
+        
+        panel = self.GetPane()
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        self.t0_text = TrisCtrl(panel, sizer, 'TRISA ', '', '00', size=(30, -1))
+        self.t1_text = TrisCtrl(panel, sizer, 'TRISB ', '', '00', size=(30, -1))
+        self.t2_text = TrisCtrl(panel, sizer, 'TRISC ', '', '00', size=(30, -1))     
+        
+        panel.SetSizer(sizer)
+        panel.Layout()
+        self.expand()
+
+    #------------------------------------------------------------------------
+    def update(self, sim):
+        if sim is None:
+            return
+        
         self.t0_text.set_value(sim.get_reg('TRISA'))
         self.t1_text.set_value(sim.get_reg('TRISB'))
         self.t2_text.set_value(sim.get_reg('TRISC'))
         
         
-
 #---------------------------------------------------------------------------------------------------
 class InputCtrlList(WatchPane):
     def __init__(self, parent, parent_sizer):
@@ -630,13 +801,13 @@ class MemViewer(wx.Panel):
             status = sim.get_reg('STATUS')
             bank = (status >> 5) & 3
             lst.append(' Bank   %d' % (bank))
-            lst.append(' Status %s\n' % (bins[status]))
-            c =  status & 1
-            z =  (status >> 2) & 1
-            dc = (status >> 1) & 1
-            lst.append(' Status bit 0 C  %X' % (c))
-            lst.append(' Status bit 1 DC %X' % (dc))
-            lst.append(' Status bit 2 Z  %X' % (z))
+            #lst.append(' Status %s\n' % (bins[status]))
+            #c =  status & 1
+            #z =  (status >> 2) & 1
+            #dc = (status >> 1) & 1
+            #lst.append(' Status bit 0 C  %X' % (c))
+            #lst.append(' Status bit 1 DC %X' % (dc))
+            #lst.append(' Status bit 2 Z  %X' % (z))
             sim.mem_access_list.sort()
             for a in sim.mem_access_list:
                 v = m[a]
@@ -683,11 +854,16 @@ class WatchPanel (wx.Panel):
         
         sizer = wx.BoxSizer(wx.VERTICAL)
         
+        self.sfr_view = SfrTextCtrlList(self, sizer)
+
         self.port_panel = PortTextCtrlList(self, sizer)
+        self.tris_panel = TrisTextCtrlList(self, sizer)
+        self.mem_bin_view = MemTextCtrlList(self, sizer)
+        
         self.watch_led = WatchLed(self, sizer)
         self.input_pane = InputCtrlList(self, sizer)
         self.uart_watch = UartWatcher(self, sizer)
-        self.sfr_view = SfrTextCtrlList(self, sizer)
+        
         self.mem_view = MemViewer(self)
                 
         sizer.Add(self.mem_view, 1, wx.EXPAND, 5)
@@ -780,7 +956,9 @@ class WatchPanel (wx.Panel):
         if self.sim == None:
             self.sim = sim
         self.sfr_view.update(sim)
+        self.mem_bin_view.update(sim)
         self.port_panel.update(sim)
+        self.tris_panel.update(sim)
         self.watch_led.update(sim)
         self.mem_view.update(sim)
         
