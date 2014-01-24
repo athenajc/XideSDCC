@@ -396,86 +396,6 @@ class SfrTextCtrlList(WatchPane):
         
         
 
-#---------------------------------------------------------------------------------------------------
-class MemTextCtrlList(WatchPane):
-    def __init__(self, parent, parent_sizer):
-        WatchPane.__init__(self, parent, parent_sizer, "Memory Viewer")
-        self.parent = parent
-        panel = self.GetPane() 
-        panel.parent = self
-        
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        
-        StaticLine(panel, sizer)
-        
-        self.plst = []
-        
-        for i in range(4):
-            s = parent.get_setting("p" + str(i) + "_addr")
-            if s != "":
-                v = int(s, 16)
-            else:
-                v = 0x12C +i
-            p = SpinTextCtrl(panel, sizer, v, '00', size=(30, -1))
-            self.plst.append(p)
-            
-        StaticLine(panel, sizer)
-        
-        panel.SetSizer(sizer)
-        panel.Layout()
-        self.expand()
-        
-        
-        
-    #------------------------------------------------------------------------
-    def update(self, sim):
-        if sim is None:
-            return
-        for p in self.plst:
-            p.update(sim)
-            
-    #------------------------------------------------------------------------
-    def spin_change_addr(self):
-        i = 0
-        for p in self.plst:
-            self.parent.set_setting("p" + str(i) + "_addr", p.addr_str)
-            i += 1
-        
-#---------------------------------------------------------------------------
-class PortTextCtrl():
-    def __init__(self, parent, sizer, label_str, help_str="", default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, size=(-1,-1)):
-        
-        box = wx.BoxSizer(wx.HORIZONTAL)
-
-        label = wx.StaticText(parent, -1, label_str, style=wx.ALIGN_RIGHT)
-        box.Add(label, 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 1)
-        
-        self.text = wx.TextCtrl(parent, -1, default_str, size = size)
-        self.text.SetValue(default_str)
-        self.text.SetHelpText(help_str)
-        box.Add(self.text, 0, wx.ALIGN_CENTRE|wx.RIGHT, 1)
-        
-        self.bit_text_list = []
-        c = parent.GetBackgroundColour()
-        for i in range(8):
-            t = wx.TextCtrl(parent, -1, "0", size=(20, -1),style=wx.BORDER_STATIC|wx.ALIGN_CENTER)
-            t.SetBackgroundColour(c)
-            self.bit_text_list.append(t)
-            box.Add(t, 0, wx.ALIGN_CENTRE, 1)
-
-        sizer.Add(box, 0, flag, 0)
-        
-    #------------------------------------------------------------------------
-    def set_value(self, v):
-        self.text.SetValue(tohex(v, 2))
-        c = [(180, 180, 180), (255, 255, 100)]
-        for i in range(8):
-            b = (v >> (7 - i)) & 1
-            t = self.bit_text_list[i]
-            t.SetValue(str(b))
-            t.SetBackgroundColour(c[b])
-
-        
 #---------------------------------------------------------------------------
 class SpinTextCtrl():
     def __init__(self, panel, sizer, default_addr, default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, size=(-1,-1)):
@@ -508,15 +428,34 @@ class SpinTextCtrl():
             t.SetBackgroundColour(c)
             self.bit_text_list.append(t)
             box.Add(t, 0, wx.ALIGN_CENTRE, 1)
-
-        #self.btn = wx.Button(parent, -1, '+', size=(30,-1))
-        #box.Add(self.btn, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
-
+            
+        self.btn = wx.Button(panel, -1, '-', size=(20,20))
+        box.Add(self.btn, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+        
         sizer.Add(box, 0, flag, 0)
-
+        self.sizer = box
+        
+        # Bind Event
         self.spin.Bind(wx.EVT_SPIN, self.OnSpin, self.spin)
         self.addr_text.Bind(wx.EVT_TEXT, self.OnAddrText, self.addr_text)
-
+        self.btn.Bind(wx.EVT_BUTTON, self.OnRemoveButton, self.btn)
+        
+    #------------------------------------------------------------------------
+    def OnRemoveButton(self, event):
+        self.sizer.Remove(self.spin)
+        self.sizer.Remove(self.addr_text)
+        self.sizer.Remove(self.btn)
+        self.sizer.Remove(self.text)
+        self.spin.Destroy()
+        self.addr_text.Destroy()
+        self.btn.Destroy()
+        self.text.Destroy()
+        for t in self.bit_text_list:
+            self.sizer.Remove(t)
+            t.Destroy()
+ 
+        self.parent.remove_view(self)
+        
     #------------------------------------------------------------------------
     def OnSpin(self, event):
         self.set_addr(event.GetPosition())
@@ -571,6 +510,154 @@ class SpinTextCtrl():
         else:
             self.set_value(0xff)
             
+            
+#---------------------------------------------------------------------------------------------------
+class MemTextCtrlList(WatchPane):
+    def __init__(self, parent, parent_sizer):
+        WatchPane.__init__(self, parent, parent_sizer, "Memory Viewer")
+        self.parent = parent
+        panel = self.GetPane() 
+        panel.parent = self
+        
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer = sizer
+        self.panel = panel
+        
+        StaticLine(panel, sizer)
+        
+        self.plst = []
+        
+        s = parent.get_setting('mem_view_count')
+        if s == "":
+            n = 4
+        else:
+            n = int(s)
+            
+        for i in range(n):
+            self.add_view(i)
+            
+        self.btn = wx.Button(panel, -1, '+', size=(25,25))
+        sizer.Add(self.btn, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+        
+        panel.SetSizer(sizer)
+        panel.Layout()
+        self.expand()
+        
+        self.btn.Bind(wx.EVT_BUTTON, self.OnAddButton, self.btn)
+        
+    #------------------------------------------------------------------------
+    def OnAddButton(self, event):
+        i = len(self.plst)
+        self.Collapse()
+        self.sizer.Remove(self.btn)
+        self.add_view(i)
+        self.sizer.Add(self.btn, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+        self.panel.Layout()
+        self.Expand()
+        self.parent.set_setting('mem_view_count', len(self.plst))
+        
+    #------------------------------------------------------------------------
+    def add_view(self, i):
+        s = self.parent.get_setting("p" + str(i) + "_addr")
+        if s != "":
+            v = int(s, 16)
+        else:
+            v = 0x12C + i
+        p = SpinTextCtrl(self.panel, self.sizer, v, '00', size=(30, -1))
+        self.plst.append(p)
+        
+    #------------------------------------------------------------------------
+    def remove_view(self, obj):
+        self.Collapse()
+        self.sizer.Remove(obj.sizer)
+        self.plst.remove(obj)
+        self.panel.Layout()
+        self.Expand()
+        self.parent.set_setting('mem_view_count', len(self.plst))
+        self.spin_change_addr()
+        
+    #------------------------------------------------------------------------
+    def update(self, sim):
+        if sim is None:
+            return
+        for p in self.plst:
+            p.update(sim)
+            
+    #------------------------------------------------------------------------
+    def spin_change_addr(self):
+        i = 0
+        for p in self.plst:
+            self.parent.set_setting("p" + str(i) + "_addr", p.addr_str)
+            i += 1
+        
+        
+#---------------------------------------------------------------------------
+class PortTextCtrl():
+    def __init__(self, parent, sizer, label_str, help_str="", default_str="", flag=wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, size=(-1,-1)):
+        
+        box = wx.BoxSizer(wx.HORIZONTAL)
+
+        label = wx.StaticText(parent, -1, label_str, style=wx.ALIGN_RIGHT)
+        box.Add(label, 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 1)
+        
+        self.text = wx.TextCtrl(parent, -1, default_str, size = size)
+        self.text.SetValue(default_str)
+        self.text.SetHelpText(help_str)
+        box.Add(self.text, 0, wx.ALIGN_CENTRE|wx.RIGHT, 1)
+        
+        self.bit_text_list = []
+        c = parent.GetBackgroundColour()
+        for i in range(8):
+            t = wx.TextCtrl(parent, -1, "0", size=(20, -1),style=wx.BORDER_STATIC|wx.ALIGN_CENTER)
+            t.SetBackgroundColour(c)
+            self.bit_text_list.append(t)
+            box.Add(t, 0, wx.ALIGN_CENTRE, 1)
+
+        sizer.Add(box, 0, flag, 0)
+        
+    #------------------------------------------------------------------------
+    def set_value(self, v):
+        self.text.SetValue(tohex(v, 2))
+        c = [(180, 180, 180), (255, 255, 100)]
+        for i in range(8):
+            b = (v >> (7 - i)) & 1
+            t = self.bit_text_list[i]
+            t.SetValue(str(b))
+            t.SetBackgroundColour(c[b])
+        
+
+#---------------------------------------------------------------------------------------------------
+class PortTextCtrlList(WatchPane):
+    def __init__(self, parent, parent_sizer):
+        WatchPane.__init__(self, parent, parent_sizer, "Port Data")
+        
+        panel = self.GetPane()
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        
+        self.p0_text = PortTextCtrl(panel, sizer, 'PORTA ', '', '00', size=(30, -1))
+        self.p1_text = PortTextCtrl(panel, sizer, 'PORTB ', '', '00', size=(30, -1))
+        
+        if parent.with_portc:
+            self.with_portc = True
+            self.p2_text = PortTextCtrl(panel, sizer, 'PORTC ', '', '00', size=(30, -1))
+        else:
+            self.with_portc = False
+            
+        panel.SetSizer(sizer)
+        panel.Layout()
+        self.expand()
+
+    #------------------------------------------------------------------------
+    def update(self, sim):
+        if sim is None:
+            return
+        
+        self.p0_text.set_value(sim.get_reg('PORTA'))
+        self.p1_text.set_value(sim.get_reg('PORTB'))
+        if self.with_portc :
+            self.p2_text.set_value(sim.get_reg('PORTC'))
+              
+
 
 #---------------------------------------------------------------------------
 class TrisCtrl():
@@ -611,31 +698,6 @@ class TrisCtrl():
             
         self.value = v
 
-#---------------------------------------------------------------------------------------------------
-class PortTextCtrlList(WatchPane):
-    def __init__(self, parent, parent_sizer):
-        WatchPane.__init__(self, parent, parent_sizer, "Port Data")
-        
-        panel = self.GetPane()
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        
-        self.p0_text = PortTextCtrl(panel, sizer, 'PORTA ', '', '00', size=(30, -1))
-        self.p1_text = PortTextCtrl(panel, sizer, 'PORTB ', '', '00', size=(30, -1))
-        self.p2_text = PortTextCtrl(panel, sizer, 'PORTC ', '', '00', size=(30, -1))
-        
-        panel.SetSizer(sizer)
-        panel.Layout()
-        self.expand()
-
-    #------------------------------------------------------------------------
-    def update(self, sim):
-        if sim is None:
-            return
-        
-        self.p0_text.set_value(sim.get_reg('PORTA'))
-        self.p1_text.set_value(sim.get_reg('PORTB'))
-        self.p2_text.set_value(sim.get_reg('PORTC'))
-              
 
 #---------------------------------------------------------------------------------------------------
 class TrisTextCtrlList(WatchPane):
@@ -647,7 +709,11 @@ class TrisTextCtrlList(WatchPane):
 
         self.t0_text = TrisCtrl(panel, sizer, 'TRISA ', '', '00', size=(30, -1))
         self.t1_text = TrisCtrl(panel, sizer, 'TRISB ', '', '00', size=(30, -1))
-        self.t2_text = TrisCtrl(panel, sizer, 'TRISC ', '', '00', size=(30, -1))     
+        if parent.with_portc:
+            self.with_portc = True        
+            self.t2_text = TrisCtrl(panel, sizer, 'TRISC ', '', '00', size=(30, -1))     
+        else:
+            self.with_portc = False
         
         panel.SetSizer(sizer)
         panel.Layout()
@@ -660,7 +726,8 @@ class TrisTextCtrlList(WatchPane):
         
         self.t0_text.set_value(sim.get_reg('TRISA'))
         self.t1_text.set_value(sim.get_reg('TRISB'))
-        self.t2_text.set_value(sim.get_reg('TRISC'))
+        if self.with_portc:
+            self.t2_text.set_value(sim.get_reg('TRISC'))
         
         
 #---------------------------------------------------------------------------------------------------
@@ -827,7 +894,6 @@ class MemViewer(wx.Panel):
         self.text.SetValue(s)
         
 
-
 #---------------------------------------------------------------------------------------------------
 class WatchPanel (wx.Panel):
     
@@ -838,6 +904,12 @@ class WatchPanel (wx.Panel):
         self.frame = parent.frame
         self.mcu_name = mcu_name
         self.mcu_device = mcu_device
+        self.sfr_addr = get_sfr_addr(mcu_device)
+        if self.sfr_addr.get('PORTC', None) != None:
+            self.with_portc = True
+        else:
+            self.with_portc = False
+            
         self.config_file = config_file
         self.settings = {
             'led_port':'PORTA',
