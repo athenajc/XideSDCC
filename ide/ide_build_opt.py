@@ -1528,8 +1528,7 @@ class BuildOption():
 #---------------------------------------------------------------------------
 class BuildOptionDialog(Dialog):
     def __init__(self, parent, id, title, file_path):
-        #Dialog.__init__ ( self, parent, id, title + ' [' + os.path.basename(file_path) + ']')
-        Dialog.__init__ ( self, parent, id, title)
+        Dialog.__init__ ( self, parent, id, '' + file_path + ' : ' + title)
         self.parent = parent
         self.log = parent.log
         self.app = parent.app

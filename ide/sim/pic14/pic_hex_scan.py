@@ -334,7 +334,7 @@ def pic_hex_scan(frame, fn, mcu, dev_name):
         
     #print '\n' + fn
     text = read_file(fn)
-    print text
+    #print text
     return text
     
 

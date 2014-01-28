@@ -52,6 +52,7 @@ class SimPic():
                 #print(t)
         self.pc = 0
         self.c_line = 0
+        self.breakpoints = {}
         self.asm_code = ""
         self.f = 0
         self.f_addr = 0
@@ -997,6 +998,7 @@ class SimPic():
             while self.c_line == 0:
                 self.load_inst()
                 self.update_c_line()
+                print self.c_line
             
     #-------------------------------------------------------------------
     def step(self, count=1):
@@ -1034,12 +1036,12 @@ class SimPic():
         n = self.c_line
         f = self.c_file
         i = 1
-        
+        #brks = self.breakpoints.get(f, [])
         while self.c_line == n and self.c_file == f:
             i += 1
             self.load_inst()
             self.update_c_line()
-            if i > 1000:
+            if i > 2000:
                 break
                    
         if self.step_mode == 'c_line':

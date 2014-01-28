@@ -827,7 +827,7 @@ class UartWatcher(WatchPane):
     def update_inst(self, sim, sbuf):
         lst = []
         #lst.append("file = " + sim.c_file)
-        #lst.append("line = %d\n" % sim.c_line) 
+        lst.append("line = %d\n" % sim.c_line) 
         lst.append(str(sbuf))
         s1 = ''.join(chr(i) for i in sbuf)
         lst.append(s1)

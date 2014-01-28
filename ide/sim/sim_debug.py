@@ -276,8 +276,10 @@ class DebugFrame (wx.Frame):
         self.config_file = config_file
         self.mcu_name = "mcs51"
         self.mcu_device = ""
+        self.c_file = ""
+        self.doc_c = None
         
-        self.breakpoints = None  #breakpoints
+        self.breakpoints = {}  #breakpoints
         self.sbuf = []
         
         self.load_config()
@@ -436,8 +438,17 @@ class DebugFrame (wx.Frame):
             s = self.sim.disassembly()
             
         self.asm_view.set_text(s)
-        self.sim.start()
+        if self.breakpoints == None:
+            self.breakpoints = {}
+        for f in self.file_list:
+            brks = self.breakpoints.get(f, None)
+            if brks:
+                doc = self.get_doc(f)
+                self.breakpoints[f] = brks
+                
+        self.sim.breakpoints = self.breakpoints
         self.sim.enable_debug(True)
+        self.sim.start()
         
         self.running = True
         if self.debug_mode:
@@ -485,8 +496,8 @@ class DebugFrame (wx.Frame):
             self.sbuf.append(ch)
             
         sim.sbuf_list = []
-            
-        doc = self.get_doc(sim.c_file)
+        
+        doc = self.doc_c
         if doc:
             doc.goto_line(sim.c_line)
             doc.Update()
