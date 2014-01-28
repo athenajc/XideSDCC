@@ -600,6 +600,7 @@ class MenuFile(wx.Menu):
             if result :
                 self.app.doc_book.save_as_file(doc, file_path)
                 #self.app.open_file(file_path)
+                self.app.toolbar.add_file(file_path)
                 log(file_path + " saved.")
             else:
                 log("fail to save "+file_path)

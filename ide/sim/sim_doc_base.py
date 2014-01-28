@@ -150,14 +150,20 @@ class StyledText(stc.StyledTextCtrl):
     def search_addr(self, token):
         text = self.GetText()
         i = 0
-        token = token.upper()
+        token_u = token.upper()
         for line in text.split('\n'):
             i += 1
+            
+            # search lower case
             n = line.find(token)
             if n >= 0 and n < 20:
                 self.goto_line(i)
                 return i
-            
+            # search upper case
+            n = line.find(token_u)
+            if n >= 0 and n < 20:
+                self.goto_line(i)
+                return i
             
         return 0
   
