@@ -7,7 +7,7 @@ from ide_frame import IdeFrame
 from ide_build_opt import BuildOptionDialog
 from ide_tool_opt import ToolOptionDialog
 
-VERSION = "v0.1.0"
+VERSION = "v0.1.1"
 
 #---------------------------------------------------------------------------------------------------
 class IdeApp(wx.App):
