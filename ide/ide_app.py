@@ -5,6 +5,7 @@ import wx
 from ide_global import *
 from ide_frame import IdeFrame
 from ide_build_opt import BuildOptionDialog
+from ide_tool_opt import ToolOptionDialog
 
 VERSION = "v0.1.0"
 
@@ -183,17 +184,22 @@ class IdeApp(wx.App):
 
         # this does not return until the dialog is closed.
         val = dlg.ShowModal()
-    
-        if val == wx.ID_OK:
-            log("You pressed OK\n")
-        else:
-            log("You pressed Cancel\n")
             
         if dlg.cflags and dlg.ldflags:
             self.cflags = dlg.cflags
             self.ldflags = dlg.ldflags
             log(dlg.cflags)
             log(dlg.ldflags)
+            
+        dlg.Destroy()
+        
+    #-------------------------------------------------------------------
+    def set_tool_option(self):
+        dlg = ToolOptionDialog(self.frame, -1, "IDE Tool Options")
+        dlg.CenterOnScreen()
+
+        # this does not return until the dialog is closed.
+        val = dlg.ShowModal()
             
         dlg.Destroy()
 

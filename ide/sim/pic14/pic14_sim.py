@@ -480,7 +480,7 @@ class SimPic():
         # set bank addr
         if addr == 0:
             addr = self.indf_addr
-        elif not addr in [2, 3, 4, 0xA, 0xB, 0x7C, 0x7D, 0x7E, 0x7F]:
+        elif addr < 0x70 and not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
         
         if self.debug:
@@ -502,7 +502,7 @@ class SimPic():
     def set_freg_bit(self, addr, bit, b):
         if addr == 0:
             addr = self.indf_addr
-        elif not addr in [2, 3, 4, 0xA, 0xB]:
+        elif addr < 0x70 and not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
         
         if self.debug:
@@ -529,7 +529,7 @@ class SimPic():
     def get_freg(self, addr):
         if addr == 0:
             addr = self.indf_addr
-        elif not addr in [2, 3, 4, 0xA, 0xB, 0x7C, 0x7D, 0x7E, 0x7F]:
+        elif addr < 0x70 and not addr in [2, 3, 4, 0xA, 0xB]:
             addr += self.bank_addr
         
         self.f_addr = addr

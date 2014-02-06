@@ -2,6 +2,20 @@ import re
 import os
 
 #-------------------------------------------------------------------
+def copy_list(src):
+    dst = []
+    for t in src:
+        dst.append(t)
+    return dst
+
+#-------------------------------------------------------------------
+def copy_dict(src):
+    dst = {}
+    for k, v in src.items():
+        dst[k] = v
+    return dst
+                  
+#-------------------------------------------------------------------
 def read_file(file_path):    
     if not os.path.exists(file_path):
         return ""

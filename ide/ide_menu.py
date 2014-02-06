@@ -658,13 +658,22 @@ class MenuSetting(wx.Menu):
         self.log = frame.log
         id_build_option = self.app.id('BUILD_OPTION')
         self.Append(id_build_option, "SDCC Build Options")
+        
+        id_tool_path = self.app.id('TOOL_OPTION')
+        self.Append(id_tool_path, "Tool Options")
+        
         menubar.Append(self, "Settings")
         
         frame.Bind(wx.EVT_MENU, self.OnBuildOption, id=id_build_option)
+        frame.Bind(wx.EVT_MENU, self.OnToolOption, id=id_tool_path)
         
     #-------------------------------------------------------------------
     def OnBuildOption(self, event):
         self.app.set_build_option()
+        
+    #-------------------------------------------------------------------
+    def OnToolOption(self, event):
+        self.app.set_tool_option()
         
 
 #---------------------------------------------------------------------------------------------------
