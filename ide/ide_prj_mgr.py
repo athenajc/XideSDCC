@@ -874,7 +874,7 @@ class FunctionTree(wx.TreeCtrl):
                 node = self.GetLastChild(root)
                 self.add_list(node, t, depth+1)
             else:
-                self.AppendItem(root, str(t), 4)
+                self.AppendItem(root, str(t), -1)
 
     #-------------------------------------------------------------------
     def set_list(self, lst):
