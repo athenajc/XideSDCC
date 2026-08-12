@@ -1,3 +1,5 @@
+
+
 XideSDCC
 ========
 
@@ -17,3 +19,7 @@ System requirements:
 
 [Screen Shot](https://github.com/athenajc/XideSDCC/wiki/Screen-shot)
 
+Usage
+-----
+To launch the IDE, run the main script using Python 2:
+`python xide_sdcc.py`
